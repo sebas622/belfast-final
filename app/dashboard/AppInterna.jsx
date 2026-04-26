@@ -4404,27 +4404,80 @@ function AppInner() {
     const [authRequest, setAuthRequest] = useState(null);
     const [cargarState, setCargarState] = useState({ obraId: '', newFotos: [], report: '' });
 
-    // Cargar datos al inicio — localStorage es fuente de verdad, Supabase sincroniza en background
+    // Cargar datos al inicio — tablas reales de Supabase como fuente de verdad
     useEffect(() => {
-        // Marcar como loaded INMEDIATAMENTE — los datos de localStorage ya están en useState()
         setLoaded(true);
-        // Sincronizar con Supabase en background sin bloquear la UI
         (async () => {
             try {
-                const [rLics, rObras, rPers, rCfg, rKey, rUser, rPlanes] = await Promise.all([
-                    storage.get('bcm_lics'), storage.get('bcm_obras'), storage.get('bcm_personal'),
-                    storage.get('bcm_cfg'), storage.get('bcm_api_key'), storage.get('bcm_current_user'),
-                    storage.get('bcm_planes_semanales'),
+                const { createClient: mkSB } = await import('@supabase/supabase-js');
+                const sb = mkSB(SUPA_URL, SUPA_KEY);
+                const EID = '00000000-0000-0000-0000-000000000001';
+
+                const [obrasRes, persRes, licsRes, planesRes] = await Promise.all([
+                    sb.from('obras').select('*').eq('empresa_id', EID).order('created_at', { ascending: false }),
+                    sb.from('personal').select('*').eq('empresa_id', EID).eq('activo', true).order('nombre'),
+                    sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false }),
+                    sb.from('planes_semanales').select('*').eq('empresa_id', EID).order('created_at', { ascending: false }),
                 ]);
-                // Solo actualizar si Supabase tiene MÁS datos que localStorage
-                if (rLics?.value) try { const nv = JSON.parse(rLics.value); setLics(cur => nv.length > cur.length ? nv.map(l => ({ ...l, visitas: cur.find(c => c.id === l.id)?.visitas || [] })) : cur); } catch {}
-                if (rObras?.value) try { const nv = JSON.parse(rObras.value); setObras(cur => nv.length > cur.length ? nv.map(o => ({ ...o, fotos: cur.find(c => c.id === o.id)?.fotos || [], archivos: cur.find(c => c.id === o.id)?.archivos || [] })) : cur); } catch {}
-                if (rPers?.value) try { const nv = JSON.parse(rPers.value); setPersonal(cur => nv.length > cur.length ? nv : cur); } catch {}
-                if (rPlanes?.value) try { const nv = JSON.parse(rPlanes.value); setPlanes(cur => nv.length > cur.length ? nv : cur); } catch {}
-                if (rCfg?.value) try { setCfg(c => ({ ...c, ...JSON.parse(rCfg.value) })); } catch {}
-                if (rKey?.value && rKey.value.trim()) setApiKey(rKey.value);
-                if (rUser?.value) try { setUser(JSON.parse(rUser.value)); } catch {}
-            } catch { }
+
+                if (obrasRes.data?.length > 0) {
+                    setObras(obrasRes.data.map(o => ({
+                        id: o.id, nombre: o.nombre, estado: o.estado || 'curso',
+                        avance: o.avance || 0, cierre: o.fecha_cierre || '',
+                        ap: o.ubicacion || '', monto: o.monto || '',
+                        pagado: o.pagado || '', notas: o.notas || '',
+                        fotos: [], archivos: [], gastos: []
+                    })));
+                }
+                if (persRes.data?.length > 0) {
+                    setPersonal(persRes.data.map(p => ({
+                        id: p.id, nombre: p.nombre, rol: p.rol || '',
+                        telefono: p.telefono || '', dni: p.dni || '',
+                        empresa: 'BelfastCM', foto: p.foto_url || '',
+                        obra_id: p.obra_id || '', tareas: [], docs: {}
+                    })));
+                }
+                if (licsRes.data?.length > 0) {
+                    setLics(licsRes.data.map(l => ({
+                        id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente',
+                        monto: l.monto || '', fecha: l.fecha || '',
+                        ap: l.ubicacion || '', notas: l.notas || '',
+                        visitas: [], archivos: {}
+                    })));
+                }
+                if (planesRes.data?.length > 0) {
+                    setPlanes(planesRes.data.map(p => ({
+                        id: p.id, obra: p.obra_id || '',
+                        semana: p.semana || '', notas: p.notas || '',
+                        dias: p.dias || {}
+                    })));
+                }
+
+                setRealtimeOk(true);
+
+                // Suscripción realtime
+                const canal = sb.channel('bcm-realtime')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'obras', filter: 'empresa_id=eq.' + EID }, async () => {
+                        const { data } = await sb.from('obras').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
+                        if (data) setObras(data.map(o => ({ id: o.id, nombre: o.nombre, estado: o.estado || 'curso', avance: o.avance || 0, cierre: o.fecha_cierre || '', ap: o.ubicacion || '', monto: o.monto || '', pagado: o.pagado || '', notas: o.notas || '', fotos: [], archivos: [], gastos: [] })));
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'personal', filter: 'empresa_id=eq.' + EID }, async () => {
+                        const { data } = await sb.from('personal').select('*').eq('empresa_id', EID).eq('activo', true).order('nombre');
+                        if (data) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', dni: p.dni || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} })));
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'licitaciones', filter: 'empresa_id=eq.' + EID }, async () => {
+                        const { data } = await sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
+                        if (data) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} })));
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'planes_semanales', filter: 'empresa_id=eq.' + EID }, async () => {
+                        const { data } = await sb.from('planes_semanales').select('*').eq('empresa_id', EID);
+                        if (data) setPlanes(data.map(p => ({ id: p.id, obra: p.obra_id || '', semana: p.semana || '', notas: p.notas || '', dias: p.dias || {} })));
+                    })
+                    .subscribe();
+
+            } catch(e) {
+                console.error('Error cargando datos:', e);
+            }
         })();
     }, []);
 
@@ -4470,6 +4523,85 @@ function AppInner() {
         }
     }, [apiKey, loaded]);
     useEffect(() => { if (loaded && user) { storage.set('bcm_current_user', JSON.stringify(user)).catch(() => { }); try { localStorage.setItem('bcm_current_user', JSON.stringify(user)); } catch { } } }, [user, loaded]);
+
+    // ── GUARDAR EN TABLAS REALES DE SUPABASE ────────────────────────
+    const sbRef = useRef(null);
+    useEffect(() => {
+        (async () => {
+            try {
+                const { createClient: mkSB } = await import('@supabase/supabase-js');
+                sbRef.current = mkSB(SUPA_URL, SUPA_KEY);
+            } catch {}
+        })();
+    }, []);
+
+    // Guardar obras en tabla obras
+    useEffect(() => {
+        if (!loaded || !sbRef.current) return;
+        const EID = '00000000-0000-0000-0000-000000000001';
+        obras.forEach(async o => {
+            try {
+                await sbRef.current.from('obras').upsert({
+                    id: o.id, empresa_id: EID,
+                    nombre: o.nombre, estado: o.estado || 'curso',
+                    avance: o.avance || 0, fecha_cierre: o.cierre || null,
+                    ubicacion: o.ap || '', monto: o.monto || '',
+                    pagado: o.pagado || '', notas: o.notas || '',
+                    updated_at: new Date().toISOString(),
+                }, { onConflict: 'id' });
+            } catch {}
+        });
+    }, [obras, loaded]);
+
+    // Guardar personal en tabla personal
+    useEffect(() => {
+        if (!loaded || !sbRef.current) return;
+        const EID = '00000000-0000-0000-0000-000000000001';
+        personal.forEach(async p => {
+            try {
+                await sbRef.current.from('personal').upsert({
+                    id: p.id, empresa_id: EID,
+                    nombre: p.nombre, rol: p.rol || '',
+                    telefono: p.telefono || '', dni: p.dni || '',
+                    activo: true,
+                }, { onConflict: 'id' });
+            } catch {}
+        });
+    }, [personal, loaded]);
+
+    // Guardar licitaciones en tabla licitaciones
+    useEffect(() => {
+        if (!loaded || !sbRef.current) return;
+        const EID = '00000000-0000-0000-0000-000000000001';
+        lics.forEach(async l => {
+            try {
+                await sbRef.current.from('licitaciones').upsert({
+                    id: l.id, empresa_id: EID,
+                    nombre: l.nombre, estado: l.estado || 'pendiente',
+                    monto: l.monto || '', fecha: l.fecha || null,
+                    ubicacion: l.ap || '', notas: l.notas || '',
+                    updated_at: new Date().toISOString(),
+                }, { onConflict: 'id' });
+            } catch {}
+        });
+    }, [lics, loaded]);
+
+    // Guardar planes en tabla planes_semanales
+    useEffect(() => {
+        if (!loaded || !sbRef.current) return;
+        const EID = '00000000-0000-0000-0000-000000000001';
+        planes.forEach(async p => {
+            try {
+                await sbRef.current.from('planes_semanales').upsert({
+                    id: p.id, empresa_id: EID,
+                    obra_id: p.obra || null,
+                    semana: p.semana || null,
+                    dias: p.dias || {},
+                    notas: p.notas || '',
+                }, { onConflict: 'id' });
+            } catch {}
+        });
+    }, [planes, loaded]);
 
     // ── SYNC TIEMPO REAL ─────────────────────────────────────────────────
     // Usa Supabase Realtime (postgres_changes) para notificaciones instantáneas.
