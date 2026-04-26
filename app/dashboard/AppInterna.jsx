@@ -4384,12 +4384,21 @@ class ErrorBoundary extends React.Component {
     }
 }
 
-function AppInner() {
-    // Helpers de carga sincrónica desde localStorage (evita el "flash" y que se pisen con valores vacíos)
+function AppInner({ supaSession }) {
+    // Helpers de carga sincrónica desde localStorage
     function getLocalJSON(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
     function getLocalStr(k, def = '') { try { return localStorage.getItem(k) || def; } catch { return def; } }
 
-    const [user, setUser] = useState(() => getLocalJSON('bcm_current_user', null));
+    // Setear user desde sesión Supabase automáticamente
+    const supaUser = supaSession?.user ? {
+        id: supaSession.user.id,
+        nombre: supaSession.user.email?.split('@')[0] || 'Usuario',
+        email: supaSession.user.email,
+        rol: 'admin',
+        pass: '',
+    } : null;
+
+    const [user, setUser] = useState(() => supaUser || getLocalJSON('bcm_current_user', null));
     const [view, setView] = useState('chat');
     const [detailObraId, setDetailObraId] = useState(null);
     const [lics, setLics] = useState(() => getLocalJSON('bcm_lics', []));
@@ -4874,13 +4883,11 @@ function AppInner() {
         <div style={{ width: 40, height: 40, border: "3px solid #E2E8F0", borderTopColor: "#1D4ED8", borderRadius: "50%", animation: "spin .8s linear infinite" }} />
     </div>);
 
-    if (!user) return (<>
-        <style>{css}</style>
-        <style>{buildThemeCSS(cfg)}</style>
-        <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: T.bg }}>
-            <LoginScreen onLogin={setUser} cfg={cfg} personal={personal} />
+    if (!user) return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0F172A' }}>
+            <div style={{ color: '#fff', fontSize: 14 }}>Cargando sesión...</div>
         </div>
-    </>);
+    );
 
     const showNav = !['login'].includes(view);
     const isEmpleado = !isDirectivo(user);
@@ -4936,7 +4943,7 @@ function AppInner() {
 
 // Wrapper con ErrorBoundary para evitar pantallas blancas
 function AppInterna({ supaSession }) {
-    return <ErrorBoundary><AppInner /></ErrorBoundary>;
+    return <ErrorBoundary><AppInner supaSession={supaSession} /></ErrorBoundary>;
 }
 
 
