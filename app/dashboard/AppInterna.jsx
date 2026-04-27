@@ -4050,8 +4050,91 @@ function AlertasWA({ cfg, personal, lics, obras, alerts, setView }) {
     </div>);
 }
 
+
+// ── RECUPERAR FOTOS DEL BUCKET ────────────────────────────────────────
+function RecuperarFotos({ obras, setObras, lics, setLics }) {
+    const [estado, setEstado] = useState('idle');
+    const [resultado, setResultado] = useState(null);
+
+    async function listarCarpeta(prefix) {
+        try {
+            const r = await fetch(`${SUPA_STORAGE_URL}/object/list/${SUPA_BUCKET}`, {
+                method: 'POST',
+                headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prefix, limit: 500, offset: 0 })
+            });
+            if (!r.ok) return [];
+            const data = await r.json();
+            return Array.isArray(data) ? data : [];
+        } catch { return []; }
+    }
+
+    async function recuperar() {
+        setEstado('cargando'); setResultado(null);
+        try {
+            let fotosObrasRec = 0, fotosLicsRec = 0;
+            const obrasAct = [...obras];
+            for (let i = 0; i < obrasAct.length; i++) {
+                const obra = obrasAct[i];
+                if (obra.fotos?.some(f => f.url?.startsWith('http'))) continue;
+                const archivos = await listarCarpeta('obras/' + obra.id + '/');
+                const fotosRec = archivos.filter(f => f.name && !f.name.includes('archivos')).map(f => ({
+                    id: f.name.split('.')[0] || uid(),
+                    url: SUPA_STORAGE_URL + '/object/public/' + SUPA_BUCKET + '/obras/' + obra.id + '/' + f.name,
+                    nombre: f.name,
+                    fecha: f.updated_at ? new Date(f.updated_at).toLocaleDateString('es-AR') : new Date().toLocaleDateString('es-AR')
+                }));
+                if (fotosRec.length > 0) { obrasAct[i] = { ...obra, fotos: fotosRec }; fotosObrasRec += fotosRec.length; }
+            }
+            setObras(obrasAct);
+
+            const licsAct = [...lics];
+            for (let i = 0; i < licsAct.length; i++) {
+                const lic = licsAct[i];
+                if (lic.visitas?.some(v => v.url?.startsWith('http'))) continue;
+                const archivos = await listarCarpeta('licitaciones/' + lic.id + '/');
+                const visitasRec = archivos.filter(f => f.name).map(f => ({
+                    id: f.name.split('.')[0] || uid(),
+                    url: SUPA_STORAGE_URL + '/object/public/' + SUPA_BUCKET + '/licitaciones/' + lic.id + '/' + f.name,
+                    nombre: f.name, etapa: 'durante', desc: '',
+                    fecha: f.updated_at ? new Date(f.updated_at).toLocaleDateString('es-AR') : new Date().toLocaleDateString('es-AR'),
+                    hora: f.updated_at ? new Date(f.updated_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '—'
+                }));
+                if (visitasRec.length > 0) { licsAct[i] = { ...lic, visitas: visitasRec }; fotosLicsRec += visitasRec.length; }
+            }
+            setLics(licsAct);
+            setResultado({ fotosObrasRec, fotosLicsRec, total: fotosObrasRec + fotosLicsRec });
+            setEstado('listo');
+        } catch(e) { setEstado('error'); setResultado({ error: e.message }); }
+    }
+
+    return (<div>
+        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#1E40AF", marginBottom: 4 }}>📸 Recuperar fotos del bucket</div>
+            <div style={{ fontSize: 11, color: "#1E3A8A", lineHeight: 1.6 }}>Las fotos están físicamente en Supabase Storage. Este botón las recupera y las reasigna a cada obra y licitación automáticamente.</div>
+        </div>
+        <button onClick={recuperar} disabled={estado === 'cargando'}
+            style={{ width: "100%", background: estado === 'cargando' ? "#94A3B8" : T.accent, border: "none", borderRadius: T.rsm, padding: "14px", fontSize: 14, fontWeight: 700, color: "#fff", cursor: estado === 'cargando' ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
+            {estado === 'cargando' ? <><div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin .8s linear infinite" }} />Buscando fotos…</> : '🔄 Recuperar fotos'}
+        </button>
+        {estado === 'listo' && resultado && (<div style={{ background: "#ECFDF5", border: "1px solid #86EFAC", borderRadius: 10, padding: "14px" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#15803D", marginBottom: 8 }}>✅ Recuperación completa</div>
+            <div style={{ fontSize: 12, color: "#166534", lineHeight: 1.7 }}>
+                Fotos en obras: <b>{resultado.fotosObrasRec}</b><br/>
+                Fotos en licitaciones: <b>{resultado.fotosLicsRec}</b><br/>
+                Total: <b>{resultado.total}</b>
+            </div>
+            {resultado.total === 0 && <div style={{ fontSize: 11, color: "#15803D", marginTop: 8 }}>No se encontraron fotos nuevas. Puede que ya estén asignadas o las carpetas estén vacías.</div>}
+        </div>)}
+        {estado === 'error' && (<div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#B91C1C" }}>Error al recuperar</div>
+            <div style={{ fontSize: 11, color: "#991B1B", marginTop: 4 }}>{resultado?.error}</div>
+        </div>)}
+    </div>);
+}
+
 // ── MAS (Más opciones + Configuración) ───────────────────────────────
-function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey }) {
+function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics }) {
     const [showCfg, setShowCfg] = useState(false);
     const [cfgSection, setCfgSection] = useState('cuenta');
 
@@ -4137,7 +4220,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey }) {
         </div>
         {showCfg && (<Sheet title="Configuración" onClose={() => setShowCfg(false)}>
             <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto" }}>
-                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }].map(s => (
+                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '📸 Fotos' }].map(s => (
                     <button key={s.id} onClick={() => setCfgSection(s.id)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: '1.5px solid ' + cfgSection === s.id ? T.accent : T.border, background: cfgSection === s.id ? T.accentLight : T.card, color: cfgSection === s.id ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s.l}</button>
                 ))}
             </div>
@@ -4283,6 +4366,8 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey }) {
                 ))}
                 <div style={{ fontSize: 11, color: T.muted, marginTop: 10, fontStyle: "italic" }}>... y muchos más. Podés editarlos todos desde el código fuente.</div>
             </div>)}
+
+            {cfgSection === 'fotos' && (<RecuperarFotos obras={obras} setObras={setObras} lics={lics} setLics={setLics} />)}
 
             <PBtn full onClick={() => setShowCfg(false)} style={{ marginTop: 14 }}>✓ Guardar y cerrar</PBtn>
         </Sheet>)}
@@ -4451,8 +4536,7 @@ function AppInner({ supaSession }) {
                         id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente',
                         monto: l.monto || '', fecha: l.fecha || '',
                         ap: l.ubicacion || '', notas: l.notas || '',
-                        visitas: (() => { try { return JSON.parse(l.visitas_json || '[]'); } catch { return []; } })(),
-                        archivos: (() => { try { return JSON.parse(l.docs_json || '{}'); } catch { return {}; } })(),
+                        visitas: [], archivos: {}
                     })));
                 }
                 if (planesRes.data?.length > 0) {
@@ -4477,7 +4561,7 @@ function AppInner({ supaSession }) {
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'licitaciones', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
-                        if (data) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: (() => { try { return JSON.parse(l.visitas_json || '[]'); } catch { return []; } })(), archivos: (() => { try { return JSON.parse(l.docs_json || '{}'); } catch { return {}; } })() })));
+                        if (data) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} })));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'planes_semanales', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('planes_semanales').select('*').eq('empresa_id', EID);
@@ -4590,12 +4674,6 @@ function AppInner({ supaSession }) {
                     nombre: l.nombre, estado: l.estado || 'pendiente',
                     monto: l.monto || '', fecha: l.fecha || null,
                     ubicacion: l.ap || '', notas: l.notas || '',
-                    // Guardar visitas — solo URLs del bucket, nunca base64
-                    visitas_json: JSON.stringify((l.visitas || []).map(v => ({
-                        ...v,
-                        url: v.url?.startsWith('http') ? v.url : null
-                    })).filter(v => v.url)),
-                    docs_json: JSON.stringify(l.archivos || {}),
                     updated_at: new Date().toISOString(),
                 }, { onConflict: 'id' });
             } catch {}
@@ -4788,7 +4866,7 @@ window.addEventListener('focus', () => {
         sbRef.current.from('personal').select('*').eq('empresa_id', EID).eq('activo', true)
             .then(({ data }) => { if (data?.length) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} }))); });
         sbRef.current.from('licitaciones').select('*').eq('empresa_id', EID)
-            .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: (() => { try { return JSON.parse(l.visitas_json || '[]'); } catch { return []; } })(), archivos: (() => { try { return JSON.parse(l.docs_json || '{}'); } catch { return {}; } })() }))); });
+            .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} }))); });
     }
 });
         window.addEventListener('online', () => { syncAll(); connectRealtime(); });
@@ -4923,7 +5001,7 @@ window.addEventListener('focus', () => {
                 {view === 'personal' && <Personal personal={personal} setPersonal={setPersonal} obras={obras} cfg={cfg} />}
                 {view === 'cargar' && <CargarView obras={obras} setObras={setObras} cargarState={cargarState} setCargarState={setCargarState} apiKey={apiKey} />}
                 {view === 'chat' && <Chat lics={lics} obras={obras} setObras={setObras} personal={personal} alerts={alerts} cfg={cfg} apiKey={apiKey} />}
-                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} />}
+                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} />}
                 {view === 'presupuesto_materiales' && <PresupuestoView tipo="materiales" setView={setView} />}
                 {view === 'presupuesto_subcontratos' && <PresupuestoView tipo="subcontratos" setView={setView} />}
                 {view === 'seguimiento' && <Seguimiento alerts={alerts} setAlerts={setAlerts} setView={setView} />}
