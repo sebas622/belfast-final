@@ -145,11 +145,11 @@ function useStoredState(key, defaultValue) {
                 const r = await storage.get(key);
                 if (r?.value) {
                     const cloudData = JSON.parse(r.value);
-                    // Usar Supabase solo si tiene más datos que el local
+                    // Usar el más reciente (timestamp _ts)
                     setState(local => {
-                        const localSize = JSON.stringify(local).length;
-                        const cloudSize = JSON.stringify(cloudData).length;
-                        return cloudSize > localSize ? cloudData : local;
+                        const localTs = local?._ts || 0;
+                        const cloudTs = cloudData?._ts || 0;
+                        return cloudTs > localTs ? cloudData : local;
                     });
                 }
             } catch { }
@@ -162,7 +162,7 @@ function useStoredState(key, defaultValue) {
         setState(prev => {
             const next = typeof updater === 'function' ? updater(prev) : updater;
             // Guardar inmediatamente en ambos lados
-            const json = JSON.stringify(next);
+            const json = JSON.stringify({ ...next, _ts: Date.now() });
             try { localStorage.setItem(key, json); } catch { }
             storage.set(key, json).catch(() => {});
             return next;
@@ -4521,7 +4521,7 @@ function AppInner({ supaSession }) {
         try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
     }, [obras, loaded]);
     useEffect(() => { if (loaded) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
-    useEffect(() => { if (loaded) { markLocalEdit('cfg'); storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { } } }, [cfg, loaded]);
+    useEffect(() => { if (loaded) { markLocalEdit('cfg'); const cfgConTs={...cfg,_ts:Date.now()}; storage.set('bcm_cfg', JSON.stringify(cfgConTs)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfgConTs)); } catch { } } }, [cfg, loaded]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
