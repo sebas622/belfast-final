@@ -310,29 +310,33 @@ async function callAI(msgs, sys, apiKey, useSearch = false) {
         const d = await r.json();
         if (d.error) return `Error: ${d.error.message || 'Sin respuesta.'}`;
 
-        // Loop: el modelo puede hacer múltiples búsquedas antes de responder
-        let respuestaFinal = d;
-        let mensajesLoop = [...msgs];
-        let iteraciones = 0;
+        // Si el modelo usó web_search, hay que hacer una segunda vuelta con los resultados
+        if (useSearch && d.stop_reason === 'tool_use') {
+            // Construir mensajes con los resultados de las herramientas
+            const toolResults = d.content
+                .filter(b => b.type === 'tool_use')
+                .map(b => ({ type: 'tool_result', tool_use_id: b.id, content: b.input?.query ? `Búsqueda: ${b.input.query}` : 'Búsqueda completada' }));
 
-        while (respuestaFinal.stop_reason === 'tool_use' && iteraciones < 5) {
-            iteraciones++;
-            // Agregar respuesta del modelo al historial
-            mensajesLoop = [
-                ...mensajesLoop,
-                { role: 'assistant', content: respuestaFinal.content }
-            ];
-            // Para web_search, la API maneja los resultados internamente —
-            // solo necesitamos reenviar con el historial actualizado
-            const r2 = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST", headers,
-                body: JSON.stringify({ ...body, messages: mensajesLoop })
-            });
-            if (!r2.ok) break;
-            respuestaFinal = await r2.json();
+            if (toolResults.length > 0) {
+                const msgsConResultados = [
+                    ...msgs,
+                    { role: 'assistant', content: d.content },
+                    { role: 'user', content: toolResults }
+                ];
+                const r2 = await fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST", headers,
+                    body: JSON.stringify({ ...body, messages: msgsConResultados })
+                });
+                if (r2.ok) {
+                    const d2 = await r2.json();
+                    const texto2 = d2.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+                    if (texto2) return texto2;
+                }
+            }
         }
 
-        return respuestaFinal.content?.filter(b => b.type === 'text').map(b => b.text).join('') || 'Sin respuesta.';
+        // Extraer todo el texto de la respuesta
+        return d.content?.filter(b => b.type === 'text').map(b => b.text).join('') || 'Sin respuesta.';
     } catch (e) {
         return `Error de conexión: ${e.message || 'Verificá tu API Key en Configuración.'}`;
     }
@@ -3309,8 +3313,10 @@ function Chat({ lics, obras, setObras, personal, alerts, cfg, apiKey }) {
         return ctx;
     }
 
-    // Búsqueda siempre activa — la IA decide sola si usar internet o no
-    function necesitaBusqueda(txt) { return true; }
+    // Detectar si la pregunta necesita búsqueda en internet
+    function necesitaBusqueda(txt) {
+        return /precio|costo|cuánto sale|cuanto vale|presupuest|material|proveedor|ferretería|ferreteria|mercadolibre|sodimac|easy|cemento|hierro|pintura|porcelanato|cotizaci|m2|metro cuadrado|mano de obra|jornal|honorario|norma|reglamento|código|decreto|resolución|pliego|inflaci|dólar|dolar|índice|índic|IPC|CAC/i.test(txt);
+    }
 
     const [loadingMsg, setLoadingMsg] = useState('');
 
@@ -3345,7 +3351,11 @@ function Chat({ lics, obras, setObras, personal, alerts, cfg, apiKey }) {
         });
 
         // Mostrar estado progresivo
-        setLoadingMsg('Consultando…');
+        if (usarBusqueda) {
+            setLoadingMsg('Buscando en internet…');
+        } else {
+            setLoadingMsg('Pensando…');
+        }
 
         let extraInfo = '';
         if (/dólar|dolar/i.test(txt)) {
@@ -4441,7 +4451,8 @@ function AppInner({ supaSession }) {
                         id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente',
                         monto: l.monto || '', fecha: l.fecha || '',
                         ap: l.ubicacion || '', notas: l.notas || '',
-                        visitas: [], archivos: {}
+                        visitas: (() => { try { return JSON.parse(l.visitas_json || '[]'); } catch { return []; } })(),
+                        archivos: (() => { try { return JSON.parse(l.docs_json || '{}'); } catch { return {}; } })(),
                     })));
                 }
                 if (planesRes.data?.length > 0) {
@@ -4466,7 +4477,7 @@ function AppInner({ supaSession }) {
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'licitaciones', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
-                        if (data) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} })));
+                        if (data) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: (() => { try { return JSON.parse(l.visitas_json || '[]'); } catch { return []; } })(), archivos: (() => { try { return JSON.parse(l.docs_json || '{}'); } catch { return {}; } })() })));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'planes_semanales', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('planes_semanales').select('*').eq('empresa_id', EID);
@@ -4579,6 +4590,12 @@ function AppInner({ supaSession }) {
                     nombre: l.nombre, estado: l.estado || 'pendiente',
                     monto: l.monto || '', fecha: l.fecha || null,
                     ubicacion: l.ap || '', notas: l.notas || '',
+                    // Guardar visitas — solo URLs del bucket, nunca base64
+                    visitas_json: JSON.stringify((l.visitas || []).map(v => ({
+                        ...v,
+                        url: v.url?.startsWith('http') ? v.url : null
+                    })).filter(v => v.url)),
+                    docs_json: JSON.stringify(l.archivos || {}),
                     updated_at: new Date().toISOString(),
                 }, { onConflict: 'id' });
             } catch {}
@@ -4771,7 +4788,7 @@ window.addEventListener('focus', () => {
         sbRef.current.from('personal').select('*').eq('empresa_id', EID).eq('activo', true)
             .then(({ data }) => { if (data?.length) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} }))); });
         sbRef.current.from('licitaciones').select('*').eq('empresa_id', EID)
-            .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} }))); });
+            .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: (() => { try { return JSON.parse(l.visitas_json || '[]'); } catch { return []; } })(), archivos: (() => { try { return JSON.parse(l.docs_json || '{}'); } catch { return {}; } })() }))); });
     }
 });
         window.addEventListener('online', () => { syncAll(); connectRealtime(); });
