@@ -145,11 +145,11 @@ function useStoredState(key, defaultValue) {
                 const r = await storage.get(key);
                 if (r?.value) {
                     const cloudData = JSON.parse(r.value);
-                    // Usar el más reciente (timestamp _ts)
+                    // Usar Supabase solo si tiene más datos que el local
                     setState(local => {
-                        const localTs = local?._ts || 0;
-                        const cloudTs = cloudData?._ts || 0;
-                        return cloudTs > localTs ? cloudData : local;
+                        const localSize = JSON.stringify(local).length;
+                        const cloudSize = JSON.stringify(cloudData).length;
+                        return cloudSize > localSize ? cloudData : local;
                     });
                 }
             } catch { }
@@ -162,7 +162,7 @@ function useStoredState(key, defaultValue) {
         setState(prev => {
             const next = typeof updater === 'function' ? updater(prev) : updater;
             // Guardar inmediatamente en ambos lados
-            const json = JSON.stringify({ ...next, _ts: Date.now() });
+            const json = JSON.stringify(next);
             try { localStorage.setItem(key, json); } catch { }
             storage.set(key, json).catch(() => {});
             return next;
@@ -310,33 +310,29 @@ async function callAI(msgs, sys, apiKey, useSearch = false) {
         const d = await r.json();
         if (d.error) return `Error: ${d.error.message || 'Sin respuesta.'}`;
 
-        // Si el modelo usó web_search, hay que hacer una segunda vuelta con los resultados
-        if (useSearch && d.stop_reason === 'tool_use') {
-            // Construir mensajes con los resultados de las herramientas
-            const toolResults = d.content
-                .filter(b => b.type === 'tool_use')
-                .map(b => ({ type: 'tool_result', tool_use_id: b.id, content: b.input?.query ? `Búsqueda: ${b.input.query}` : 'Búsqueda completada' }));
+        // Loop: el modelo puede hacer múltiples búsquedas antes de responder
+        let respuestaFinal = d;
+        let mensajesLoop = [...msgs];
+        let iteraciones = 0;
 
-            if (toolResults.length > 0) {
-                const msgsConResultados = [
-                    ...msgs,
-                    { role: 'assistant', content: d.content },
-                    { role: 'user', content: toolResults }
-                ];
-                const r2 = await fetch("https://api.anthropic.com/v1/messages", {
-                    method: "POST", headers,
-                    body: JSON.stringify({ ...body, messages: msgsConResultados })
-                });
-                if (r2.ok) {
-                    const d2 = await r2.json();
-                    const texto2 = d2.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
-                    if (texto2) return texto2;
-                }
-            }
+        while (respuestaFinal.stop_reason === 'tool_use' && iteraciones < 5) {
+            iteraciones++;
+            // Agregar respuesta del modelo al historial
+            mensajesLoop = [
+                ...mensajesLoop,
+                { role: 'assistant', content: respuestaFinal.content }
+            ];
+            // Para web_search, la API maneja los resultados internamente —
+            // solo necesitamos reenviar con el historial actualizado
+            const r2 = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST", headers,
+                body: JSON.stringify({ ...body, messages: mensajesLoop })
+            });
+            if (!r2.ok) break;
+            respuestaFinal = await r2.json();
         }
 
-        // Extraer todo el texto de la respuesta
-        return d.content?.filter(b => b.type === 'text').map(b => b.text).join('') || 'Sin respuesta.';
+        return respuestaFinal.content?.filter(b => b.type === 'text').map(b => b.text).join('') || 'Sin respuesta.';
     } catch (e) {
         return `Error de conexión: ${e.message || 'Verificá tu API Key en Configuración.'}`;
     }
@@ -3313,10 +3309,8 @@ function Chat({ lics, obras, setObras, personal, alerts, cfg, apiKey }) {
         return ctx;
     }
 
-    // Detectar si la pregunta necesita búsqueda en internet
-    function necesitaBusqueda(txt) {
-        return /precio|costo|cuánto sale|cuanto vale|presupuest|material|proveedor|ferretería|ferreteria|mercadolibre|sodimac|easy|cemento|hierro|pintura|porcelanato|cotizaci|m2|metro cuadrado|mano de obra|jornal|honorario|norma|reglamento|código|decreto|resolución|pliego|inflaci|dólar|dolar|índice|índic|IPC|CAC/i.test(txt);
-    }
+    // Búsqueda siempre activa — la IA decide sola si usar internet o no
+    function necesitaBusqueda(txt) { return true; }
 
     const [loadingMsg, setLoadingMsg] = useState('');
 
@@ -3351,11 +3345,7 @@ function Chat({ lics, obras, setObras, personal, alerts, cfg, apiKey }) {
         });
 
         // Mostrar estado progresivo
-        if (usarBusqueda) {
-            setLoadingMsg('Buscando en internet…');
-        } else {
-            setLoadingMsg('Pensando…');
-        }
+        setLoadingMsg('Consultando…');
 
         let extraInfo = '';
         if (/dólar|dolar/i.test(txt)) {
@@ -4521,7 +4511,7 @@ function AppInner({ supaSession }) {
         try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
     }, [obras, loaded]);
     useEffect(() => { if (loaded) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
-    useEffect(() => { if (loaded) { markLocalEdit('cfg'); const cfgConTs={...cfg,_ts:Date.now()}; storage.set('bcm_cfg', JSON.stringify(cfgConTs)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfgConTs)); } catch { } } }, [cfg, loaded]);
+    useEffect(() => { if (loaded) { markLocalEdit('cfg'); storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { } } }, [cfg, loaded]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
