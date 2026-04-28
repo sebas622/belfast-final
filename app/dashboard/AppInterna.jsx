@@ -4498,93 +4498,50 @@ function AppInner({ supaSession }) {
     const [authRequest, setAuthRequest] = useState(null);
     const [cargarState, setCargarState] = useState({ obraId: '', newFotos: [], report: '' });
 
-    // Cargar datos al inicio — tablas reales de Supabase como fuente de verdad
+
+    // Cargar datos al inicio — localStorage primero, luego bcm_storage como fallback
     useEffect(() => {
         setLoaded(true);
         (async () => {
             try {
-                const { createClient: mkSB } = await import('@supabase/supabase-js');
-                const sb = mkSB(SUPA_URL, SUPA_KEY);
-                const EID = '00000000-0000-0000-0000-000000000001';
-
-                const [obrasRes, persRes, licsRes, planesRes] = await Promise.all([
-                    sb.from('obras').select('*').eq('empresa_id', EID).order('created_at', { ascending: false }),
-                    sb.from('personal').select('*').eq('empresa_id', EID).eq('activo', true).order('nombre'),
-                    sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false }),
-                    sb.from('planes_semanales').select('*').eq('empresa_id', EID).order('created_at', { ascending: false }),
-                ]);
-
-                if (obrasRes.data?.length > 0) {
-                    setObras(obrasRes.data.map(o => ({
-                        id: o.id, nombre: o.nombre, estado: o.estado || 'curso',
-                        avance: o.avance || 0, cierre: o.fecha_cierre || '',
-                        ap: o.ubicacion || '', monto: o.monto || '',
-                        pagado: o.pagado || '', notas: o.notas || '',
-                        fotos: [], archivos: [], gastos: []
-                    })));
-                }
-                if (persRes.data?.length > 0) {
-                    setPersonal(persRes.data.map(p => ({
-                        id: p.id, nombre: p.nombre, rol: p.rol || '',
-                        telefono: p.telefono || '', dni: p.dni || '',
-                        empresa: 'BelfastCM', foto: p.foto_url || '',
-                        obra_id: p.obra_id || '', tareas: [], docs: {}
-                    })));
-                }
-                if (licsRes.data?.length > 0) {
-                    setLics(licsRes.data.map(l => ({
-                        id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente',
-                        monto: l.monto || '', fecha: l.fecha || '',
-                        ap: l.ubicacion || '', notas: l.notas || '',
-                        visitas: [], archivos: {}
-                    })));
-                }
-                if (planesRes.data?.length > 0) {
-                    setPlanes(planesRes.data.map(p => ({
-                        id: p.id, obra: p.obra_id || '',
-                        semana: p.semana || '', notas: p.notas || '',
-                        dias: p.dias || {}
-                    })));
-                }
-
-                setRealtimeOk(true);
-
-                // Cargar cfg desde Supabase al arrancar (para dispositivos nuevos sin localStorage)
-                try {
-                    const cfgRemota = await storage.get("bcm_cfg");
-                    if (cfgRemota?.value) {
-                        const parsed = JSON.parse(cfgRemota.value);
-                        const { _ts, ...cfgLimpia } = parsed;
-                        const localCfgStr = localStorage.getItem("bcm_cfg");
-                        const localTs = localCfgStr ? (JSON.parse(localCfgStr)._ts || 0) : 0;
-                        if (!localCfgStr || (_ts || 0) > localTs) {
-                            setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
-                            try { localStorage.setItem("bcm_cfg", cfgRemota.value); } catch {}
-                        }
+                // Solo cargar cfg desde Supabase si no hay local
+                const cfgRemota = await storage.get("bcm_cfg");
+                if (cfgRemota?.value) {
+                    const parsed = JSON.parse(cfgRemota.value);
+                    const { _ts, ...cfgLimpia } = parsed;
+                    const localCfgStr = localStorage.getItem("bcm_cfg");
+                    const localTs = localCfgStr ? (JSON.parse(localCfgStr)._ts || 0) : 0;
+                    if (!localCfgStr || (_ts || 0) > localTs) {
+                        setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
+                        try { localStorage.setItem("bcm_cfg", cfgRemota.value); } catch {}
                     }
-                } catch {}
-
-
-                // Suscripción realtime
-                const canal = sb.channel('bcm-realtime')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'obras', filter: 'empresa_id=eq.' + EID }, async () => {
-                        const { data } = await sb.from('obras').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
-                        if (data) setObras(data.map(o => ({ id: o.id, nombre: o.nombre, estado: o.estado || 'curso', avance: o.avance || 0, cierre: o.fecha_cierre || '', ap: o.ubicacion || '', monto: o.monto || '', pagado: o.pagado || '', notas: o.notas || '', fotos: [], archivos: [], gastos: [] })));
-                    })
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'personal', filter: 'empresa_id=eq.' + EID }, async () => {
-                        const { data } = await sb.from('personal').select('*').eq('empresa_id', EID).eq('activo', true).order('nombre');
-                        if (data) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', dni: p.dni || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} })));
-                    })
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'licitaciones', filter: 'empresa_id=eq.' + EID }, async () => {
-                        const { data } = await sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
-                        if (data) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} })));
-                    })
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'planes_semanales', filter: 'empresa_id=eq.' + EID }, async () => {
-                        const { data } = await sb.from('planes_semanales').select('*').eq('empresa_id', EID);
-                        if (data) setPlanes(data.map(p => ({ id: p.id, obra: p.obra_id || '', semana: p.semana || '', notas: p.notas || '', dias: p.dias || {} })));
-                    })
-                    .subscribe();
-
+                }
+                // Cargar API key desde Supabase si no hay local
+                const localApiKey = localStorage.getItem("bcm_api_key");
+                if (!localApiKey) {
+                    const remoteApiKey = await storage.get("bcm_api_key");
+                    if (remoteApiKey?.value) {
+                        setApiKey(remoteApiKey.value);
+                        try { localStorage.setItem("bcm_api_key", remoteApiKey.value); } catch {}
+                    }
+                }
+                // Cargar datos desde bcm_storage si localStorage está vacío
+                if (!getLocalJSON('bcm_lics', []).length) {
+                    const r = await storage.get('bcm_lics');
+                    if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setLics(d); try { localStorage.setItem('bcm_lics', r.value); } catch {} } }
+                }
+                if (!getLocalJSON('bcm_obras', []).length) {
+                    const r = await storage.get('bcm_obras');
+                    if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setObras(d.map(o => ({ ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[] }))); try { localStorage.setItem('bcm_obras', r.value); } catch {} } }
+                }
+                if (!getLocalJSON('bcm_personal', []).length) {
+                    const r = await storage.get('bcm_personal');
+                    if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setPersonal(d); try { localStorage.setItem('bcm_personal', r.value); } catch {} } }
+                }
+                if (!getLocalJSON('bcm_planes_semanales', []).length) {
+                    const r = await storage.get('bcm_planes_semanales');
+                    if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setPlanes(d); try { localStorage.setItem('bcm_planes_semanales', r.value); } catch {} } }
+                }
             } catch(e) {
                 console.error('Error cargando datos:', e);
             }
