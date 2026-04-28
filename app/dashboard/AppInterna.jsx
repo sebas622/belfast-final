@@ -4610,21 +4610,14 @@ function AppInner({ supaSession }) {
     useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => {
         if (!loaded) return;
-        // Solo persistir si la cfg tiene datos reales (no es el default vacío)
-        const esDefault = !cfg.logoBelfast && !cfg.logoAA2000 && !cfg.apiKey &&
-            cfg.empresa === 'BelfastCM' && !cfg.waPhoneId && !cfg.waToken &&
-            JSON.stringify(cfg.ubicaciones) === JSON.stringify(DEFAULT_UBICACIONES);
-        if (esDefault) return; // No pisar datos reales con la config vacía del arranque
-        markLocalEdit('cfg');
-        storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { });
+        // cfg → SOLO localStorage. Nunca Supabase (evita conflictos de sync).
         try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { }
     }, [cfg, loaded]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
-        // Solo guardar si la API key tiene contenido — no sobrescribir con vacío
+        // apiKey → SOLO localStorage. Nunca Supabase (evita conflictos de sync).
         if (apiKey && apiKey.trim()) {
-            storage.set('bcm_api_key', apiKey).catch(() => { });
             try { localStorage.setItem('bcm_api_key', apiKey); } catch { }
         }
     }, [apiKey, loaded]);
@@ -4753,10 +4746,7 @@ function AppInner({ supaSession }) {
                     const nv = JSON.parse(value); setPersonal(nv);
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                else if (key === 'bcm_cfg' && now - myLastSave.cfg > PROTECT_MS) {
-                    const nv = JSON.parse(value); setCfg({ ...DEFAULT_CONFIG, ...nv });
-                    try { localStorage.setItem(key, value); } catch {}
-                }
+                // bcm_cfg: NUNCA aplicar desde remoto — solo localStorage
                 // Fotos de obras
                 else if (key.startsWith('bcm_fotos_')) {
                     const obraId = key.replace('bcm_fotos_', '');
@@ -4790,24 +4780,16 @@ function AppInner({ supaSession }) {
         async function syncAll() {
             try {
                 // Solo 5 requests por sync (no sync de fotos por obra que genera N requests)
-                const [rLics, rObras, rPers, rCfg, rPlanes] = await Promise.all([
+                // cfg y apiKey NUNCA se sincronizan desde Supabase — solo localStorage
+                const [rLics, rObras, rPers, rPlanes] = await Promise.all([
                     storage.get('bcm_lics'), storage.get('bcm_obras'),
-                    storage.get('bcm_personal'), storage.get('bcm_cfg'),
+                    storage.get('bcm_personal'),
                     storage.get('bcm_planes_semanales'),
                 ]);
                 if (rLics?.value) { const loc = storage.getLocal('bcm_lics'); if (loc?.value !== rLics.value) await applyRemoteKey('bcm_lics', rLics.value); }
                 if (rObras?.value) { const loc = storage.getLocal('bcm_obras'); if (loc?.value !== rObras.value) await applyRemoteKey('bcm_obras', rObras.value); }
                 if (rPers?.value) { const loc = storage.getLocal('bcm_personal'); if (loc?.value !== rPers.value) await applyRemoteKey('bcm_personal', rPers.value); }
-                if (rCfg?.value) { const loc = storage.getLocal('bcm_cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey('bcm_cfg', rCfg.value); }
                 if (rPlanes?.value) { const loc = storage.getLocal('bcm_planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem('bcm_planes_semanales', rPlanes.value); } catch {} } }
-                // Sync API key
-                try {
-                    const rApiKey = await storage.get('bcm_api_key');
-                    if (rApiKey?.value && rApiKey.value !== apiKey) {
-                        setApiKey(rApiKey.value);
-                        try { localStorage.setItem('bcm_api_key', rApiKey.value); } catch {}
-                    }
-                } catch {}
                 // Sync fotos/archivos de cada obra (desde bcm_storage keys individuales)
                 try {
                     const keysRes = await storage.list('bcm_fotos_');
@@ -4926,7 +4908,7 @@ window.addEventListener('focus', () => {
             if (key === 'bcm_lics') myLastSave.lics = Date.now();
             else if (key === 'bcm_obras') myLastSave.obras = Date.now();
             else if (key === 'bcm_personal') myLastSave.personal = Date.now();
-            else if (key === 'bcm_cfg') myLastSave.cfg = Date.now();
+            // bcm_cfg ya no usa Supabase
             return origSet(key, value);
         };
 
