@@ -4608,7 +4608,17 @@ function AppInner({ supaSession }) {
         try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
     }, [obras, loaded]);
     useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
-    useEffect(() => { if (loaded) { markLocalEdit('cfg'); storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { } } }, [cfg, loaded]);
+    useEffect(() => {
+        if (!loaded) return;
+        // Solo persistir si la cfg tiene datos reales (no es el default vacío)
+        const esDefault = !cfg.logoBelfast && !cfg.logoAA2000 && !cfg.apiKey &&
+            cfg.empresa === 'BelfastCM' && !cfg.waPhoneId && !cfg.waToken &&
+            JSON.stringify(cfg.ubicaciones) === JSON.stringify(DEFAULT_UBICACIONES);
+        if (esDefault) return; // No pisar datos reales con la config vacía del arranque
+        markLocalEdit('cfg');
+        storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { });
+        try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { }
+    }, [cfg, loaded]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
@@ -4790,7 +4800,44 @@ function AppInner({ supaSession }) {
                 if (rPers?.value) { const loc = storage.getLocal('bcm_personal'); if (loc?.value !== rPers.value) await applyRemoteKey('bcm_personal', rPers.value); }
                 if (rCfg?.value) { const loc = storage.getLocal('bcm_cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey('bcm_cfg', rCfg.value); }
                 if (rPlanes?.value) { const loc = storage.getLocal('bcm_planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem('bcm_planes_semanales', rPlanes.value); } catch {} } }
-                // NO sincronizar fotos/archivos por obra — demasiadas requests al Supabase gratuito
+                // Sync API key
+                try {
+                    const rApiKey = await storage.get('bcm_api_key');
+                    if (rApiKey?.value && rApiKey.value !== apiKey) {
+                        setApiKey(rApiKey.value);
+                        try { localStorage.setItem('bcm_api_key', rApiKey.value); } catch {}
+                    }
+                } catch {}
+                // Sync fotos/archivos de cada obra (desde bcm_storage keys individuales)
+                try {
+                    const keysRes = await storage.list('bcm_fotos_');
+                    if (keysRes?.keys?.length) {
+                        for (const fotoKey of keysRes.keys) {
+                            const obraId = fotoKey.replace('bcm_fotos_', '');
+                            const rFotos = await storage.get(fotoKey);
+                            if (rFotos?.value) {
+                                const fotos = JSON.parse(rFotos.value);
+                                setObras(cur => cur.map(o => o.id === obraId && fotos.length > (o.fotos?.length || 0) ? { ...o, fotos } : o));
+                                try { localStorage.setItem(fotoKey, rFotos.value); } catch {}
+                            }
+                        }
+                    }
+                } catch {}
+                // Sync visitas de licitaciones
+                try {
+                    const licKeysRes = await storage.list('bcm_lic_vis_');
+                    if (licKeysRes?.keys?.length) {
+                        for (const vKey of licKeysRes.keys) {
+                            const licId = vKey.replace('bcm_lic_vis_', '');
+                            const rVis = await storage.get(vKey);
+                            if (rVis?.value) {
+                                const visitas = JSON.parse(rVis.value);
+                                setLics(cur => cur.map(l => l.id === licId && visitas.length > (l.visitas?.length || 0) ? { ...l, visitas } : l));
+                                try { localStorage.setItem(vKey, rVis.value); } catch {}
+                            }
+                        }
+                    }
+                } catch {}
             } catch { }
         }
 
