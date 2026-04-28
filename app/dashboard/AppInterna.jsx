@@ -4551,12 +4551,25 @@ function AppInner({ supaSession }) {
                     })));
                 }
                 if (persRes.data?.length > 0) {
-                    setPersonal(persRes.data.map(p => ({
-                        id: p.id, nombre: p.nombre, rol: p.rol || '',
-                        telefono: p.telefono || '', dni: p.dni || '',
-                        empresa: 'BelfastCM', foto: p.foto_url || '',
-                        obra_id: p.obra_id || '', tareas: [], docs: {}
-                    })));
+                    const localPersonal = getLocalJSON('bcm_personal', []);
+                    setPersonal(persRes.data.map(p => {
+                        const loc = localPersonal.find(x => x.id === p.id) || {};
+                        return {
+                            id: p.id,
+                            nombre: p.nombre || loc.nombre || '',
+                            rol: p.rol || loc.rol || '',
+                            telefono: p.telefono || loc.telefono || '',
+                            dni: p.dni || loc.dni || '',
+                            empresa: loc.empresa || 'BelfastCM',
+                            foto: p.foto_url || loc.foto || '',
+                            obra_id: p.obra_id || loc.obra_id || '',
+                            tareas: loc.tareas || [],
+                            docs: loc.docs || {},
+                            appUser: loc.appUser || '',
+                            appPass: loc.appPass || '',
+                            nivel: loc.nivel || '',
+                        };
+                    }));
                 }
                 if (licsRes.data?.length > 0) {
                     setLics(licsRes.data.map(l => ({
@@ -4584,7 +4597,24 @@ function AppInner({ supaSession }) {
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'personal', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('personal').select('*').eq('empresa_id', EID).eq('activo', true).order('nombre');
-                        if (data) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', dni: p.dni || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} })));
+                        if (data) setPersonal(cur => data.map(p => {
+                            const loc = cur.find(x => x.id === p.id) || {};
+                            return {
+                                id: p.id,
+                                nombre: p.nombre || loc.nombre || '',
+                                rol: p.rol || loc.rol || '',
+                                telefono: p.telefono || loc.telefono || '',
+                                dni: p.dni || loc.dni || '',
+                                empresa: loc.empresa || 'BelfastCM',
+                                foto: p.foto_url || loc.foto || '',
+                                obra_id: p.obra_id || loc.obra_id || '',
+                                tareas: loc.tareas || [],
+                                docs: loc.docs || {},
+                                appUser: loc.appUser || '',
+                                appPass: loc.appPass || '',
+                                nivel: loc.nivel || '',
+                            };
+                        }));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'licitaciones', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
@@ -4697,6 +4727,8 @@ function AppInner({ supaSession }) {
                     id: p.id, empresa_id: EID,
                     nombre: p.nombre, rol: p.rol || '',
                     telefono: p.telefono || '', dni: p.dni || '',
+                    foto_url: p.foto || '',
+                    obra_id: p.obra_id || null,
                     activo: true,
                 }, { onConflict: 'id' });
             } catch {}
@@ -4778,7 +4810,20 @@ function AppInner({ supaSession }) {
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 else if (key === 'bcm_personal' && now - myLastSave.personal > PROTECT_MS) {
-                    const nv = JSON.parse(value); setPersonal(nv);
+                    const remoto = JSON.parse(value);
+                    setPersonal(cur => remoto.map(p => {
+                        const loc = cur.find(x => x.id === p.id) || {};
+                        return {
+                            ...p,
+                            empresa: loc.empresa || p.empresa || 'BelfastCM',
+                            foto: loc.foto || p.foto || '',
+                            tareas: loc.tareas?.length ? loc.tareas : (p.tareas || []),
+                            docs: Object.keys(loc.docs || {}).length ? loc.docs : (p.docs || {}),
+                            appUser: loc.appUser || p.appUser || '',
+                            appPass: loc.appPass || p.appPass || '',
+                            nivel: loc.nivel || p.nivel || '',
+                        };
+                    }));
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 else if (key === 'bcm_cfg' && now - myLastSave.cfg > PROTECT_MS) {
@@ -4921,7 +4966,10 @@ window.addEventListener('focus', () => {
         sbRef.current.from('obras').select('*').eq('empresa_id', EID)
             .then(({ data }) => { if (data?.length) setObras(data.map(o => ({ id: o.id, nombre: o.nombre, estado: o.estado || 'curso', avance: o.avance || 0, cierre: o.fecha_cierre || '', ap: o.ubicacion || '', monto: o.monto || '', pagado: o.pagado || '', notas: o.notas || '', fotos: [], archivos: [], gastos: [] }))); });
         sbRef.current.from('personal').select('*').eq('empresa_id', EID).eq('activo', true)
-            .then(({ data }) => { if (data?.length) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} }))); });
+            .then(({ data }) => { if (data?.length) setPersonal(cur => data.map(p => {
+                const loc = cur.find(x => x.id === p.id) || {};
+                return { id: p.id, nombre: p.nombre || loc.nombre || '', rol: p.rol || loc.rol || '', telefono: p.telefono || loc.telefono || '', dni: p.dni || loc.dni || '', empresa: loc.empresa || 'BelfastCM', foto: p.foto_url || loc.foto || '', obra_id: p.obra_id || loc.obra_id || '', tareas: loc.tareas || [], docs: loc.docs || {}, appUser: loc.appUser || '', appPass: loc.appPass || '', nivel: loc.nivel || '' };
+            })); });
         sbRef.current.from('licitaciones').select('*').eq('empresa_id', EID)
             .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} }))); });
     }
