@@ -176,7 +176,7 @@ function useStoredState(key, defaultValue) {
 const AIRPORTS = [{ id: "aep", code: "AEP", name: "Aeroparque Jorge Newbery" }, { id: "eze", code: "EZE", name: "Aerop. Int'l Ministro Pistarini" }];
 const LIC_ESTADOS = [{ id: "visitar", label: "A Visitar", color: "#F59E0B", bg: "#FFFBEB" }, { id: "presupuesto", label: "Presupuesto", color: "#3B82F6", bg: "#EFF6FF" }, { id: "curso", label: "En Curso", color: "#8B5CF6", bg: "#F5F3FF" }, { id: "presentada", label: "Presentada", color: "#F97316", bg: "#FFF7ED" }, { id: "adjudicada", label: "Adjudicada", color: "#10B981", bg: "#ECFDF5" }, { id: "descartada", label: "Descartada", color: "#EF4444", bg: "#FEF2F2" }];
 const OBRA_ESTADOS = [{ id: "pendiente", label: "Pendiente", color: "#94A3B8", bg: "#F8FAFC" }, { id: "curso", label: "En Curso", color: "#10B981", bg: "#ECFDF5" }, { id: "pausada", label: "Pausada", color: "#F59E0B", bg: "#FFFBEB" }, { id: "terminada", label: "Terminada", color: "#6366F1", bg: "#EEF2FF" }];
-const ROLES = ["Arquitecto a cargo", "Ingeniero a cargo", "Directivos", "Dirección de obra", "Sobreestante de Obra", "Jefe de Obra", "Capataz", "Técnico", "Proveedor", "Contratista", "Administrativo"];
+const ROLES = ["Jefe de Obra", "Capataz", "Técnico", "Proveedor", "Contratista", "Administrativo"];
 const DOC_TYPES = [{ id: "art", label: "ART", acceptsExp: true }, { id: "antec", label: "Antecedentes", acceptsExp: false }, { id: "preoc", label: "Preocupacional", acceptsExp: true }, { id: "dni", label: "DNI", acceptsExp: false }, { id: "sicop", label: "SiCoP", acceptsExp: false }, { id: "alta", label: "Alta Temprana", acceptsExp: false }];
 const LIC_DOC_TYPES = [{ id: "planos", label: "Planos", accept: ".pdf,.png,.jpg,.dwg,.zip" }, { id: "pliego", label: "Pliego", accept: ".pdf,.doc,.docx" }, { id: "excel", label: "Excel", accept: ".xlsx,.xls,.csv,.pdf" }, { id: "otros", label: "Otros", accept: "*" }];
 const EMAIL_IA = "ia.belfastcm@gmail.com";
@@ -531,15 +531,15 @@ function Dashboard({ lics, obras, personal, alerts, setView, setDetailObraId, re
     const planActual = planDetalle ? planes.find(p => p.id === planDetalle) : null;
 
     return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
-        <div style={{ background: T.navy, padding: "10px 16px 14px" }}>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginBottom: 1 }}>{t(cfg, 'dash_subtitulo')}</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>{t(cfg, 'dash_titulo')}</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 2 }}>{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, marginTop: 10 }}>
+        <div style={{ background: T.navy, padding: "16px 18px 20px" }}>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,.6)", marginBottom: 3 }}>{t(cfg, 'dash_subtitulo')}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>{t(cfg, 'dash_titulo')}</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginTop: 16 }}>
                 {[{ l: t(cfg, 'dash_licitaciones'), v: lics.filter(l => !["adjudicada", "descartada"].includes(l.estado)).length, c: "#60A5FA" }, { l: t(cfg, 'dash_obras_activas'), v: obras.filter(o => o.estado === "curso").length, c: "#34D399" }, { l: t(cfg, 'dash_alertas'), v: alerts.length, c: "#FBBF24" }, { l: t(cfg, 'dash_personal'), v: personal.length, c: "#A78BFA" }].map(k => (
-                    <div key={k.l} style={{ background: "rgba(255,255,255,.08)", borderRadius: 8, padding: "7px 6px", textAlign: "center" }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: k.c }}>{k.v}</div>
-                        <div style={{ fontSize: 8, color: "rgba(255,255,255,.5)", marginTop: 1, lineHeight: 1.3 }}>{k.l}</div>
+                    <div key={k.l} style={{ background: "rgba(255,255,255,.08)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: k.c }}>{k.v}</div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,.5)", marginTop: 2, lineHeight: 1.3 }}>{k.l}</div>
                     </div>
                 ))}
             </div>
@@ -912,7 +912,7 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
             <PBtn full onClick={add} disabled={!form.nombre.trim()}>Crear licitación</PBtn>
         </Sheet>)}
         {detail && (<Sheet title={detail.nombre} onClose={() => setShowDetail(null)}>
-            <Field label="Nombre"><TInput value={detail.nombre} onChange={e => setLics(p => p.map(l => l.id === detail.id ? { ...l, nombre: e.target.value } : l))} placeholder="Nombre de la licitación" /></Field>
+            <Field label="Nombre"><TInput value={detail.nombre} onChange={e => { const nuevoNombre = e.target.value; setLics(p => p.map(l => l.id === detail.id ? { ...l, nombre: nuevoNombre } : l)); setObras(p => p.map(o => o.lic_id === detail.id ? { ...o, nombre: nuevoNombre } : o)); }} placeholder="Nombre de la licitación" /></Field>
             <FieldRow>
                 <Field label={getLabelUbic(cfg)}>
                     <Sel value={detail.ap} onChange={e => setLics(p => p.map(l => l.id === detail.id ? { ...l, ap: e.target.value } : l))}>
@@ -1627,7 +1627,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
     const fileRefs = useRef({}); const fotoRefs = useRef({}); const newFotoRef = useRef(null);
     const [nuevaTarea, setNuevaTarea] = useState({});
     const [showNew, setShowNew] = useState(false);
-    const [form, setForm] = useState({ nombre: "", dni: "", rol: "Técnico", empresa: "BelfastCM", obra_id: "", telefono: "", foto: "", tareas: [] });
+    const [form, setForm] = useState({ nombre: "", rol: "Técnico", empresa: "BelfastCM", obra_id: "", telefono: "", foto: "", tareas: [] });
 
     // Cargar datos de presentismo para ver historial
     useEffect(() => {
@@ -1713,38 +1713,12 @@ function Personal({ personal, setPersonal, obras, cfg }) {
 
                         {/* TAB INFO */}
                         {tabActivo === 'info' && (<div style={{ padding: "14px 14px 14px" }}>
-                            {/* Foto + datos editables */}
-                            <div style={{ display: "flex", gap: 14, marginBottom: 12, alignItems: "flex-start" }}>
+                            <div style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "flex-start" }}>
                                 <div style={{ flexShrink: 0 }}>
-                                    <input type="file" accept="image/*" style={{ display: "none" }} ref={el => fotoRefs.current[p.id] = el} onChange={async e => { if (e.target.files[0]) upd(p.id, { foto: await toDataUrl(e.target.files[0]) }); e.target.value = ""; }} />
+                                    <input type="file" accept="image/*" style={{ display: "none" }} ref={el => fotoRefs.current[p.id] = el} onChange={async e => { if (e.target.files[0]) { const dataUrl = await toDataUrl(e.target.files[0]); upd(p.id, { foto: dataUrl }); const fotoId = uid(); uploadFoto(dataUrl, `personal/${p.id}`, fotoId).then(remoteUrl => { if (remoteUrl && remoteUrl !== dataUrl) upd(p.id, { foto: remoteUrl }); }).catch(() => {}); } e.target.value = ""; }} />
                                     <Av p={p} size={76} showCam onClick={() => fotoRefs.current[p.id]?.click()} />
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <Lbl>Nombre</Lbl>
-                                    <input value={p.nombre || ''} onChange={e => upd(p.id, { nombre: e.target.value })} placeholder="Nombre completo" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text, marginBottom: 8 }} />
-                                    <Lbl>Rol</Lbl>
-                                    <select value={p.rol || ''} onChange={e => upd(p.id, { rol: e.target.value })} style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text }}>
-                                        {ROLES.map(r => <option key={r}>{r}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                                <div>
-                                    <Lbl>Empresa</Lbl>
-                                    <input value={p.empresa || ''} onChange={e => upd(p.id, { empresa: e.target.value })} placeholder="BelfastCM" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text }} />
-                                </div>
-                                <div>
-                                    <Lbl>Obra asignada</Lbl>
-                                    <select value={p.obra_id || ''} onChange={e => upd(p.id, { obra_id: e.target.value })} style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text }}>
-                                        <option value="">Sin asignar</option>
-                                        {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <div style={{ display: "flex", gap: 14, marginBottom: 12, alignItems: "flex-start" }}>
-                                <div style={{ flex: 1 }}>
-                                    <Lbl>DNI</Lbl>
-                                    <input value={p.dni || ''} onChange={e => upd(p.id, { dni: e.target.value.replace(/\D/g,'') })} placeholder="30123456" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text, marginBottom: 10 }} />
                                     <Lbl>WhatsApp</Lbl>
                                     <div style={{ display: "flex", gap: 6 }}>
                                         <input type="tel" value={p.telefono || ""} onChange={e => upd(p.id, { telefono: e.target.value.replace(/\D/g, '') })} placeholder="5491155556666" style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "9px 12px", fontSize: 13, color: T.text }} />
@@ -1874,10 +1848,9 @@ function Personal({ personal, setPersonal, obras, cfg }) {
             </div>
             <Field label={t(cfg, 'pers_nombre')}><TInput value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Juan García" /></Field>
             <FieldRow>
-                <Field label="DNI"><TInput value={form.dni || ''} onChange={e => setForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '') }))} placeholder="30123456" /></Field>
+                <Field label={t(cfg, 'pers_rol')}><Sel value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))}>{ROLES.map(r => <option key={r}>{r}</option>)}</Sel></Field>
                 <Field label={t(cfg, 'pers_empresa')}><TInput value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="BelfastCM" /></Field>
             </FieldRow>
-            <Field label={t(cfg, 'pers_rol')}><Sel value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))}>{ROLES.map(r => <option key={r}>{r}</option>)}</Sel></Field>
             <Field label={t(cfg, 'pers_whatsapp')}><TInput value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value.replace(/\D/g, '') }))} placeholder="5491155556666" /></Field>
             <Field label={t(cfg, 'pers_obra')}><Sel value={form.obra_id} onChange={e => setForm(p => ({ ...p, obra_id: e.target.value }))}><option value="">Sin asignar</option>{obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</Sel></Field>
             <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
@@ -4077,91 +4050,8 @@ function AlertasWA({ cfg, personal, lics, obras, alerts, setView }) {
     </div>);
 }
 
-
-// ── RECUPERAR FOTOS DEL BUCKET ────────────────────────────────────────
-function RecuperarFotos({ obras, setObras, lics, setLics }) {
-    const [estado, setEstado] = useState('idle');
-    const [resultado, setResultado] = useState(null);
-
-    async function listarCarpeta(prefix) {
-        try {
-            const r = await fetch(`${SUPA_STORAGE_URL}/object/list/${SUPA_BUCKET}`, {
-                method: 'POST',
-                headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prefix, limit: 500, offset: 0 })
-            });
-            if (!r.ok) return [];
-            const data = await r.json();
-            return Array.isArray(data) ? data : [];
-        } catch { return []; }
-    }
-
-    async function recuperar() {
-        setEstado('cargando'); setResultado(null);
-        try {
-            let fotosObrasRec = 0, fotosLicsRec = 0;
-            const obrasAct = [...obras];
-            for (let i = 0; i < obrasAct.length; i++) {
-                const obra = obrasAct[i];
-                if (obra.fotos?.some(f => f.url?.startsWith('http'))) continue;
-                const archivos = await listarCarpeta('obras/' + obra.id + '/');
-                const fotosRec = archivos.filter(f => f.name && !f.name.includes('archivos')).map(f => ({
-                    id: f.name.split('.')[0] || uid(),
-                    url: SUPA_STORAGE_URL + '/object/public/' + SUPA_BUCKET + '/obras/' + obra.id + '/' + f.name,
-                    nombre: f.name,
-                    fecha: f.updated_at ? new Date(f.updated_at).toLocaleDateString('es-AR') : new Date().toLocaleDateString('es-AR')
-                }));
-                if (fotosRec.length > 0) { obrasAct[i] = { ...obra, fotos: fotosRec }; fotosObrasRec += fotosRec.length; }
-            }
-            setObras(obrasAct);
-
-            const licsAct = [...lics];
-            for (let i = 0; i < licsAct.length; i++) {
-                const lic = licsAct[i];
-                if (lic.visitas?.some(v => v.url?.startsWith('http'))) continue;
-                const archivos = await listarCarpeta('licitaciones/' + lic.id + '/');
-                const visitasRec = archivos.filter(f => f.name).map(f => ({
-                    id: f.name.split('.')[0] || uid(),
-                    url: SUPA_STORAGE_URL + '/object/public/' + SUPA_BUCKET + '/licitaciones/' + lic.id + '/' + f.name,
-                    nombre: f.name, etapa: 'durante', desc: '',
-                    fecha: f.updated_at ? new Date(f.updated_at).toLocaleDateString('es-AR') : new Date().toLocaleDateString('es-AR'),
-                    hora: f.updated_at ? new Date(f.updated_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '—'
-                }));
-                if (visitasRec.length > 0) { licsAct[i] = { ...lic, visitas: visitasRec }; fotosLicsRec += visitasRec.length; }
-            }
-            setLics(licsAct);
-            setResultado({ fotosObrasRec, fotosLicsRec, total: fotosObrasRec + fotosLicsRec });
-            setEstado('listo');
-        } catch(e) { setEstado('error'); setResultado({ error: e.message }); }
-    }
-
-    return (<div>
-        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#1E40AF", marginBottom: 4 }}>📸 Recuperar fotos del bucket</div>
-            <div style={{ fontSize: 11, color: "#1E3A8A", lineHeight: 1.6 }}>Las fotos están físicamente en Supabase Storage. Este botón las recupera y las reasigna a cada obra y licitación automáticamente.</div>
-        </div>
-        <button onClick={recuperar} disabled={estado === 'cargando'}
-            style={{ width: "100%", background: estado === 'cargando' ? "#94A3B8" : T.accent, border: "none", borderRadius: T.rsm, padding: "14px", fontSize: 14, fontWeight: 700, color: "#fff", cursor: estado === 'cargando' ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
-            {estado === 'cargando' ? <><div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin .8s linear infinite" }} />Buscando fotos…</> : '🔄 Recuperar fotos'}
-        </button>
-        {estado === 'listo' && resultado && (<div style={{ background: "#ECFDF5", border: "1px solid #86EFAC", borderRadius: 10, padding: "14px" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#15803D", marginBottom: 8 }}>✅ Recuperación completa</div>
-            <div style={{ fontSize: 12, color: "#166534", lineHeight: 1.7 }}>
-                Fotos en obras: <b>{resultado.fotosObrasRec}</b><br/>
-                Fotos en licitaciones: <b>{resultado.fotosLicsRec}</b><br/>
-                Total: <b>{resultado.total}</b>
-            </div>
-            {resultado.total === 0 && <div style={{ fontSize: 11, color: "#15803D", marginTop: 8 }}>No se encontraron fotos nuevas. Puede que ya estén asignadas o las carpetas estén vacías.</div>}
-        </div>)}
-        {estado === 'error' && (<div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 14px" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#B91C1C" }}>Error al recuperar</div>
-            <div style={{ fontSize: 11, color: "#991B1B", marginTop: 4 }}>{resultado?.error}</div>
-        </div>)}
-    </div>);
-}
-
 // ── MAS (Más opciones + Configuración) ───────────────────────────────
-function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics }) {
+function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey }) {
     const [showCfg, setShowCfg] = useState(false);
     const [cfgSection, setCfgSection] = useState('cuenta');
 
@@ -4247,7 +4137,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
         </div>
         {showCfg && (<Sheet title="Configuración" onClose={() => setShowCfg(false)}>
             <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto" }}>
-                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '📸 Fotos' }].map(s => (
+                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }].map(s => (
                     <button key={s.id} onClick={() => setCfgSection(s.id)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: '1.5px solid ' + cfgSection === s.id ? T.accent : T.border, background: cfgSection === s.id ? T.accentLight : T.card, color: cfgSection === s.id ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s.l}</button>
                 ))}
             </div>
@@ -4394,8 +4284,6 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                 <div style={{ fontSize: 11, color: T.muted, marginTop: 10, fontStyle: "italic" }}>... y muchos más. Podés editarlos todos desde el código fuente.</div>
             </div>)}
 
-            {cfgSection === 'fotos' && (<RecuperarFotos obras={obras} setObras={setObras} lics={lics} setLics={setLics} />)}
-
             <PBtn full onClick={() => setShowCfg(false)} style={{ marginTop: 14 }}>✓ Guardar y cerrar</PBtn>
         </Sheet>)}
     </div>);
@@ -4518,7 +4406,7 @@ function AppInner({ supaSession }) {
     const [personal, setPersonal] = useState(() => getLocalJSON('bcm_personal', []));
     const [planes, setPlanes] = useState(() => getLocalJSON('bcm_planes_semanales', []));
     const [alerts, setAlerts] = useState([]);
-    const [cfg, setCfg] = useState(() => { const saved = getLocalJSON('bcm_cfg', {}); const { _ts, ...rest } = saved; return { ...DEFAULT_CONFIG, ...rest }; });
+    const [cfg, setCfg] = useState(() => ({ ...DEFAULT_CONFIG, ...getLocalJSON('bcm_cfg', {}) }));
     const [apiKey, setApiKey] = useState(() => getLocalStr('bcm_api_key', ''));
     const [loaded, setLoaded] = useState(false);
     const [realtimeOk, setRealtimeOk] = useState(false); // indicador de conexión en tiempo real
@@ -4551,25 +4439,12 @@ function AppInner({ supaSession }) {
                     })));
                 }
                 if (persRes.data?.length > 0) {
-                    const localPersonal = getLocalJSON('bcm_personal', []);
-                    setPersonal(persRes.data.map(p => {
-                        const loc = localPersonal.find(x => x.id === p.id) || {};
-                        return {
-                            id: p.id,
-                            nombre: p.nombre || loc.nombre || '',
-                            rol: p.rol || loc.rol || '',
-                            telefono: p.telefono || loc.telefono || '',
-                            dni: p.dni || loc.dni || '',
-                            empresa: loc.empresa || 'BelfastCM',
-                            foto: p.foto_url || loc.foto || '',
-                            obra_id: p.obra_id || loc.obra_id || '',
-                            tareas: loc.tareas || [],
-                            docs: loc.docs || {},
-                            appUser: loc.appUser || '',
-                            appPass: loc.appPass || '',
-                            nivel: loc.nivel || '',
-                        };
-                    }));
+                    setPersonal(persRes.data.map(p => ({
+                        id: p.id, nombre: p.nombre, rol: p.rol || '',
+                        telefono: p.telefono || '', dni: p.dni || '',
+                        empresa: 'BelfastCM', foto: p.foto_url || '',
+                        obra_id: p.obra_id || '', tareas: [], docs: {}
+                    })));
                 }
                 if (licsRes.data?.length > 0) {
                     setLics(licsRes.data.map(l => ({
@@ -4597,24 +4472,7 @@ function AppInner({ supaSession }) {
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'personal', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('personal').select('*').eq('empresa_id', EID).eq('activo', true).order('nombre');
-                        if (data) setPersonal(cur => data.map(p => {
-                            const loc = cur.find(x => x.id === p.id) || {};
-                            return {
-                                id: p.id,
-                                nombre: p.nombre || loc.nombre || '',
-                                rol: p.rol || loc.rol || '',
-                                telefono: p.telefono || loc.telefono || '',
-                                dni: p.dni || loc.dni || '',
-                                empresa: loc.empresa || 'BelfastCM',
-                                foto: p.foto_url || loc.foto || '',
-                                obra_id: p.obra_id || loc.obra_id || '',
-                                tareas: loc.tareas || [],
-                                docs: loc.docs || {},
-                                appUser: loc.appUser || '',
-                                appPass: loc.appPass || '',
-                                nivel: loc.nivel || '',
-                            };
-                        }));
+                        if (data) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', dni: p.dni || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} })));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'licitaciones', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('licitaciones').select('*').eq('empresa_id', EID).order('created_at', { ascending: false });
@@ -4622,10 +4480,7 @@ function AppInner({ supaSession }) {
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'planes_semanales', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('planes_semanales').select('*').eq('empresa_id', EID);
-                        if (data) {
-                            const nuevo = data.map(p => ({ id: p.id, obra: p.obra_id || '', semana: p.semana || '', notas: p.notas || '', dias: p.dias || {} }));
-                            setPlanes(cur => JSON.stringify(cur) === JSON.stringify(nuevo) ? cur : nuevo);
-                        }
+                        if (data) setPlanes(data.map(p => ({ id: p.id, obra: p.obra_id || '', semana: p.semana || '', notas: p.notas || '', dias: p.dias || {} })));
                     })
                     .subscribe();
 
@@ -4643,7 +4498,6 @@ function AppInner({ supaSession }) {
     // Persistir lics SIN visitas (las fotos van en bcm_lic_vis_{id})
     useEffect(() => {
         if (!loaded) return;
-        if (!lics.length) return; // NUNCA guardar vacío
         markLocalEdit('lics');
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
@@ -4660,24 +4514,15 @@ function AppInner({ supaSession }) {
     }, [lics, loaded]);
     useEffect(() => {
         if (!loaded) return;
-        if (!obras.length) return; // NUNCA guardar vacío
         markLocalEdit('obras');
         // Guardar obras sin fotos/archivos para no superar el límite de 5MB
         const obrasSinMedia = obras.map(o => ({ ...o, fotos: [], archivos: [] }));
         storage.set('bcm_obras', JSON.stringify(obrasSinMedia)).catch(() => { });
         try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
     }, [obras, loaded]);
-    useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
-    const cfgInitRef = useRef(true);
-    useEffect(() => {
-        if (cfgInitRef.current) { cfgInitRef.current = false; return; } // saltar arranque
-        if (!loaded) return;
-        markLocalEdit('cfg');
-        const payload = JSON.stringify({ ...cfg, _ts: Date.now() });
-        try { localStorage.setItem('bcm_cfg', payload); } catch {}
-        storage.set('bcm_cfg', payload).catch(() => {});
-    }, [cfg]);
-    useEffect(() => { if (!planes.length) return; try { localStorage.setItem('bcm_planes_semanales', JSON.stringify(planes)); } catch {} storage.set('bcm_planes_semanales', JSON.stringify(planes)).catch(()=>{}); }, [planes]);
+    useEffect(() => { if (loaded) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
+    useEffect(() => { if (loaded) { markLocalEdit('cfg'); storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { } } }, [cfg, loaded]);
+    useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
         // Solo guardar si la API key tiene contenido — no sobrescribir con vacío
@@ -4727,8 +4572,6 @@ function AppInner({ supaSession }) {
                     id: p.id, empresa_id: EID,
                     nombre: p.nombre, rol: p.rol || '',
                     telefono: p.telefono || '', dni: p.dni || '',
-                    foto_url: p.foto || '',
-                    obra_id: p.obra_id || null,
                     activo: true,
                 }, { onConflict: 'id' });
             } catch {}
@@ -4810,32 +4653,12 @@ function AppInner({ supaSession }) {
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 else if (key === 'bcm_personal' && now - myLastSave.personal > PROTECT_MS) {
-                    const remoto = JSON.parse(value);
-                    setPersonal(cur => remoto.map(p => {
-                        const loc = cur.find(x => x.id === p.id) || {};
-                        return {
-                            ...p,
-                            empresa: loc.empresa || p.empresa || 'BelfastCM',
-                            foto: loc.foto || p.foto || '',
-                            tareas: loc.tareas?.length ? loc.tareas : (p.tareas || []),
-                            docs: Object.keys(loc.docs || {}).length ? loc.docs : (p.docs || {}),
-                            appUser: loc.appUser || p.appUser || '',
-                            appPass: loc.appPass || p.appPass || '',
-                            nivel: loc.nivel || p.nivel || '',
-                        };
-                    }));
+                    const nv = JSON.parse(value); setPersonal(nv);
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 else if (key === 'bcm_cfg' && now - myLastSave.cfg > PROTECT_MS) {
-                    try {
-                        const remoto = JSON.parse(value);
-                        const local = getLocalJSON('bcm_cfg', {});
-                        if ((remoto._ts || 0) > (local._ts || 0) + 1000) {
-                            const { _ts, ...cfgLimpia } = remoto;
-                            setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
-                            try { localStorage.setItem(key, value); } catch {}
-                        }
-                    } catch {}
+                    const nv = JSON.parse(value); setCfg({ ...DEFAULT_CONFIG, ...nv });
+                    try { localStorage.setItem(key, value); } catch {}
                 }
                 // Fotos de obras
                 else if (key.startsWith('bcm_fotos_')) {
@@ -4878,17 +4701,7 @@ function AppInner({ supaSession }) {
                 if (rLics?.value) { const loc = storage.getLocal('bcm_lics'); if (loc?.value !== rLics.value) await applyRemoteKey('bcm_lics', rLics.value); }
                 if (rObras?.value) { const loc = storage.getLocal('bcm_obras'); if (loc?.value !== rObras.value) await applyRemoteKey('bcm_obras', rObras.value); }
                 if (rPers?.value) { const loc = storage.getLocal('bcm_personal'); if (loc?.value !== rPers.value) await applyRemoteKey('bcm_personal', rPers.value); }
-                if (rCfg?.value) {
-                    try {
-                        const remoto = JSON.parse(rCfg.value);
-                        const local = getLocalJSON('bcm_cfg', {});
-                        if ((remoto._ts || 0) > (local._ts || 0) + 1000 && now - myLastSave.cfg > PROTECT_MS) {
-                            const { _ts, ...cfgLimpia } = remoto;
-                            setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
-                            try { localStorage.setItem('bcm_cfg', rCfg.value); } catch {}
-                        }
-                    } catch {}
-                }
+                if (rCfg?.value) { const loc = storage.getLocal('bcm_cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey('bcm_cfg', rCfg.value); }
                 if (rPlanes?.value) { const loc = storage.getLocal('bcm_planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem('bcm_planes_semanales', rPlanes.value); } catch {} } }
                 // NO sincronizar fotos/archivos por obra — demasiadas requests al Supabase gratuito
             } catch { }
@@ -4966,10 +4779,7 @@ window.addEventListener('focus', () => {
         sbRef.current.from('obras').select('*').eq('empresa_id', EID)
             .then(({ data }) => { if (data?.length) setObras(data.map(o => ({ id: o.id, nombre: o.nombre, estado: o.estado || 'curso', avance: o.avance || 0, cierre: o.fecha_cierre || '', ap: o.ubicacion || '', monto: o.monto || '', pagado: o.pagado || '', notas: o.notas || '', fotos: [], archivos: [], gastos: [] }))); });
         sbRef.current.from('personal').select('*').eq('empresa_id', EID).eq('activo', true)
-            .then(({ data }) => { if (data?.length) setPersonal(cur => data.map(p => {
-                const loc = cur.find(x => x.id === p.id) || {};
-                return { id: p.id, nombre: p.nombre || loc.nombre || '', rol: p.rol || loc.rol || '', telefono: p.telefono || loc.telefono || '', dni: p.dni || loc.dni || '', empresa: loc.empresa || 'BelfastCM', foto: p.foto_url || loc.foto || '', obra_id: p.obra_id || loc.obra_id || '', tareas: loc.tareas || [], docs: loc.docs || {}, appUser: loc.appUser || '', appPass: loc.appPass || '', nivel: loc.nivel || '' };
-            })); });
+            .then(({ data }) => { if (data?.length) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} }))); });
         sbRef.current.from('licitaciones').select('*').eq('empresa_id', EID)
             .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} }))); });
     }
@@ -5072,7 +4882,8 @@ window.addEventListener('focus', () => {
     }, [personal, obras, lics]);
 
     function requireAuth(action, context) {
-        action(); // Usuario ya autenticado — ejecutar siempre
+        if (isDirectivo(user)) { action(); return; }
+        setAuthRequest({ action, context });
     }
 
     function handleAuthSuccess(authUser) {
@@ -5097,8 +4908,7 @@ window.addEventListener('focus', () => {
         <style>{css}</style>
         <style>{buildThemeCSS(cfg)}</style>
         <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", position: "relative", color: T.text, fontFamily: "var(--font), sans-serif" }}>
-            <style>{buildThemeCSS(cfg)}</style>
-        <AppBrand cfg={cfg} />
+            <AppBrand cfg={cfg} />
             <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", paddingBottom: showNav ? 72 : 0 }}>
                 {view === 'dashboard' && <Dashboard lics={lics} obras={obras} personal={personal} alerts={alerts} setView={setView} setDetailObraId={setDetailObraId} requireAuth={requireAuth} cfg={cfg} customIcons={cfg.customIcons || {}} planes={planes} setPlanes={setPlanes} />}
                 {view === 'obras' && <Obras obras={obras} setObras={setObras} lics={lics} detailId={detailObraId} setDetailId={setDetailObraId} requireAuth={requireAuth} cfg={cfg} apiKey={apiKey} />}
@@ -5106,7 +4916,7 @@ window.addEventListener('focus', () => {
                 {view === 'personal' && <Personal personal={personal} setPersonal={setPersonal} obras={obras} cfg={cfg} />}
                 {view === 'cargar' && <CargarView obras={obras} setObras={setObras} cargarState={cargarState} setCargarState={setCargarState} apiKey={apiKey} />}
                 {view === 'chat' && <Chat lics={lics} obras={obras} setObras={setObras} personal={personal} alerts={alerts} cfg={cfg} apiKey={apiKey} />}
-                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} />}
+                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} />}
                 {view === 'presupuesto_materiales' && <PresupuestoView tipo="materiales" setView={setView} />}
                 {view === 'presupuesto_subcontratos' && <PresupuestoView tipo="subcontratos" setView={setView} />}
                 {view === 'seguimiento' && <Seguimiento alerts={alerts} setAlerts={setAlerts} setView={setView} />}
