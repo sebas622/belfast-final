@@ -4583,6 +4583,7 @@ function AppInner({ supaSession }) {
     // Persistir lics SIN visitas (las fotos van en bcm_lic_vis_{id})
     useEffect(() => {
         if (!loaded) return;
+        if (!lics.length) return; // NUNCA sobrescribir con array vacío
         markLocalEdit('lics');
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
@@ -4599,13 +4600,14 @@ function AppInner({ supaSession }) {
     }, [lics, loaded]);
     useEffect(() => {
         if (!loaded) return;
+        if (!obras.length) return; // NUNCA sobrescribir con array vacío
         markLocalEdit('obras');
         // Guardar obras sin fotos/archivos para no superar el límite de 5MB
         const obrasSinMedia = obras.map(o => ({ ...o, fotos: [], archivos: [] }));
         storage.set('bcm_obras', JSON.stringify(obrasSinMedia)).catch(() => { });
         try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
     }, [obras, loaded]);
-    useEffect(() => { if (loaded) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
+    useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => { if (loaded) { markLocalEdit('cfg'); storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { } } }, [cfg, loaded]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
@@ -4967,8 +4969,8 @@ window.addEventListener('focus', () => {
     }, [personal, obras, lics]);
 
     function requireAuth(action, context) {
-        // Usuario ya autenticado — ejecutar siempre sin pedir clave nuevamente
-        action();
+        if (isDirectivo(user)) { action(); return; }
+        setAuthRequest({ action, context });
     }
 
     function handleAuthSuccess(authUser) {
