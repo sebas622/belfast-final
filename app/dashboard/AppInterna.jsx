@@ -4515,6 +4515,53 @@ function AppInner({ supaSession }) {
                     sb.from('planes_semanales').select('*').eq('empresa_id', EID).order('created_at', { ascending: false }),
                 ]);
 
+                // Cargar cfg desde Supabase y mergear con la local
+                // Gana campo por campo: el que tenga más contenido (logos, colores, etc)
+                try {
+                    const rCfg = await storage.get('bcm_cfg');
+                    if (rCfg?.value) {
+                        const remota = JSON.parse(rCfg.value);
+                        setCfg(local => {
+                            const merged = { ...DEFAULT_CONFIG };
+                            const allKeys = new Set([...Object.keys(local), ...Object.keys(remota)]);
+                            allKeys.forEach(k => {
+                                const vLocal  = local[k];
+                                const vRemoto = remota[k];
+                                // Para strings: gana el más largo (logos base64 son miles de chars)
+                                if (typeof vLocal === 'string' && typeof vRemoto === 'string') {
+                                    merged[k] = vLocal.length >= vRemoto.length ? vLocal : vRemoto;
+                                }
+                                // Para objetos (colors, textos, ubicaciones): merge recursivo simple
+                                else if (vLocal && vRemoto && typeof vLocal === 'object' && !Array.isArray(vLocal)) {
+                                    merged[k] = { ...vRemoto, ...vLocal }; // local tiene prioridad
+                                }
+                                // Para arrays: el más largo gana
+                                else if (Array.isArray(vLocal) && Array.isArray(vRemoto)) {
+                                    merged[k] = vLocal.length >= vRemoto.length ? vLocal : vRemoto;
+                                }
+                                // Para el resto: local tiene prioridad si existe
+                                else {
+                                    merged[k] = (vLocal !== undefined && vLocal !== '' && vLocal !== null) ? vLocal : (vRemoto ?? vLocal);
+                                }
+                            });
+                            // Guardar el merge en ambos lados
+                            const mergedJson = JSON.stringify(merged);
+                            try { localStorage.setItem('bcm_cfg', mergedJson); } catch {}
+                            storage.set('bcm_cfg', mergedJson).catch(() => {});
+                            return merged;
+                        });
+                    }
+                } catch {}
+
+                // Cargar apiKey desde Supabase si no la tenemos local
+                try {
+                    const rKey = await storage.get('bcm_api_key');
+                    if (rKey?.value) {
+                        setApiKey(k => k || rKey.value);
+                        try { localStorage.setItem('bcm_api_key', rKey.value); } catch {}
+                    }
+                } catch {}
+
                 if (obrasRes.data?.length > 0) {
                     setObras(obrasRes.data.map(o => ({
                         id: o.id, nombre: o.nombre, estado: o.estado || 'curso',
@@ -4566,7 +4613,10 @@ function AppInner({ supaSession }) {
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'planes_semanales', filter: 'empresa_id=eq.' + EID }, async () => {
                         const { data } = await sb.from('planes_semanales').select('*').eq('empresa_id', EID);
-                        if (data) setPlanes(data.map(p => ({ id: p.id, obra: p.obra_id || '', semana: p.semana || '', notas: p.notas || '', dias: p.dias || {} })));
+                        if (data) {
+                            const nuevo = data.map(p => ({ id: p.id, obra: p.obra_id || '', semana: p.semana || '', notas: p.notas || '', dias: p.dias || {} }));
+                            setPlanes(cur => JSON.stringify(cur) === JSON.stringify(nuevo) ? cur : nuevo);
+                        }
                     })
                     .subscribe();
 
@@ -4610,17 +4660,17 @@ function AppInner({ supaSession }) {
     }, [obras, loaded]);
     useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => {
-        // cfg → localStorage siempre que cambie, sin restricciones
-        try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { }
+        // cfg → localStorage + Supabase, siempre que cambie
+        const json = JSON.stringify(cfg);
+        try { localStorage.setItem('bcm_cfg', json); } catch { }
+        storage.set('bcm_cfg', json).catch(() => {});
     }, [cfg]);
-    useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
+    useEffect(() => { if (!loaded || !planes.length) return; try { localStorage.setItem('bcm_planes_semanales', JSON.stringify(planes)); } catch { } }, [planes]);
     useEffect(() => {
-        if (!loaded) return;
-        // apiKey → SOLO localStorage. Nunca Supabase (evita conflictos de sync).
-        if (apiKey && apiKey.trim()) {
-            try { localStorage.setItem('bcm_api_key', apiKey); } catch { }
-        }
-    }, [apiKey, loaded]);
+        if (!apiKey?.trim()) return;
+        try { localStorage.setItem('bcm_api_key', apiKey); } catch { }
+        storage.set('bcm_api_key', apiKey).catch(() => {});
+    }, [apiKey]);
     useEffect(() => { if (loaded && user) { storage.set('bcm_current_user', JSON.stringify(user)).catch(() => { }); try { localStorage.setItem('bcm_current_user', JSON.stringify(user)); } catch { } } }, [user, loaded]);
 
     // ── GUARDAR EN TABLAS REALES DE SUPABASE ────────────────────────
@@ -4768,11 +4818,7 @@ function AppInner({ supaSession }) {
                     setLics(cur => cur.map(l => l.id === licId ? { ...l, visitas } : l));
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                else if (key === 'bcm_planes_semanales') {
-                    const nv = JSON.parse(value);
-                    setPlanes(nv);
-                    try { localStorage.setItem(key, value); } catch {}
-                }
+                // bcm_planes_semanales: sync via tabla Supabase, no via bcm_storage
             } catch { }
         }
 
@@ -4781,15 +4827,14 @@ function AppInner({ supaSession }) {
             try {
                 // Solo 5 requests por sync (no sync de fotos por obra que genera N requests)
                 // cfg y apiKey NUNCA se sincronizan desde Supabase — solo localStorage
-                const [rLics, rObras, rPers, rPlanes] = await Promise.all([
+                // planes se sincronizan via tabla Supabase (realtime), no via bcm_storage
+                const [rLics, rObras, rPers] = await Promise.all([
                     storage.get('bcm_lics'), storage.get('bcm_obras'),
                     storage.get('bcm_personal'),
-                    storage.get('bcm_planes_semanales'),
                 ]);
                 if (rLics?.value) { const loc = storage.getLocal('bcm_lics'); if (loc?.value !== rLics.value) await applyRemoteKey('bcm_lics', rLics.value); }
                 if (rObras?.value) { const loc = storage.getLocal('bcm_obras'); if (loc?.value !== rObras.value) await applyRemoteKey('bcm_obras', rObras.value); }
                 if (rPers?.value) { const loc = storage.getLocal('bcm_personal'); if (loc?.value !== rPers.value) await applyRemoteKey('bcm_personal', rPers.value); }
-                if (rPlanes?.value) { const loc = storage.getLocal('bcm_planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem('bcm_planes_semanales', rPlanes.value); } catch {} } }
                 // Sync fotos/archivos de cada obra (desde bcm_storage keys individuales)
                 try {
                     const keysRes = await storage.list('bcm_fotos_');
