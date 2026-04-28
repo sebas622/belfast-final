@@ -176,7 +176,7 @@ function useStoredState(key, defaultValue) {
 const AIRPORTS = [{ id: "aep", code: "AEP", name: "Aeroparque Jorge Newbery" }, { id: "eze", code: "EZE", name: "Aerop. Int'l Ministro Pistarini" }];
 const LIC_ESTADOS = [{ id: "visitar", label: "A Visitar", color: "#F59E0B", bg: "#FFFBEB" }, { id: "presupuesto", label: "Presupuesto", color: "#3B82F6", bg: "#EFF6FF" }, { id: "curso", label: "En Curso", color: "#8B5CF6", bg: "#F5F3FF" }, { id: "presentada", label: "Presentada", color: "#F97316", bg: "#FFF7ED" }, { id: "adjudicada", label: "Adjudicada", color: "#10B981", bg: "#ECFDF5" }, { id: "descartada", label: "Descartada", color: "#EF4444", bg: "#FEF2F2" }];
 const OBRA_ESTADOS = [{ id: "pendiente", label: "Pendiente", color: "#94A3B8", bg: "#F8FAFC" }, { id: "curso", label: "En Curso", color: "#10B981", bg: "#ECFDF5" }, { id: "pausada", label: "Pausada", color: "#F59E0B", bg: "#FFFBEB" }, { id: "terminada", label: "Terminada", color: "#6366F1", bg: "#EEF2FF" }];
-const ROLES = ["Jefe de Obra", "Capataz", "Técnico", "Proveedor", "Contratista", "Administrativo"];
+const ROLES = ["Arquitecto a cargo", "Ingeniero a cargo", "Directivos", "Dirección de obra", "Sobreestante de Obra", "Jefe de Obra", "Capataz", "Técnico", "Proveedor", "Contratista", "Administrativo"];
 const DOC_TYPES = [{ id: "art", label: "ART", acceptsExp: true }, { id: "antec", label: "Antecedentes", acceptsExp: false }, { id: "preoc", label: "Preocupacional", acceptsExp: true }, { id: "dni", label: "DNI", acceptsExp: false }, { id: "sicop", label: "SiCoP", acceptsExp: false }, { id: "alta", label: "Alta Temprana", acceptsExp: false }];
 const LIC_DOC_TYPES = [{ id: "planos", label: "Planos", accept: ".pdf,.png,.jpg,.dwg,.zip" }, { id: "pliego", label: "Pliego", accept: ".pdf,.doc,.docx" }, { id: "excel", label: "Excel", accept: ".xlsx,.xls,.csv,.pdf" }, { id: "otros", label: "Otros", accept: "*" }];
 const EMAIL_IA = "ia.belfastcm@gmail.com";
@@ -531,15 +531,15 @@ function Dashboard({ lics, obras, personal, alerts, setView, setDetailObraId, re
     const planActual = planDetalle ? planes.find(p => p.id === planDetalle) : null;
 
     return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
-        <div style={{ background: T.navy, padding: "16px 18px 20px" }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,.6)", marginBottom: 3 }}>{t(cfg, 'dash_subtitulo')}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>{t(cfg, 'dash_titulo')}</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginTop: 16 }}>
+        <div style={{ background: T.navy, padding: "10px 16px 14px" }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginBottom: 1 }}>{t(cfg, 'dash_subtitulo')}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>{t(cfg, 'dash_titulo')}</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 2 }}>{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, marginTop: 10 }}>
                 {[{ l: t(cfg, 'dash_licitaciones'), v: lics.filter(l => !["adjudicada", "descartada"].includes(l.estado)).length, c: "#60A5FA" }, { l: t(cfg, 'dash_obras_activas'), v: obras.filter(o => o.estado === "curso").length, c: "#34D399" }, { l: t(cfg, 'dash_alertas'), v: alerts.length, c: "#FBBF24" }, { l: t(cfg, 'dash_personal'), v: personal.length, c: "#A78BFA" }].map(k => (
-                    <div key={k.l} style={{ background: "rgba(255,255,255,.08)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: k.c }}>{k.v}</div>
-                        <div style={{ fontSize: 9, color: "rgba(255,255,255,.5)", marginTop: 2, lineHeight: 1.3 }}>{k.l}</div>
+                    <div key={k.l} style={{ background: "rgba(255,255,255,.08)", borderRadius: 8, padding: "7px 6px", textAlign: "center" }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: k.c }}>{k.v}</div>
+                        <div style={{ fontSize: 8, color: "rgba(255,255,255,.5)", marginTop: 1, lineHeight: 1.3 }}>{k.l}</div>
                     </div>
                 ))}
             </div>
@@ -1627,7 +1627,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
     const fileRefs = useRef({}); const fotoRefs = useRef({}); const newFotoRef = useRef(null);
     const [nuevaTarea, setNuevaTarea] = useState({});
     const [showNew, setShowNew] = useState(false);
-    const [form, setForm] = useState({ nombre: "", rol: "Técnico", empresa: "BelfastCM", obra_id: "", telefono: "", foto: "", tareas: [] });
+    const [form, setForm] = useState({ nombre: "", dni: "", rol: "Técnico", empresa: "BelfastCM", obra_id: "", telefono: "", foto: "", tareas: [] });
 
     // Cargar datos de presentismo para ver historial
     useEffect(() => {
@@ -1719,6 +1719,8 @@ function Personal({ personal, setPersonal, obras, cfg }) {
                                     <Av p={p} size={76} showCam onClick={() => fotoRefs.current[p.id]?.click()} />
                                 </div>
                                 <div style={{ flex: 1 }}>
+                                    <Lbl>DNI</Lbl>
+                                    <input value={p.dni || ''} onChange={e => upd(p.id, { dni: e.target.value.replace(/\D/g,'') })} placeholder="30123456" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text, marginBottom: 10 }} />
                                     <Lbl>WhatsApp</Lbl>
                                     <div style={{ display: "flex", gap: 6 }}>
                                         <input type="tel" value={p.telefono || ""} onChange={e => upd(p.id, { telefono: e.target.value.replace(/\D/g, '') })} placeholder="5491155556666" style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "9px 12px", fontSize: 13, color: T.text }} />
@@ -1848,9 +1850,10 @@ function Personal({ personal, setPersonal, obras, cfg }) {
             </div>
             <Field label={t(cfg, 'pers_nombre')}><TInput value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Juan García" /></Field>
             <FieldRow>
-                <Field label={t(cfg, 'pers_rol')}><Sel value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))}>{ROLES.map(r => <option key={r}>{r}</option>)}</Sel></Field>
+                <Field label="DNI"><TInput value={form.dni || ''} onChange={e => setForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '') }))} placeholder="30123456" /></Field>
                 <Field label={t(cfg, 'pers_empresa')}><TInput value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="BelfastCM" /></Field>
             </FieldRow>
+            <Field label={t(cfg, 'pers_rol')}><Sel value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))}>{ROLES.map(r => <option key={r}>{r}</option>)}</Sel></Field>
             <Field label={t(cfg, 'pers_whatsapp')}><TInput value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value.replace(/\D/g, '') }))} placeholder="5491155556666" /></Field>
             <Field label={t(cfg, 'pers_obra')}><Sel value={form.obra_id} onChange={e => setForm(p => ({ ...p, obra_id: e.target.value }))}><option value="">Sin asignar</option>{obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</Sel></Field>
             <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
