@@ -1713,11 +1713,35 @@ function Personal({ personal, setPersonal, obras, cfg }) {
 
                         {/* TAB INFO */}
                         {tabActivo === 'info' && (<div style={{ padding: "14px 14px 14px" }}>
-                            <div style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "flex-start" }}>
+                            {/* Foto + datos editables */}
+                            <div style={{ display: "flex", gap: 14, marginBottom: 12, alignItems: "flex-start" }}>
                                 <div style={{ flexShrink: 0 }}>
                                     <input type="file" accept="image/*" style={{ display: "none" }} ref={el => fotoRefs.current[p.id] = el} onChange={async e => { if (e.target.files[0]) upd(p.id, { foto: await toDataUrl(e.target.files[0]) }); e.target.value = ""; }} />
                                     <Av p={p} size={76} showCam onClick={() => fotoRefs.current[p.id]?.click()} />
                                 </div>
+                                <div style={{ flex: 1 }}>
+                                    <Lbl>Nombre</Lbl>
+                                    <input value={p.nombre || ''} onChange={e => upd(p.id, { nombre: e.target.value })} placeholder="Nombre completo" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text, marginBottom: 8 }} />
+                                    <Lbl>Rol</Lbl>
+                                    <select value={p.rol || ''} onChange={e => upd(p.id, { rol: e.target.value })} style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text }}>
+                                        {ROLES.map(r => <option key={r}>{r}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                                <div>
+                                    <Lbl>Empresa</Lbl>
+                                    <input value={p.empresa || ''} onChange={e => upd(p.id, { empresa: e.target.value })} placeholder="BelfastCM" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text }} />
+                                </div>
+                                <div>
+                                    <Lbl>Obra asignada</Lbl>
+                                    <select value={p.obra_id || ''} onChange={e => upd(p.id, { obra_id: e.target.value })} style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text }}>
+                                        <option value="">Sin asignar</option>
+                                        {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", gap: 14, marginBottom: 12, alignItems: "flex-start" }}>
                                 <div style={{ flex: 1 }}>
                                     <Lbl>DNI</Lbl>
                                     <input value={p.dni || ''} onChange={e => upd(p.id, { dni: e.target.value.replace(/\D/g,'') })} placeholder="30123456" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text, marginBottom: 10 }} />
