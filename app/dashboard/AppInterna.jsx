@@ -4635,7 +4635,7 @@ function AppInner({ supaSession }) {
         markLocalEdit('lics');
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
-        storage.set('bcm_lics', json).catch(() => { });
+        storage.set('bcm_lics', json).then(() => { console.log('[BCM] bcm_lics guardado OK, items:', lics.length); }).catch(e => { console.error('[BCM] ERROR guardando bcm_lics:', e); });
         try { localStorage.setItem('bcm_lics', json); } catch { }
         // Guardar visitas de cada lic en su propia key
         lics.forEach(l => {
