@@ -4492,7 +4492,7 @@ function AppInner({ supaSession }) {
     const [personal, setPersonal] = useState(() => getLocalJSON('bcm_personal', []));
     const [planes, setPlanes] = useState(() => getLocalJSON('bcm_planes_semanales', []));
     const [alerts, setAlerts] = useState([]);
-    const [cfg, setCfg] = useState(() => ({ ...DEFAULT_CONFIG, ...getLocalJSON('bcm_cfg', {}) }));
+    const [cfg, setCfg] = useState(() => { const saved = getLocalJSON('bcm_cfg', {}); const { _ts, ...rest } = saved; return { ...DEFAULT_CONFIG, ...rest }; });
     const [apiKey, setApiKey] = useState(() => getLocalStr('bcm_api_key', ''));
     const [loaded, setLoaded] = useState(false);
     const [realtimeOk, setRealtimeOk] = useState(false); // indicador de conexión en tiempo real
@@ -4660,10 +4660,10 @@ function AppInner({ supaSession }) {
     }, [obras, loaded]);
     useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => {
-        // cfg → localStorage + Supabase, siempre que cambie
-        const json = JSON.stringify(cfg);
-        try { localStorage.setItem('bcm_cfg', json); } catch { }
-        storage.set('bcm_cfg', json).catch(() => {});
+        // cfg → localStorage + Supabase con timestamp (gana el más nuevo)
+        const payload = JSON.stringify({ ...cfg, _ts: Date.now() });
+        try { localStorage.setItem('bcm_cfg', payload); } catch { }
+        storage.set('bcm_cfg', payload).catch(() => {});
     }, [cfg]);
     useEffect(() => { if (!loaded || !planes.length) return; try { localStorage.setItem('bcm_planes_semanales', JSON.stringify(planes)); } catch { } }, [planes]);
     useEffect(() => {
@@ -4796,7 +4796,18 @@ function AppInner({ supaSession }) {
                     const nv = JSON.parse(value); setPersonal(nv);
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                // bcm_cfg: NUNCA aplicar desde remoto — solo localStorage
+                // bcm_cfg via realtime: solo aplicar si remoto es más nuevo
+                else if (key === 'bcm_cfg') {
+                    try {
+                        const remoto = JSON.parse(value);
+                        const local = getLocalJSON('bcm_cfg', {});
+                        if ((remoto._ts || 0) > (local._ts || 0) + 3000) { // 3s de margen
+                            const { _ts, ...cfgLimpia } = remoto;
+                            setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
+                            try { localStorage.setItem(key, value); } catch {}
+                        }
+                    } catch {}
+                }
                 // Fotos de obras
                 else if (key.startsWith('bcm_fotos_')) {
                     const obraId = key.replace('bcm_fotos_', '');
@@ -4825,16 +4836,25 @@ function AppInner({ supaSession }) {
         // Función de sync completo (polling de respaldo)
         async function syncAll() {
             try {
-                // Solo 5 requests por sync (no sync de fotos por obra que genera N requests)
-                // cfg y apiKey NUNCA se sincronizan desde Supabase — solo localStorage
-                // planes se sincronizan via tabla Supabase (realtime), no via bcm_storage
-                const [rLics, rObras, rPers] = await Promise.all([
+                const [rLics, rObras, rPers, rCfg] = await Promise.all([
                     storage.get('bcm_lics'), storage.get('bcm_obras'),
-                    storage.get('bcm_personal'),
+                    storage.get('bcm_personal'), storage.get('bcm_cfg'),
                 ]);
                 if (rLics?.value) { const loc = storage.getLocal('bcm_lics'); if (loc?.value !== rLics.value) await applyRemoteKey('bcm_lics', rLics.value); }
                 if (rObras?.value) { const loc = storage.getLocal('bcm_obras'); if (loc?.value !== rObras.value) await applyRemoteKey('bcm_obras', rObras.value); }
                 if (rPers?.value) { const loc = storage.getLocal('bcm_personal'); if (loc?.value !== rPers.value) await applyRemoteKey('bcm_personal', rPers.value); }
+                // cfg: solo aplicar si el remoto es MÁS NUEVO que el local
+                if (rCfg?.value) {
+                    try {
+                        const remoto = JSON.parse(rCfg.value);
+                        const local = getLocalJSON('bcm_cfg', {});
+                        if ((remoto._ts || 0) > (local._ts || 0) + 2000) {
+                            const { _ts, ...cfgLimpia } = remoto;
+                            setCfg(prev => ({ ...DEFAULT_CONFIG, ...cfgLimpia }));
+                            try { localStorage.setItem('bcm_cfg', rCfg.value); } catch {}
+                        }
+                    } catch {}
+                }
                 // Sync fotos/archivos de cada obra (desde bcm_storage keys individuales)
                 try {
                     const keysRes = await storage.list('bcm_fotos_');
