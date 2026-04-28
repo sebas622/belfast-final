@@ -4396,6 +4396,7 @@ function LoginScreenViejo({ onLogin, cfg, personal }) {
     }
 
     return (<div style={{ height: "100vh", display: "flex", flexDirection: "column", background: T.bg, overflow: "hidden" }}>
+        <style>{buildThemeCSS(cfg)}</style>
         <AppBrand cfg={cfg} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px" }}>
             {cfg.logoCentral ? <img src={cfg.logoCentral} alt="" style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 20 }} />
@@ -4609,10 +4610,9 @@ function AppInner({ supaSession }) {
     }, [obras, loaded]);
     useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => {
-        if (!loaded) return;
-        // cfg → SOLO localStorage. Nunca Supabase (evita conflictos de sync).
+        // cfg → localStorage siempre que cambie, sin restricciones
         try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { }
-    }, [cfg, loaded]);
+    }, [cfg]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
