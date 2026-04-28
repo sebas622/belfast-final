@@ -4522,6 +4522,12 @@ function AppInner({ supaSession }) {
                         pagado: o.pagado || '', notas: o.notas || '',
                         fotos: [], archivos: [], gastos: []
                     })));
+                } else {
+                    // Fallback: cargar desde bcm_storage si las tablas están vacías
+                    try {
+                        const r = await storage.get('bcm_obras');
+                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setObras(d.map(o => ({ ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[] }))); }
+                    } catch {}
                 }
                 if (persRes.data?.length > 0) {
                     setPersonal(persRes.data.map(p => ({
@@ -4530,6 +4536,11 @@ function AppInner({ supaSession }) {
                         empresa: 'BelfastCM', foto: p.foto_url || '',
                         obra_id: p.obra_id || '', tareas: [], docs: {}
                     })));
+                } else {
+                    try {
+                        const r = await storage.get('bcm_personal');
+                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setPersonal(d); }
+                    } catch {}
                 }
                 if (licsRes.data?.length > 0) {
                     setLics(licsRes.data.map(l => ({
@@ -4538,6 +4549,11 @@ function AppInner({ supaSession }) {
                         ap: l.ubicacion || '', notas: l.notas || '',
                         visitas: [], archivos: {}
                     })));
+                } else {
+                    try {
+                        const r = await storage.get('bcm_lics');
+                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setLics(d); }
+                    } catch {}
                 }
                 if (planesRes.data?.length > 0) {
                     setPlanes(planesRes.data.map(p => ({
@@ -4545,6 +4561,11 @@ function AppInner({ supaSession }) {
                         semana: p.semana || '', notas: p.notas || '',
                         dias: p.dias || {}
                     })));
+                } else {
+                    try {
+                        const r = await storage.get('bcm_planes_semanales');
+                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setPlanes(d); }
+                    } catch {}
                 }
 
                 setRealtimeOk(true);
