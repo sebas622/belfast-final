@@ -4866,26 +4866,12 @@ function AppInner({ supaSession }) {
             }
         }
 
-        connectRealtime();
-
-        // Sync inicial + polling de respaldo cada 10s
-        syncAll();
-        const iv = setInterval(syncAll, 60000); // cada 60s en vez de 10s
-        const onFocus = () => syncAll();
-        window.addEventListener('focus', onFocus);
-      // Recargar datos al volver al foco
-window.addEventListener('focus', () => {
-    if (sbRef.current) {
-        const EID = '00000000-0000-0000-0000-000000000001';
-        sbRef.current.from('obras').select('*').eq('empresa_id', EID)
-            .then(({ data }) => { if (data?.length) setObras(data.map(o => ({ id: o.id, nombre: o.nombre, estado: o.estado || 'curso', avance: o.avance || 0, cierre: o.fecha_cierre || '', ap: o.ubicacion || '', monto: o.monto || '', pagado: o.pagado || '', notas: o.notas || '', fotos: [], archivos: [], gastos: [] }))); });
-        sbRef.current.from('personal').select('*').eq('empresa_id', EID).eq('activo', true)
-            .then(({ data }) => { if (data?.length) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} }))); });
-        sbRef.current.from('licitaciones').select('*').eq('empresa_id', EID)
-            .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} }))); });
-    }
-});
-        window.addEventListener('online', () => { syncAll(); connectRealtime(); });
+        // SYNC DESACTIVADO — borraba datos al volver al foco con tablas vacías
+        // connectRealtime();
+        // syncAll();
+        const iv = null;
+        const onFocus = () => {};
+        // NO escuchar focus ni online para no pisar localStorage con Supabase vacío
 
         // Interceptar el storage.set original para marcar mis propios cambios
         const origSet = storage.set.bind(storage);
