@@ -4522,12 +4522,6 @@ function AppInner({ supaSession }) {
                         pagado: o.pagado || '', notas: o.notas || '',
                         fotos: [], archivos: [], gastos: []
                     })));
-                } else {
-                    // Fallback: cargar desde bcm_storage si las tablas están vacías
-                    try {
-                        const r = await storage.get('bcm_obras');
-                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setObras(d.map(o => ({ ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[] }))); }
-                    } catch {}
                 }
                 if (persRes.data?.length > 0) {
                     setPersonal(persRes.data.map(p => ({
@@ -4536,11 +4530,6 @@ function AppInner({ supaSession }) {
                         empresa: 'BelfastCM', foto: p.foto_url || '',
                         obra_id: p.obra_id || '', tareas: [], docs: {}
                     })));
-                } else {
-                    try {
-                        const r = await storage.get('bcm_personal');
-                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setPersonal(d); }
-                    } catch {}
                 }
                 if (licsRes.data?.length > 0) {
                     setLics(licsRes.data.map(l => ({
@@ -4549,11 +4538,6 @@ function AppInner({ supaSession }) {
                         ap: l.ubicacion || '', notas: l.notas || '',
                         visitas: [], archivos: {}
                     })));
-                } else {
-                    try {
-                        const r = await storage.get('bcm_lics');
-                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setLics(d); }
-                    } catch {}
                 }
                 if (planesRes.data?.length > 0) {
                     setPlanes(planesRes.data.map(p => ({
@@ -4561,11 +4545,6 @@ function AppInner({ supaSession }) {
                         semana: p.semana || '', notas: p.notas || '',
                         dias: p.dias || {}
                     })));
-                } else {
-                    try {
-                        const r = await storage.get('bcm_planes_semanales');
-                        if (r?.value) { const d = JSON.parse(r.value); if (d?.length) setPlanes(d); }
-                    } catch {}
                 }
 
                 setRealtimeOk(true);
@@ -4581,18 +4560,6 @@ function AppInner({ supaSession }) {
                         if (!localCfgStr || (_ts || 0) > localTs) {
                             setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
                             try { localStorage.setItem("bcm_cfg", cfgRemota.value); } catch {}
-                        }
-                    }
-                } catch {}
-
-                // Cargar API key desde Supabase si no hay en localStorage
-                try {
-                    const localApiKey = localStorage.getItem("bcm_api_key");
-                    if (!localApiKey) {
-                        const remoteApiKey = await storage.get("bcm_api_key");
-                        if (remoteApiKey?.value) {
-                            setApiKey(remoteApiKey.value);
-                            try { localStorage.setItem("bcm_api_key", remoteApiKey.value); } catch {}
                         }
                     }
                 } catch {}
@@ -4635,7 +4602,7 @@ function AppInner({ supaSession }) {
         markLocalEdit('lics');
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
-        storage.set('bcm_lics', json).then(() => { console.log('[BCM] bcm_lics guardado OK, items:', lics.length); }).catch(e => { console.error('[BCM] ERROR guardando bcm_lics:', e); });
+        storage.set('bcm_lics', json).catch(() => { });
         try { localStorage.setItem('bcm_lics', json); } catch { }
         // Guardar visitas de cada lic en su propia key
         lics.forEach(l => {
@@ -4899,19 +4866,26 @@ function AppInner({ supaSession }) {
             }
         }
 
-        // connectRealtime DESACTIVADO — estaba pisando datos locales con Supabase vacío
-        // connectRealtime();
+        connectRealtime();
 
-        // Sync DESACTIVADO — causa pérdida de datos cuando Supabase está vacío
-        // syncAll();
-        // const iv = setInterval(syncAll, 60000);
-        const iv = null;
-        const onFocus = () => {}; // no hacer nada al volver al foco
-        // window.addEventListener('focus', onFocus);
+        // Sync inicial + polling de respaldo cada 10s
+        syncAll();
+        const iv = setInterval(syncAll, 60000); // cada 60s en vez de 10s
+        const onFocus = () => syncAll();
+        window.addEventListener('focus', onFocus);
       // Recargar datos al volver al foco
-// DESACTIVADO — tablas Supabase vacías, esto borraba todo al cambiar de pestaña
-// window.addEventListener('focus', () => { ... });
-        window.addEventListener('online', () => { /* syncAll(); connectRealtime(); */ });
+window.addEventListener('focus', () => {
+    if (sbRef.current) {
+        const EID = '00000000-0000-0000-0000-000000000001';
+        sbRef.current.from('obras').select('*').eq('empresa_id', EID)
+            .then(({ data }) => { if (data?.length) setObras(data.map(o => ({ id: o.id, nombre: o.nombre, estado: o.estado || 'curso', avance: o.avance || 0, cierre: o.fecha_cierre || '', ap: o.ubicacion || '', monto: o.monto || '', pagado: o.pagado || '', notas: o.notas || '', fotos: [], archivos: [], gastos: [] }))); });
+        sbRef.current.from('personal').select('*').eq('empresa_id', EID).eq('activo', true)
+            .then(({ data }) => { if (data?.length) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} }))); });
+        sbRef.current.from('licitaciones').select('*').eq('empresa_id', EID)
+            .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} }))); });
+    }
+});
+        window.addEventListener('online', () => { syncAll(); connectRealtime(); });
 
         // Interceptar el storage.set original para marcar mis propios cambios
         const origSet = storage.set.bind(storage);
