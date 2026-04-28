@@ -4967,8 +4967,8 @@ window.addEventListener('focus', () => {
     }, [personal, obras, lics]);
 
     function requireAuth(action, context) {
-        if (isDirectivo(user)) { action(); return; }
-        setAuthRequest({ action, context });
+        // Usuario ya autenticado — ejecutar siempre sin pedir clave nuevamente
+        action();
     }
 
     function handleAuthSuccess(authUser) {
