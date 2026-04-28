@@ -4464,6 +4464,22 @@ function AppInner({ supaSession }) {
 
                 setRealtimeOk(true);
 
+                // Cargar cfg desde Supabase al arrancar (para dispositivos nuevos sin localStorage)
+                try {
+                    const cfgRemota = await storage.get("bcm_cfg");
+                    if (cfgRemota?.value) {
+                        const parsed = JSON.parse(cfgRemota.value);
+                        const { _ts, ...cfgLimpia } = parsed;
+                        const localCfgStr = localStorage.getItem("bcm_cfg");
+                        const localTs = localCfgStr ? (JSON.parse(localCfgStr)._ts || 0) : 0;
+                        if (!localCfgStr || (_ts || 0) > localTs) {
+                            setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
+                            try { localStorage.setItem("bcm_cfg", cfgRemota.value); } catch {}
+                        }
+                    }
+                } catch {}
+
+
                 // Suscripción realtime
                 const canal = sb.channel('bcm-realtime')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'obras', filter: 'empresa_id=eq.' + EID }, async () => {
@@ -4521,7 +4537,7 @@ function AppInner({ supaSession }) {
         try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
     }, [obras, loaded]);
     useEffect(() => { if (loaded) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
-    useEffect(() => { if (loaded) { markLocalEdit('cfg'); storage.set('bcm_cfg', JSON.stringify(cfg)).catch(() => { }); try { localStorage.setItem('bcm_cfg', JSON.stringify(cfg)); } catch { } } }, [cfg, loaded]);
+    useEffect(() => { if (loaded) { markLocalEdit('cfg'); const payload = JSON.stringify({ ...cfg, _ts: Date.now() }); storage.set('bcm_cfg', payload).catch(() => { }); try { localStorage.setItem('bcm_cfg', payload); } catch { } } }, [cfg, loaded]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
