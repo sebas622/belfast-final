@@ -4564,6 +4564,18 @@ function AppInner({ supaSession }) {
                     }
                 } catch {}
 
+                // Cargar API key desde Supabase si no hay en localStorage
+                try {
+                    const localApiKey = localStorage.getItem("bcm_api_key");
+                    if (!localApiKey) {
+                        const remoteApiKey = await storage.get("bcm_api_key");
+                        if (remoteApiKey?.value) {
+                            setApiKey(remoteApiKey.value);
+                            try { localStorage.setItem("bcm_api_key", remoteApiKey.value); } catch {}
+                        }
+                    }
+                } catch {}
+
 
                 // Suscripción realtime
                 const canal = sb.channel('bcm-realtime')
