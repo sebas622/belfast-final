@@ -4626,362 +4626,190 @@ function AppInner({ supaSession }) {
         })();
     }, []);
 
-    // Refs para evitar sobrescribir cambios locales recientes
-    const lastLocalEditRef = useRef({ lics: 0, obras: 0, personal: 0, cfg: 0 });
-    function markLocalEdit(key) { lastLocalEditRef.current[key] = Date.now(); }
+    // ── SYNC LIMPIO ─────────────────────────────────────────────────
+    // Regla simple: Supabase es la fuente de verdad para lics/obras/personal/cfg
+    // El que guardó más recientemente (timestamp) gana
+    // Sin WebSocket manual — usamos el cliente Supabase que ya tiene realtime
 
-    // Persistir cambios — obras se guardan SIN fotos/archivos (esos van en keys separadas via upd())
-    // Persistir lics SIN visitas (las fotos van en bcm_lic_vis_{id})
+    const lastSaveRef = useRef({ lics: 0, obras: 0, personal: 0, cfg: 0 });
+    const SAVE_GUARD_MS = 5000; // 5s: si yo guardé hace menos de 5s, no piso
+
+    // Guardar lics en Supabase
     useEffect(() => {
-        if (!loaded) return;
-        if (!lics.length) return; // NUNCA sobrescribir con array vacío
-        markLocalEdit('lics');
-        const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
-        const json = JSON.stringify(licsSinVisitas);
-        storage.set('bcm_lics', json).catch(() => { });
-        try { localStorage.setItem('bcm_lics', json); } catch { }
-        // Guardar visitas de cada lic en su propia key
+        if (!loaded || !lics.length) return;
+        lastSaveRef.current.lics = Date.now();
+        const json = JSON.stringify(lics.map(l => ({ ...l, visitas: [] })));
+        try { localStorage.setItem('bcm_lics', json); } catch {}
+        storage.set('bcm_lics', json).catch(() => {});
         lics.forEach(l => {
             if (!l.visitas?.length) return;
             const key = 'bcm_lic_vis_' + l.id;
-            const vjson = JSON.stringify(l.visitas);
-            try { localStorage.setItem(key, vjson); } catch { }
-            storage.set(key, vjson).catch(() => { });
+            const vj = JSON.stringify(l.visitas);
+            try { localStorage.setItem(key, vj); } catch {}
+            storage.set(key, vj).catch(() => {});
         });
     }, [lics, loaded]);
-    useEffect(() => {
-        if (!loaded) return;
-        if (!obras.length) return; // NUNCA sobrescribir con array vacío
-        markLocalEdit('obras');
-        // Guardar obras sin fotos/archivos para no superar el límite de 5MB
-        const obrasSinMedia = obras.map(o => ({ ...o, fotos: [], archivos: [] }));
-        storage.set('bcm_obras', JSON.stringify(obrasSinMedia)).catch(() => { });
-        try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
-    }, [obras, loaded]);
-    useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
-    useEffect(() => {
-        // cfg → localStorage + Supabase con timestamp (gana el más nuevo)
-        const payload = JSON.stringify({ ...cfg, _ts: Date.now() });
-        try { localStorage.setItem('bcm_cfg', payload); } catch { }
-        storage.set('bcm_cfg', payload).catch(() => {});
-    }, [cfg]);
-    useEffect(() => { if (!loaded || !planes.length) return; try { localStorage.setItem('bcm_planes_semanales', JSON.stringify(planes)); } catch { } }, [planes]);
-    useEffect(() => {
-        if (!apiKey?.trim()) return;
-        try { localStorage.setItem('bcm_api_key', apiKey); } catch { }
-        storage.set('bcm_api_key', apiKey).catch(() => {});
-    }, [apiKey]);
-    useEffect(() => { if (loaded && user) { storage.set('bcm_current_user', JSON.stringify(user)).catch(() => { }); try { localStorage.setItem('bcm_current_user', JSON.stringify(user)); } catch { } } }, [user, loaded]);
 
-    // ── GUARDAR EN TABLAS REALES DE SUPABASE ────────────────────────
-    const sbRef = useRef(null);
+    // Guardar obras en Supabase
     useEffect(() => {
-        (async () => {
-            try {
-                const { createClient: mkSB } = await import('@supabase/supabase-js');
-                sbRef.current = mkSB(SUPA_URL, SUPA_KEY);
-            } catch {}
-        })();
-    }, []);
-
-    // Guardar obras en tabla obras
-    useEffect(() => {
-        if (!loaded || !sbRef.current) return;
-        const EID = '00000000-0000-0000-0000-000000000001';
-        obras.forEach(async o => {
-            try {
-                await sbRef.current.from('obras').upsert({
-                    id: o.id, empresa_id: EID,
-                    nombre: o.nombre, estado: o.estado || 'curso',
-                    avance: o.avance || 0, fecha_cierre: o.cierre || null,
-                    ubicacion: o.ap || '', monto: o.monto || '',
-                    pagado: o.pagado || '', notas: o.notas || '',
-                    updated_at: new Date().toISOString(),
-                }, { onConflict: 'id' });
-            } catch {}
-        });
+        if (!loaded || !obras.length) return;
+        lastSaveRef.current.obras = Date.now();
+        const json = JSON.stringify(obras.map(o => ({ ...o, fotos: [], archivos: [] })));
+        try { localStorage.setItem('bcm_obras', json); } catch {}
+        storage.set('bcm_obras', json).catch(() => {});
     }, [obras, loaded]);
 
-    // Guardar personal en tabla personal
+    // Guardar personal en Supabase
     useEffect(() => {
-        if (!loaded || !sbRef.current) return;
-        const EID = '00000000-0000-0000-0000-000000000001';
-        personal.forEach(async p => {
-            try {
-                await sbRef.current.from('personal').upsert({
-                    id: p.id, empresa_id: EID,
-                    nombre: p.nombre, rol: p.rol || '',
-                    telefono: p.telefono || '', dni: p.dni || '',
-                    activo: true,
-                }, { onConflict: 'id' });
-            } catch {}
-        });
+        if (!loaded || !personal.length) return;
+        lastSaveRef.current.personal = Date.now();
+        const json = JSON.stringify(personal);
+        try { localStorage.setItem('bcm_personal', json); } catch {}
+        storage.set('bcm_personal', json).catch(() => {});
     }, [personal, loaded]);
 
-    // Guardar licitaciones en tabla licitaciones
+    // Guardar cfg en Supabase con timestamp
     useEffect(() => {
-        if (!loaded || !sbRef.current) return;
-        const EID = '00000000-0000-0000-0000-000000000001';
-        lics.forEach(async l => {
-            try {
-                await sbRef.current.from('licitaciones').upsert({
-                    id: l.id, empresa_id: EID,
-                    nombre: l.nombre, estado: l.estado || 'pendiente',
-                    monto: l.monto || '', fecha: l.fecha || null,
-                    ubicacion: l.ap || '', notas: l.notas || '',
-                    updated_at: new Date().toISOString(),
-                }, { onConflict: 'id' });
-            } catch {}
-        });
-    }, [lics, loaded]);
+        if (!loaded) return;
+        lastSaveRef.current.cfg = Date.now();
+        const payload = JSON.stringify({ ...cfg, _ts: Date.now() });
+        try { localStorage.setItem('bcm_cfg', payload); } catch {}
+        storage.set('bcm_cfg', payload).catch(() => {});
+    }, [cfg, loaded]);
 
-    // Guardar planes en tabla planes_semanales
+    // Guardar apiKey solo local
     useEffect(() => {
-        if (!loaded || !sbRef.current) return;
-        const EID = '00000000-0000-0000-0000-000000000001';
-        planes.forEach(async p => {
-            try {
-                await sbRef.current.from('planes_semanales').upsert({
-                    id: p.id, empresa_id: EID,
-                    obra_id: p.obra || null,
-                    semana: p.semana || null,
-                    dias: p.dias || {},
-                    notas: p.notas || '',
-                }, { onConflict: 'id' });
-            } catch {}
-        });
-    }, [planes, loaded]);
+        if (!apiKey?.trim()) return;
+        try { localStorage.setItem('bcm_api_key', apiKey); } catch {}
+    }, [apiKey]);
 
-    // ── SYNC TIEMPO REAL ─────────────────────────────────────────────────
-    // Usa Supabase Realtime (postgres_changes) para notificaciones instantáneas.
-    // Cuando dispositivo A guarda algo, dispositivo B lo recibe en < 1 segundo.
-    // Polling de respaldo cada 10s por si Realtime falla.
+    // Guardar planes solo local
+    useEffect(() => {
+        if (!planes.length) return;
+        try { localStorage.setItem('bcm_planes_semanales', JSON.stringify(planes)); } catch {}
+    }, [planes]);
+
+    // ── POLLING SYNC cada 30s ────────────────────────────────────────
     useEffect(() => {
         if (!loaded || !user) return;
 
-        // Keys de medios (fotos/archivos) — hay que buscarlas por prefijo
-        const MEDIA_PREFIXES = ['bcm_fotos_', 'bcm_archs_', 'bcm_lic_vis_'];
-        // Timestamp de la última vez que YO guardé algo (para no pisar mi propio cambio)
-        const myLastSave = { lics: 0, obras: 0, personal: 0, cfg: 0 };
-        const PROTECT_MS = 8000; // 8s protección post-guardado propio
-
-        // Función central: aplicar datos remotos a la UI
-        async function applyRemoteKey(key, value) {
-            const now = Date.now();
+        async function syncRemoto() {
             try {
-                if (key === 'bcm_lics' && now - myLastSave.lics > PROTECT_MS) {
-                    const licsRemota = JSON.parse(value);
-                    setLics(cur => licsRemota.map(l => {
-                        const local = cur.find(x => x.id === l.id);
-                        return { ...l, visitas: local?.visitas?.length ? local.visitas : l.visitas || [] };
-                    }));
-                    try { localStorage.setItem(key, value); } catch {}
-                }
-                else if (key === 'bcm_obras' && now - myLastSave.obras > PROTECT_MS) {
-                    const obrasRemota = JSON.parse(value);
-                    setObras(cur => obrasRemota.map(o => {
-                        const local = cur.find(x => x.id === o.id);
-                        return {
-                            ...o,
-                            fotos:    local?.fotos?.length    ? local.fotos    : o.fotos    || [],
-                            archivos: local?.archivos?.length ? local.archivos : o.archivos || [],
-                            informes: (local?.informes?.length||0) >= (o.informes?.length||0) ? (local?.informes||[]) : (o.informes||[]),
-                            obs:      (local?.obs?.length||0)      >= (o.obs?.length||0)      ? (local?.obs||[])      : (o.obs||[]),
-                            gastos:   (local?.gastos?.length||0)   >= (o.gastos?.length||0)   ? (local?.gastos||[])   : (o.gastos||[]),
-                        };
-                    }));
-                    try { localStorage.setItem(key, value); } catch {}
-                }
-                else if (key === 'bcm_personal' && now - myLastSave.personal > PROTECT_MS) {
-                    const nv = JSON.parse(value); setPersonal(nv);
-                    try { localStorage.setItem(key, value); } catch {}
-                }
-                // bcm_cfg via realtime: solo aplicar si remoto es más nuevo
-                else if (key === 'bcm_cfg') {
+                const [rLics, rObras, rPers, rCfg] = await Promise.all([
+                    storage.get('bcm_lics'),
+                    storage.get('bcm_obras'),
+                    storage.get('bcm_personal'),
+                    storage.get('bcm_cfg'),
+                ]);
+                const now = Date.now();
+
+                // lics
+                if (rLics?.value && now - lastSaveRef.current.lics > SAVE_GUARD_MS) {
                     try {
-                        const remoto = JSON.parse(value);
-                        const local = getLocalJSON('bcm_cfg', {});
-                        if ((remoto._ts || 0) > (local._ts || 0) + 3000) { // 3s de margen
-                            const { _ts, ...cfgLimpia } = remoto;
-                            setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
-                            try { localStorage.setItem(key, value); } catch {}
+                        const remoto = JSON.parse(rLics.value);
+                        if (remoto.length > 0) {
+                            setLics(cur => {
+                                if (JSON.stringify(cur.map(l=>({...l,visitas:[]}))) === rLics.value) return cur;
+                                return remoto.map(l => {
+                                    const local = cur.find(x => x.id === l.id);
+                                    return { ...l, visitas: local?.visitas || [] };
+                                });
+                            });
+                            try { localStorage.setItem('bcm_lics', rLics.value); } catch {}
                         }
                     } catch {}
                 }
-                // Fotos de obras
-                else if (key.startsWith('bcm_fotos_')) {
-                    const obraId = key.replace('bcm_fotos_', '');
-                    const fotos = JSON.parse(value);
-                    setObras(cur => cur.map(o => o.id === obraId ? { ...o, fotos } : o));
-                    try { localStorage.setItem(key, value); } catch {}
-                }
-                // Archivos de obras
-                else if (key.startsWith('bcm_archs_')) {
-                    const obraId = key.replace('bcm_archs_', '');
-                    const archivos = JSON.parse(value);
-                    setObras(cur => cur.map(o => o.id === obraId ? { ...o, archivos } : o));
-                    try { localStorage.setItem(key, value); } catch {}
-                }
-                // Visitas de licitaciones
-                else if (key.startsWith('bcm_lic_vis_')) {
-                    const licId = key.replace('bcm_lic_vis_', '');
-                    const visitas = JSON.parse(value);
-                    setLics(cur => cur.map(l => l.id === licId ? { ...l, visitas } : l));
-                    try { localStorage.setItem(key, value); } catch {}
-                }
-                // bcm_planes_semanales: sync via tabla Supabase, no via bcm_storage
-            } catch { }
-        }
 
-        // Función de sync completo (polling de respaldo)
-        async function syncAll() {
-            try {
-                const [rLics, rObras, rPers, rCfg] = await Promise.all([
-                    storage.get('bcm_lics'), storage.get('bcm_obras'),
-                    storage.get('bcm_personal'), storage.get('bcm_cfg'),
-                ]);
-                if (rLics?.value) { const loc = storage.getLocal('bcm_lics'); if (loc?.value !== rLics.value) await applyRemoteKey('bcm_lics', rLics.value); }
-                if (rObras?.value) { const loc = storage.getLocal('bcm_obras'); if (loc?.value !== rObras.value) await applyRemoteKey('bcm_obras', rObras.value); }
-                if (rPers?.value) { const loc = storage.getLocal('bcm_personal'); if (loc?.value !== rPers.value) await applyRemoteKey('bcm_personal', rPers.value); }
-                // cfg: solo aplicar si el remoto es MÁS NUEVO que el local
-                if (rCfg?.value) {
+                // obras
+                if (rObras?.value && now - lastSaveRef.current.obras > SAVE_GUARD_MS) {
+                    try {
+                        const remoto = JSON.parse(rObras.value);
+                        if (remoto.length > 0) {
+                            setObras(cur => {
+                                if (JSON.stringify(cur.map(o=>({...o,fotos:[],archivos:[]}))) === rObras.value) return cur;
+                                return remoto.map(o => {
+                                    const local = cur.find(x => x.id === o.id);
+                                    return { ...o, fotos: local?.fotos || [], archivos: local?.archivos || [], gastos: local?.gastos || [], obs: local?.obs || [], informes: local?.informes || [] };
+                                });
+                            });
+                            try { localStorage.setItem('bcm_obras', rObras.value); } catch {}
+                        }
+                    } catch {}
+                }
+
+                // personal
+                if (rPers?.value && now - lastSaveRef.current.personal > SAVE_GUARD_MS) {
+                    try {
+                        const remoto = JSON.parse(rPers.value);
+                        if (remoto.length > 0) {
+                            setPersonal(cur => {
+                                if (JSON.stringify(cur) === rPers.value) return cur;
+                                return remoto;
+                            });
+                            try { localStorage.setItem('bcm_personal', rPers.value); } catch {}
+                        }
+                    } catch {}
+                }
+
+                // cfg — gana el más reciente por timestamp
+                if (rCfg?.value && now - lastSaveRef.current.cfg > SAVE_GUARD_MS) {
                     try {
                         const remoto = JSON.parse(rCfg.value);
                         const local = getLocalJSON('bcm_cfg', {});
-                        if ((remoto._ts || 0) > (local._ts || 0) + 2000) {
+                        if ((remoto._ts || 0) > (local._ts || 0) + 1000) {
                             const { _ts, ...cfgLimpia } = remoto;
-                            setCfg(prev => ({ ...DEFAULT_CONFIG, ...cfgLimpia }));
+                            setCfg({ ...DEFAULT_CONFIG, ...cfgLimpia });
                             try { localStorage.setItem('bcm_cfg', rCfg.value); } catch {}
                         }
                     } catch {}
                 }
-                // Sync fotos/archivos de cada obra (desde bcm_storage keys individuales)
+
+                // fotos de obras
                 try {
                     const keysRes = await storage.list('bcm_fotos_');
                     if (keysRes?.keys?.length) {
-                        for (const fotoKey of keysRes.keys) {
-                            const obraId = fotoKey.replace('bcm_fotos_', '');
-                            const rFotos = await storage.get(fotoKey);
-                            if (rFotos?.value) {
-                                const fotos = JSON.parse(rFotos.value);
-                                setObras(cur => cur.map(o => o.id === obraId && fotos.length > (o.fotos?.length || 0) ? { ...o, fotos } : o));
-                                try { localStorage.setItem(fotoKey, rFotos.value); } catch {}
+                        for (const fk of keysRes.keys) {
+                            const oId = fk.replace('bcm_fotos_', '');
+                            const r = await storage.get(fk);
+                            if (r?.value) {
+                                const fotos = JSON.parse(r.value);
+                                setObras(cur => cur.map(o => o.id === oId && fotos.length > (o.fotos?.length||0) ? {...o, fotos} : o));
+                                try { localStorage.setItem(fk, r.value); } catch {}
                             }
                         }
                     }
                 } catch {}
-                // Sync visitas de licitaciones
+
+                // visitas de licitaciones
                 try {
-                    const licKeysRes = await storage.list('bcm_lic_vis_');
-                    if (licKeysRes?.keys?.length) {
-                        for (const vKey of licKeysRes.keys) {
-                            const licId = vKey.replace('bcm_lic_vis_', '');
-                            const rVis = await storage.get(vKey);
-                            if (rVis?.value) {
-                                const visitas = JSON.parse(rVis.value);
-                                setLics(cur => cur.map(l => l.id === licId && visitas.length > (l.visitas?.length || 0) ? { ...l, visitas } : l));
-                                try { localStorage.setItem(vKey, rVis.value); } catch {}
+                    const keysRes = await storage.list('bcm_lic_vis_');
+                    if (keysRes?.keys?.length) {
+                        for (const vk of keysRes.keys) {
+                            const lId = vk.replace('bcm_lic_vis_', '');
+                            const r = await storage.get(vk);
+                            if (r?.value) {
+                                const visitas = JSON.parse(r.value);
+                                setLics(cur => cur.map(l => l.id === lId && visitas.length > (l.visitas?.length||0) ? {...l, visitas} : l));
+                                try { localStorage.setItem(vk, r.value); } catch {}
                             }
                         }
                     }
                 } catch {}
-            } catch { }
+
+            } catch {}
         }
 
-        // Supabase Realtime — escucha cambios en bcm_storage en tiempo real
-        let realtimeChannel = null;
-        let wsCleanup = null;
-
-        function connectRealtime() {
-            try {
-                // Supabase Realtime via WebSocket
-                const wsUrl = SUPA_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SUPA_KEY + '&vsn=1.0.0';
-                const ws = new WebSocket(wsUrl);
-                let heartbeat = null;
-
-                ws.onopen = () => {
-                    setRealtimeOk(true);
-                    // Suscribirse a cambios en la tabla bcm_storage
-                    ws.send(JSON.stringify({
-                        topic: 'realtime:public:bcm_storage',
-                        event: 'phx_join',
-                        payload: { config: { postgres_changes: [{ event: '*', schema: 'public', table: 'bcm_storage' }] } },
-                        ref: '1'
-                    }));
-                    // Heartbeat cada 25s para mantener la conexión
-                    heartbeat = setInterval(() => {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'hb' }));
-                        }
-                    }, 25000);
-                };
-
-                ws.onmessage = (evt) => {
-                    try {
-                        const msg = JSON.parse(evt.data);
-                        // Cambio en bcm_storage
-                        if (msg.event === 'postgres_changes' && msg.payload?.data) {
-                            const { record, old_record, type } = msg.payload.data;
-                            const changedKey = record?.key || old_record?.key;
-                            const changedValue = record?.value;
-                            if (changedKey && changedValue && type !== 'DELETE') {
-                                applyRemoteKey(changedKey, changedValue);
-                            }
-                        }
-                    } catch { }
-                };
-
-                ws.onclose = () => {
-                    setRealtimeOk(false);
-                    clearInterval(heartbeat);
-                    // Reconectar en 3s si la conexión se cayó
-                    setTimeout(() => { if (!wsCleanup?.closed) connectRealtime(); }, 3000);
-                };
-
-                ws.onerror = () => { ws.close(); };
-
-                wsCleanup = { ws, closed: false, close: () => { wsCleanup.closed = true; clearInterval(heartbeat); ws.close(); } };
-            } catch {
-                // Si WebSocket falla, solo usar polling
-            }
-        }
-
-        connectRealtime();
-
-        // Sync inicial + polling de respaldo cada 10s
-        syncAll();
-        const iv = setInterval(syncAll, 60000); // cada 60s en vez de 10s
-        const onFocus = () => syncAll();
+        // Sync inicial y al volver el foco
+        syncRemoto();
+        const iv = setInterval(syncRemoto, 30000);
+        const onFocus = () => syncRemoto();
         window.addEventListener('focus', onFocus);
-      // Recargar datos al volver al foco
-window.addEventListener('focus', () => {
-    if (sbRef.current) {
-        const EID = '00000000-0000-0000-0000-000000000001';
-        sbRef.current.from('obras').select('*').eq('empresa_id', EID)
-            .then(({ data }) => { if (data?.length) setObras(data.map(o => ({ id: o.id, nombre: o.nombre, estado: o.estado || 'curso', avance: o.avance || 0, cierre: o.fecha_cierre || '', ap: o.ubicacion || '', monto: o.monto || '', pagado: o.pagado || '', notas: o.notas || '', fotos: [], archivos: [], gastos: [] }))); });
-        sbRef.current.from('personal').select('*').eq('empresa_id', EID).eq('activo', true)
-            .then(({ data }) => { if (data?.length) setPersonal(data.map(p => ({ id: p.id, nombre: p.nombre, rol: p.rol || '', telefono: p.telefono || '', empresa: 'BelfastCM', foto: p.foto_url || '', obra_id: p.obra_id || '', tareas: [], docs: {} }))); });
-        sbRef.current.from('licitaciones').select('*').eq('empresa_id', EID)
-            .then(({ data }) => { if (data?.length) setLics(data.map(l => ({ id: l.id, nombre: l.nombre, estado: l.estado || 'pendiente', monto: l.monto || '', fecha: l.fecha || '', ap: l.ubicacion || '', notas: l.notas || '', visitas: [], archivos: {} }))); });
-    }
-});
-        window.addEventListener('online', () => { syncAll(); connectRealtime(); });
-
-        // Interceptar el storage.set original para marcar mis propios cambios
-        const origSet = storage.set.bind(storage);
-        storage.set = async (key, value) => {
-            if (key === 'bcm_lics') myLastSave.lics = Date.now();
-            else if (key === 'bcm_obras') myLastSave.obras = Date.now();
-            else if (key === 'bcm_personal') myLastSave.personal = Date.now();
-            // bcm_cfg ya no usa Supabase
-            return origSet(key, value);
-        };
+        window.addEventListener('online', syncRemoto);
 
         return () => {
-            if (wsCleanup) wsCleanup.close();
             clearInterval(iv);
             window.removeEventListener('focus', onFocus);
-            storage.set = origSet; // restaurar
+            window.removeEventListener('online', syncRemoto);
         };
     }, [loaded, user]);
 
