@@ -191,7 +191,7 @@ const EMAIL_IA = "ia.belfastcm@gmail.com";
 // 'belfast' → entra directo a Belfast
 // 'vv' → entra directo a V+V
 const PERMISOS_EMPRESA = {
-    'sebas': 'ambas',
+    'sebastian': 'ambas',
     'sebas@belfast.cm.com': 'ambas',
     'sebas@belfastcm.com': 'ambas',
 };
@@ -5949,7 +5949,7 @@ function GestionUsuarios() {
 // Cada usuario: { id, usuario, passHash, nombre, empresa ('belfast'|'vv'|'ambas'), creado }
 // El super admin puede ver y gestionar todos los usuarios
 
-const SUPER_ADMIN = { usuario: 'sebas', pass: 'Belfast2025!', empresa: 'ambas', nombre: 'Sebastián', nivel: 'superadmin' };
+const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'ambas', nombre: 'Sebastián', nivel: 'superadmin' };
 const MAX_USUARIOS = 8;
 
 // Hash simple (no criptográfico pero suficiente para uso interno)
@@ -6287,8 +6287,9 @@ export default function App() {
 
     function handleCambiarEmpresa() {
         if (authUser?.empresa === 'ambas') {
-            try { localStorage.removeItem('bcm_auth_empresa'); } catch {}
-            setEmpresa(null);
+            const nueva = empresa === 'belfast' ? 'vv' : 'belfast';
+            try { localStorage.setItem('bcm_auth_empresa', nueva); } catch {}
+            setEmpresa(nueva);
         }
     }
 
