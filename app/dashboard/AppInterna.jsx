@@ -1844,16 +1844,33 @@ function Personal({ personal, setPersonal, obras, cfg }) {
 
                         {/* TAB INFO */}
                         {tabActivo === 'info' && (<div style={{ padding: "14px 14px 14px" }}>
-                            <div style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "flex-start" }}>
+                            <div style={{ display: "flex", gap: 14, marginBottom: 12, alignItems: "flex-start" }}>
                                 <div style={{ flexShrink: 0 }}>
                                     <input type="file" accept="image/*" style={{ display: "none" }} ref={el => fotoRefs.current[p.id] = el} onChange={async e => { if (e.target.files[0]) { const dataUrl = await toDataUrl(e.target.files[0]); upd(p.id, { foto: dataUrl }); const fotoId = uid(); uploadFoto(dataUrl, `personal/${p.id}`, fotoId).then(remoteUrl => { if (remoteUrl && remoteUrl !== dataUrl) upd(p.id, { foto: remoteUrl }); }).catch(() => {}); } e.target.value = ""; }} />
                                     <Av p={p} size={76} showCam onClick={() => fotoRefs.current[p.id]?.click()} />
                                 </div>
                                 <div style={{ flex: 1 }}>
+                                    <Lbl>Nombre</Lbl>
+                                    <input value={p.nombre || ""} onChange={e => upd(p.id, { nombre: e.target.value })} placeholder="Nombre completo" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text, marginBottom: 8 }} />
+                                    <Lbl>Rol</Lbl>
+                                    <select value={p.rol || ""} onChange={e => upd(p.id, { rol: e.target.value })} style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 12px", fontSize: 13, color: T.text }}>
+                                        {ROLES.map(r => <option key={r}>{r}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                                <div>
+                                    <Lbl>Obra asignada</Lbl>
+                                    <select value={p.obra_id || ""} onChange={e => upd(p.id, { obra_id: e.target.value })} style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 10px", fontSize: 12, color: T.text }}>
+                                        <option value="">Sin asignar</option>
+                                        {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                                    </select>
+                                </div>
+                                <div>
                                     <Lbl>WhatsApp</Lbl>
                                     <div style={{ display: "flex", gap: 6 }}>
-                                        <input type="tel" value={p.telefono || ""} onChange={e => upd(p.id, { telefono: e.target.value.replace(/\D/g, '') })} placeholder="5491155556666" style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "9px 12px", fontSize: 13, color: T.text }} />
-                                        {p.telefono && <a href={`https://wa.me/${p.telefono}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}><button style={{ background: "#25D366", border: "none", borderRadius: 9, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "white", fontSize: 14 }}>💬</button></a>}
+                                        <input type="tel" value={p.telefono || ""} onChange={e => upd(p.id, { telefono: e.target.value.replace(/\D/g, '') })} placeholder="5491155556666" style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "8px 10px", fontSize: 12, color: T.text }} />
+                                        {p.telefono && <a href={`https://wa.me/${p.telefono}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}><button style={{ background: "#25D366", border: "none", borderRadius: 9, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "white", fontSize: 13 }}>💬</button></a>}
                                     </div>
                                 </div>
                             </div>
@@ -4733,7 +4750,7 @@ function RecuperarFotos({ obras, setObras, lics, setLics }) {
 }
 
 // ── MAS (Más opciones + Configuración) ───────────────────────────────
-function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics }) {
+function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics, empresa, onCambiarEmpresa }) {
     const [showCfg, setShowCfg] = useState(false);
     const [cfgSection, setCfgSection] = useState('cuenta');
 
@@ -4805,6 +4822,20 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                     <span style={{ fontSize: 18, color: T.muted }}>→</span>
                 </div>
             </Card>
+            {onCambiarEmpresa && (
+                <Card style={{ padding: "14px 16px", cursor: "pointer", marginBottom: 10 }} onClick={onCambiarEmpresa}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: 10, background: empresa === 'vv' ? '#EFF6FF' : '#DCFCE7', color: empresa === 'vv' ? '#1D4ED8' : '#16A34A', display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Cambiar empresa</div>
+                            <div style={{ fontSize: 11, color: T.muted }}>Ir a {empresa === 'vv' ? 'BelfastCM' : 'V+V Construcciones'}</div>
+                        </div>
+                        <span style={{ fontSize: 18, color: T.muted }}>→</span>
+                    </div>
+                </Card>
+            )}
             <Card style={{ padding: "14px 16px", cursor: "pointer" }} onClick={logout}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 42, height: 42, borderRadius: 10, background: "#FEF2F2", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -5068,7 +5099,7 @@ class ErrorBoundary extends React.Component {
     }
 }
 
-function AppInner({ supaSession, empresa }) {
+function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     // Config base según empresa seleccionada
     const empresaConfig = empresa === 'vv' ? {
         empresa: 'V+V Construcciones',
@@ -5604,7 +5635,7 @@ function AppInner({ supaSession, empresa }) {
                 {view === 'personal' && <Personal personal={personal} setPersonal={setPersonal} obras={obras} cfg={cfg} />}
                 {view === 'cargar' && <CargarView obras={obras} setObras={setObras} cargarState={cargarState} setCargarState={setCargarState} apiKey={apiKey} />}
                 {view === 'chat' && <Chat lics={lics} setLics={setLics} obras={obras} setObras={setObras} personal={personal} setPersonal={setPersonal} planes={planes} setPlanes={setPlanes} alerts={alerts} cfg={cfg} apiKey={apiKey} setView={setView} SP={SP} />}
-                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} />}
+                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} empresa={empresa} onCambiarEmpresa={onCambiarEmpresa} />}
                 {view === 'presupuesto_materiales' && <PresupuestoView tipo="materiales" setView={setView} />}
                 {view === 'presupuesto_subcontratos' && <PresupuestoView tipo="subcontratos" setView={setView} />}
                 {view === 'seguimiento' && <Seguimiento alerts={alerts} setAlerts={setAlerts} setView={setView} />}
@@ -5642,8 +5673,8 @@ function AppInner({ supaSession, empresa }) {
 }
 
 // Wrapper con ErrorBoundary para evitar pantallas blancas
-function AppInterna({ supaSession, empresa }) {
-    return <ErrorBoundary><AppInner supaSession={supaSession} empresa={empresa} /></ErrorBoundary>;
+function AppInterna({ supaSession, empresa, onCambiarEmpresa }) {
+    return <ErrorBoundary><AppInner supaSession={supaSession} empresa={empresa} onCambiarEmpresa={onCambiarEmpresa} /></ErrorBoundary>;
 }
 
 
@@ -5806,5 +5837,5 @@ export default function App() {
 
   if (!empresa) return <SelectorEmpresa session={session} onSelect={setEmpresa} onLogout={() => { getSB().auth.signOut(); setSession(null); }} />
 
-  return <AppInterna supaSession={session} empresa={empresa} />
+  return <AppInterna supaSession={session} empresa={empresa} onCambiarEmpresa={() => setEmpresa(null)} />
 }
