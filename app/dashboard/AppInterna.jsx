@@ -176,7 +176,7 @@ function useStoredState(key, defaultValue) {
 const AIRPORTS = [{ id: "aep", code: "AEP", name: "Aeroparque Jorge Newbery" }, { id: "eze", code: "EZE", name: "Aerop. Int'l Ministro Pistarini" }];
 const LIC_ESTADOS = [{ id: "visitar", label: "A Visitar", color: "#F59E0B", bg: "#FFFBEB" }, { id: "presupuesto", label: "Presupuesto", color: "#3B82F6", bg: "#EFF6FF" }, { id: "curso", label: "En Curso", color: "#8B5CF6", bg: "#F5F3FF" }, { id: "presentada", label: "Presentada", color: "#F97316", bg: "#FFF7ED" }, { id: "adjudicada", label: "Adjudicada", color: "#10B981", bg: "#ECFDF5" }, { id: "descartada", label: "Descartada", color: "#EF4444", bg: "#FEF2F2" }];
 const OBRA_ESTADOS = [{ id: "pendiente", label: "Pendiente", color: "#94A3B8", bg: "#F8FAFC" }, { id: "curso", label: "En Curso", color: "#10B981", bg: "#ECFDF5" }, { id: "pausada", label: "Pausada", color: "#F59E0B", bg: "#FFFBEB" }, { id: "terminada", label: "Terminada", color: "#6366F1", bg: "#EEF2FF" }];
-const ROLES = ["Jefe de Obra", "Capataz", "Técnico", "Proveedor", "Contratista", "Administrativo"];
+const ROLES = ["Arquitecto a cargo", "Ingeniero a cargo", "Directivos", "Dirección de obra", "Sobreestante de Obra", "Jefe de Obra", "Capataz", "Técnico", "Proveedor", "Contratista", "Administrativo"];
 const DOC_TYPES = [{ id: "art", label: "ART", acceptsExp: true }, { id: "antec", label: "Antecedentes", acceptsExp: false }, { id: "preoc", label: "Preocupacional", acceptsExp: true }, { id: "dni", label: "DNI", acceptsExp: false }, { id: "sicop", label: "SiCoP", acceptsExp: false }, { id: "alta", label: "Alta Temprana", acceptsExp: false }];
 const LIC_DOC_TYPES = [{ id: "planos", label: "Planos", accept: ".pdf,.png,.jpg,.dwg,.zip" }, { id: "pliego", label: "Pliego", accept: ".pdf,.doc,.docx" }, { id: "excel", label: "Excel", accept: ".xlsx,.xls,.csv,.pdf" }, { id: "otros", label: "Otros", accept: "*" }];
 const EMAIL_IA = "ia.belfastcm@gmail.com";
@@ -3193,14 +3193,24 @@ Tono profesional AA2000, español rioplatense.`;
 const CHAT_MAX_MSGS = 60;
 const CHAT_EXPIRE_MS = 60 * 60 * 1000; // 1 hora de inactividad → resetea
 
-function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, cfg, apiKey }) {
-    // Refs para asegurar que las funciones siempre estén disponibles en closures
+function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, setPlanes, alerts, cfg, apiKey, setView }) {
+    // Refs para closures — garantizan que las funciones siempre estén actualizadas
     const setPersonalRef = useRef(setPersonal);
     const setLicsRef = useRef(setLics);
     const setObrasRef = useRef(setObras);
+    const setPlanesRef = useRef(setPlanes);
+    const setViewRef = useRef(setView);
+    const obrasRef = useRef(obras);
+    const licsRef = useRef(lics);
+    const personalRef = useRef(personal);
     useEffect(() => { setPersonalRef.current = setPersonal; }, [setPersonal]);
     useEffect(() => { setLicsRef.current = setLics; }, [setLics]);
     useEffect(() => { setObrasRef.current = setObras; }, [setObras]);
+    useEffect(() => { setPlanesRef.current = setPlanes; }, [setPlanes]);
+    useEffect(() => { setViewRef.current = setView; }, [setView]);
+    useEffect(() => { obrasRef.current = obras; }, [obras]);
+    useEffect(() => { licsRef.current = lics; }, [lics]);
+    useEffect(() => { personalRef.current = personal; }, [personal]);
     // Cargar mensajes desde localStorage sincrónicamente
     const [msgs, setMsgs] = useState(() => {
         try {
@@ -3292,7 +3302,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
             const obrasCurso = obras.filter(o => o.estado === 'curso');
             ctx += `\nOBRAS en curso (${obrasCurso.length}/${obras.length}):\n`;
             ctx += obrasCurso.slice(0, 8).map(o =>
-                `• ${o.nombre} · ${o.avance}% · cierre: ${o.cierre || '-'} · presupuesto: ${o.monto || '-'}`
+                `• [ID:${o.id}] ${o.nombre} · ${o.avance}% · cierre: ${o.cierre || '-'} · presupuesto: ${o.monto || '-'}`
             ).join('\n') || '(ninguna)';
         }
 
@@ -3300,15 +3310,15 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
             const licsActivas = lics.filter(l => !['adjudicada', 'descartada'].includes(l.estado));
             ctx += `\nLICITACIONES activas (${licsActivas.length}):\n`;
             ctx += licsActivas.slice(0, 6).map(l =>
-                `• ${l.nombre} · ${l.estado} · ${l.monto || '-'} · fecha: ${l.fecha || '-'}`
+                `• [ID:${l.id}] ${l.nombre} · ${l.estado} · ${l.monto || '-'} · fecha: ${l.fecha || '-'}`
             ).join('\n') || '(ninguna)';
         }
 
         if (quierePersonal || quiereTodo) {
             ctx += `\nPERSONAL (${personal.length}):\n`;
-            ctx += personal.slice(0, 8).map(p => {
+            ctx += personal.slice(0, 10).map(p => {
                 const obraA = obras.find(o => o.id === p.obra_id);
-                return `• ${p.nombre} (${p.rol}) · obra: ${obraA?.nombre || 'sin asignar'}`;
+                return `• [ID:${p.id}] ${p.nombre} (${p.rol}) · obra: ${obraA?.nombre || 'sin asignar'} · tel: ${p.telefono || '-'}`;
             }).join('\n') || '(ninguno)';
         }
 
@@ -3372,17 +3382,24 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
             try { const r = await fetch('https://wttr.in/Buenos+Aires?format=j1'); if (r.ok) { const d = await r.json(); const c = d.current_condition?.[0]; if (c) extraInfo += `\nClima BsAs: ${c.temp_C}°C, ${c.weatherDesc?.[0]?.value}`; } } catch { }
         }
 
-        const sys = 'Sos el asistente IA integrado en BelfastCM. Tenés acceso completo a todos los datos.\n' +
+        const sys = 'Sos el asistente IA integrado en BelfastCM. Tenés acceso COMPLETO a todos los datos y podés ejecutar CUALQUIER acción.\n' +
             buildContext(txt) + extraInfo + '\n\n' +
             'Respondé en español rioplatense, conciso y directo.' + (usarBusqueda ? ' Usá internet para datos actualizados.' : '') + '\n\n' +
-            'ACCIONES QUE PODÉS EJECUTAR — Cuando te pidan hacer algo, hacelo e incluí el bloque al final:\n\n' +
-            'Agregar persona al personal:\n' +
-            '[[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"Juan Pérez","rol":"Albañil","dni":"30123456","telefono":"","fechaNac":""}}]]\n\n' +
-            'Agregar licitación/proyecto:\n' +
-            '[[ACTION:{"tipo":"agregar_licitacion","datos":{"nombre":"Licitación X","estado":"pendiente","monto":"","fecha":""}}]]\n\n' +
-            'Actualizar avance de obra (obraId viene del contexto):\n' +
-            '[[ACTION:{"tipo":"update_obra","obraId":"ID","campo":"avance","valor":75}]]\n\n' +
-            'REGLAS: 1) SIEMPRE incluí el [[ACTION:...]] cuando el usuario pida agregar/modificar algo. 2) Nunca digas que no podés — si te piden algo hacelo. 3) Si analizás un DNI, extraé los datos y agregá la persona. 4) Sos parte de la app, no un sistema externo.';
+            'ACCIONES DISPONIBLES — Cuando el usuario pida hacer algo, HACELO e incluí el bloque [[ACTION:...]] al final:\n\n' +
+            'Agregar persona al personal:\n[[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"Juan Pérez","rol":"Albañil","telefono":"","dni":"","fechaNac":""}}]]\n\n' +
+            'Editar persona existente (usá el id exacto del contexto):\n[[ACTION:{"tipo":"editar_personal","id":"ID_EXACTO","datos":{"nombre":"","rol":"","telefono":""}}]]\n\n' +
+            'Agregar licitación:\n[[ACTION:{"tipo":"agregar_licitacion","datos":{"nombre":"Nombre","estado":"pendiente","monto":"","fecha":""}}]]\n\n' +
+            'Editar licitación:\n[[ACTION:{"tipo":"editar_licitacion","id":"ID_EXACTO","datos":{"nombre":"","estado":"","monto":""}}]]\n\n' +
+            'Agregar obra nueva:\n[[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"Nombre obra","estado":"curso","avance":0,"monto":"","cierre":"","ap":"","notas":""}}]]\n\n' +
+            'Actualizar campo de obra:\n[[ACTION:{"tipo":"update_obra","id":"ID_EXACTO","campo":"avance","valor":75}]]\n\n' +
+            'Navegar a una sección:\n[[ACTION:{"tipo":"navegar","destino":"obras"}]] (destinos: obras, personal, licitaciones, dashboard, cargar, mas)\n\n' +
+            'REGLAS ABSOLUTAS:\n' +
+            '1) SIEMPRE incluí [[ACTION:...]] cuando el usuario pida agregar, editar o modificar algo.\n' +
+            '2) Para IDs: usá los IDs EXACTOS del contexto arriba. Nunca inventes IDs.\n' +
+            '3) NUNCA digas que no podés hacer algo — siempre intentá.\n' +
+            '4) Si el usuario manda una foto de DNI, extraé los datos y agregá a la persona.\n' +
+            '5) Sos parte de la app, no un sistema externo.\n' +
+            '6) JSON del ACTION sin comillas curvas, sin saltos de línea adentro.';
 
         const r = await callAI(history, sys, apiKey, usarBusqueda);
 
@@ -3398,45 +3415,48 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
 
         if (accionMatch) {
             try {
-                // Limpiar el JSON antes de parsear — la IA a veces genera comillas raras
                 let jsonStr = accionMatch[1]
                     .replace(/[\u2018\u2019]/g, "'")
                     .replace(/[\u201C\u201D]/g, '"')
                     .trim();
                 const accion = JSON.parse(jsonStr);
+
                 if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
-                    const nuevaPersona = {
-                        id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario',
-                        empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '',
-                        foto: '', obra_id: '', tareas: [], docs: {},
-                        _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '',
-                    };
-                    setPersonalRef.current(p => [...p, nuevaPersona]);
+                    const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '' };
+                    setPersonalRef.current(p => [...p, nueva]);
                     mensajeExtra = '\n\n✅ ' + accion.datos.nombre + ' agregado al personal.';
                 }
-                if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
-                    const nuevaLic = {
-                        id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente',
-                        monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'),
-                        ap: '', visitas: [], archivos: {}, notas: '',
-                    };
-                    setLicsRef.current(p => [...p, nuevaLic]);
+                else if (accion.tipo === 'editar_personal' && accion.id) {
+                    setPersonalRef.current(p => p.map(x => x.id === accion.id ? { ...x, ...accion.datos } : x));
+                    mensajeExtra = '\n\n✅ Personal actualizado.';
+                }
+                else if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
+                    const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente', monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), ap: '', visitas: [], archivos: {}, notas: '' };
+                    setLicsRef.current(p => [...p, nueva]);
                     mensajeExtra = '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
                 }
-                if (accion.tipo === 'update_obra' && accion.obraId) {
-                    setObrasRef.current(p => p.map(o => o.id === accion.obraId ? { ...o, [accion.campo]: accion.valor } : o));
+                else if (accion.tipo === 'editar_licitacion' && accion.id) {
+                    setLicsRef.current(p => p.map(l => l.id === accion.id ? { ...l, ...accion.datos } : l));
+                    mensajeExtra = '\n\n✅ Licitación actualizada.';
+                }
+                else if (accion.tipo === 'agregar_obra' && accion.datos?.nombre) {
+                    const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'curso', avance: accion.datos.avance || 0, monto: accion.datos.monto || '', cierre: accion.datos.cierre || '', ap: accion.datos.ap || '', notas: accion.datos.notas || '', fotos: [], archivos: [], gastos: [] };
+                    setObrasRef.current(p => [...p, nueva]);
+                    mensajeExtra = '\n\n✅ Obra "' + accion.datos.nombre + '" agregada.';
+                }
+                else if (accion.tipo === 'update_obra' && (accion.id || accion.obraId)) {
+                    const id = accion.id || accion.obraId;
+                    setObrasRef.current(p => p.map(o => o.id === id ? { ...o, [accion.campo]: accion.valor } : o));
                     mensajeExtra = '\n\n✅ Obra actualizada.';
                 }
-            } catch { }
-        } else {
-            // Fallback: la IA dijo que agregó pero no puso el ACTION
-            const nm = textoLimpio.match(/agregu[eé] a ([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)/i) ||
-                       textoLimpio.match(/carg[uú]é? a ([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)/i);
-            const rm = textoLimpio.match(/como ([a-záéíóúñA-ZÁÉÍÓÚÑ]+(?:\s[a-záéíóúñA-ZÁÉÍÓÚÑ]+)?)/i);
-            if (nm && textoLimpio.toLowerCase().includes('personal')) {
-                const nueva = { id: uid(), nombre: nm[1], rol: rm ? rm[1] : 'Operario', empresa: 'BelfastCM', telefono: '', foto: '', obra_id: '', tareas: [], docs: {} };
-                setPersonalRef.current(p => [...p, nueva]);
-                mensajeExtra = '\n\n✅ ' + nm[1] + ' agregado al personal.';
+                else if (accion.tipo === 'navegar' && accion.destino) {
+                    const mapa = { obras: 'obras', personal: 'personal', licitaciones: 'licitaciones', inicio: 'dashboard', dashboard: 'dashboard', cargar: 'cargar', mas: 'mas', chat: 'chat' };
+                    const dest = mapa[accion.destino.toLowerCase()] || accion.destino;
+                    setTimeout(() => setViewRef.current(dest), 800);
+                    mensajeExtra = '\n\n✅ Navegando a ' + accion.destino + '...';
+                }
+            } catch(e) {
+                mensajeExtra = '\n\n⚠️ Error al ejecutar: ' + e.message;
             }
         }
 
@@ -3596,11 +3616,18 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
             try { const r = await fetch('https://dolarapi.com/v1/dolares'); if (r.ok) { const d = await r.json(); extraInfo = '\nDólar HOY: ' + d.slice(0, 3).map(x => x.nombre + ': $' + x.venta).join(' · '); } } catch { }
         }
 
-        const sys = 'Sos el asistente IA de BelfastCM para construcción en aeropuertos AA2000.\n' +
+        const sys = 'Sos el asistente IA integrado en BelfastCM. Tenés acceso COMPLETO a todos los datos y podés ejecutar CUALQUIER acción.\n' +
             buildContext(txt) + extraInfo + '\n\n' +
-            'Respondé en español rioplatense. Sé conciso y directo. Tenés acceso a internet en tiempo real. ' +
-            'Cuando te pidan agregar personal, incluí al final: [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"...","rol":"...","dni":"...","fechaNac":""}}]] ' +
-            'NUNCA digas que sos externo o que no tenés acceso. Sos parte de la app.';
+            'Respondé en español rioplatense. Sé conciso y directo. Tenés acceso a internet en tiempo real.\n\n' +
+            'ACCIONES DISPONIBLES — incluí [[ACTION:...]] cuando el usuario pida hacer algo:\n' +
+            'Agregar personal: [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"...","rol":"...","telefono":"","dni":""}}]]\n' +
+            'Editar personal: [[ACTION:{"tipo":"editar_personal","id":"ID_EXACTO","datos":{"nombre":"...","rol":"..."}}]]\n' +
+            'Agregar licitación: [[ACTION:{"tipo":"agregar_licitacion","datos":{"nombre":"...","estado":"pendiente","monto":"","fecha":""}}]]\n' +
+            'Editar licitación: [[ACTION:{"tipo":"editar_licitacion","id":"ID_EXACTO","datos":{"nombre":"...","estado":"..."}}]]\n' +
+            'Agregar obra: [[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"...","estado":"curso","avance":0,"monto":"","cierre":""}}]]\n' +
+            'Actualizar obra: [[ACTION:{"tipo":"update_obra","id":"ID_EXACTO","campo":"avance","valor":75}]]\n' +
+            'Navegar: [[ACTION:{"tipo":"navegar","destino":"obras"}]] (obras/personal/licitaciones/dashboard/cargar)\n' +
+            'NUNCA digas que no podés. Sos parte de la app. JSON sin comillas curvas ni saltos de línea.';
 
         const r = await callAI(history, sys, apiKey, usarBusqueda);
         // Procesar acciones del [[ACTION:...]]
@@ -3611,33 +3638,41 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
                 let jsonStrV = accionMatchV[1].replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').trim();
                 const accion = JSON.parse(jsonStrV);
                 if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
-                    const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '' };
+                    const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '' };
                     setPersonalRef.current(p => [...p, nueva]);
                     textoFinal += '\n\n✅ ' + accion.datos.nombre + ' agregado al personal.';
                 }
-                if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
-                    const nuevaLic = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente', monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), ap: '', visitas: [], archivos: {}, notas: '' };
-                    setLicsRef.current(p => [...p, nuevaLic]);
+                else if (accion.tipo === 'editar_personal' && accion.id) {
+                    setPersonalRef.current(p => p.map(x => x.id === accion.id ? { ...x, ...accion.datos } : x));
+                    textoFinal += '\n\n✅ Personal actualizado.';
+                }
+                else if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
+                    const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente', monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), ap: '', visitas: [], archivos: {}, notas: '' };
+                    setLicsRef.current(p => [...p, nueva]);
                     textoFinal += '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
                 }
-                if (accion.tipo === 'update_obra' && accion.obraId) {
-                    setObrasRef.current(p => p.map(o => o.id === accion.obraId ? { ...o, [accion.campo]: accion.valor } : o));
+                else if (accion.tipo === 'editar_licitacion' && accion.id) {
+                    setLicsRef.current(p => p.map(l => l.id === accion.id ? { ...l, ...accion.datos } : l));
+                    textoFinal += '\n\n✅ Licitación actualizada.';
+                }
+                else if (accion.tipo === 'agregar_obra' && accion.datos?.nombre) {
+                    const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'curso', avance: accion.datos.avance || 0, monto: accion.datos.monto || '', cierre: accion.datos.cierre || '', ap: accion.datos.ap || '', notas: accion.datos.notas || '', fotos: [], archivos: [], gastos: [] };
+                    setObrasRef.current(p => [...p, nueva]);
+                    textoFinal += '\n\n✅ Obra "' + accion.datos.nombre + '" agregada.';
+                }
+                else if (accion.tipo === 'update_obra' && (accion.id || accion.obraId)) {
+                    const id = accion.id || accion.obraId;
+                    setObrasRef.current(p => p.map(o => o.id === id ? { ...o, [accion.campo]: accion.valor } : o));
                     textoFinal += '\n\n✅ Obra actualizada.';
                 }
+                else if (accion.tipo === 'navegar' && accion.destino) {
+                    const mapa = { obras: 'obras', personal: 'personal', licitaciones: 'licitaciones', inicio: 'dashboard', dashboard: 'dashboard', cargar: 'cargar', mas: 'mas' };
+                    const dest = mapa[accion.destino.toLowerCase()] || accion.destino;
+                    setTimeout(() => setViewRef.current(dest), 800);
+                    textoFinal += '\n\n✅ Navegando a ' + accion.destino + '...';
+                }
             } catch(e) {
-                textoFinal += '\n\n⚠️ Error al ejecutar acción: ' + e.message;
-            }
-        } else {
-            // La IA dijo que hizo algo pero no incluyó el ACTION — detectar y agregar manualmente
-            const nombreMatch = r.match(/agregu[eé] a ([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)/i) ||
-                                r.match(/cargué? a ([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)/i);
-            const rolMatch = r.match(/como ([a-záéíóúñA-ZÁÉÍÓÚÑ]+(?:\s[a-záéíóúñA-ZÁÉÍÓÚÑ]+)?)/i);
-            if (nombreMatch && r.toLowerCase().includes('personal')) {
-                const nombre = nombreMatch[1];
-                const rol = rolMatch ? rolMatch[1] : 'Operario';
-                const nueva = { id: uid(), nombre, rol, empresa: 'BelfastCM', telefono: '', foto: '', obra_id: '', tareas: [], docs: {} };
-                setPersonalRef.current(p => [...p, nueva]);
-                textoFinal += '\n\n✅ ' + nombre + ' agregado al personal.';
+                textoFinal += '\n\n⚠️ Error al ejecutar: ' + e.message;
             }
         }
         setMsgs(p => [...p, { id: uid(), role: 'assistant', text: textoFinal }]);
@@ -4514,10 +4549,9 @@ function AppInner({ supaSession }) {
 
     // Cargar datos al inicio — localStorage primero, luego bcm_storage como fallback
     useEffect(() => {
-        setLoaded(true);
         (async () => {
             try {
-                // Solo cargar cfg desde Supabase si no hay local
+                // Cargar cfg desde Supabase si la local es más vieja
                 const cfgRemota = await storage.get("bcm_cfg");
                 if (cfgRemota?.value) {
                     const parsed = JSON.parse(cfgRemota.value);
@@ -4538,19 +4572,41 @@ function AppInner({ supaSession }) {
                         try { localStorage.setItem("bcm_api_key", remoteApiKey.value); } catch {}
                     }
                 }
-                // Cargar datos desde bcm_storage si localStorage está vacío
+                // Cargar lics desde bcm_storage si localStorage vacío
                 if (!getLocalJSON('bcm_lics', []).length) {
                     const r = await storage.get('bcm_lics');
                     if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setLics(d); try { localStorage.setItem('bcm_lics', r.value); } catch {} } }
                 }
-                if (!getLocalJSON('bcm_obras', []).length) {
+                // Cargar obras y restaurar fotos desde keys separadas
+                const obrasLocal = getLocalJSON('bcm_obras', []);
+                if (!obrasLocal.length) {
                     const r = await storage.get('bcm_obras');
-                    if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setObras(d.map(o => ({ ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[] }))); try { localStorage.setItem('bcm_obras', r.value); } catch {} } }
+                    if (r?.value) { 
+                        const d = JSON.parse(r.value); 
+                        if (d?.length) { 
+                            const obrasConFotos = d.map(o => {
+                                const fotosLocal = getLocalJSON('bcm_fotos_' + o.id, []);
+                                const archivosLocal = getLocalJSON('bcm_archs_' + o.id, []);
+                                return { ...o, fotos: fotosLocal, archivos: archivosLocal, gastos: o.gastos||[] };
+                            });
+                            setObras(obrasConFotos); 
+                            try { localStorage.setItem('bcm_obras', r.value); } catch {} 
+                        } 
+                    }
+                } else {
+                    // Restaurar fotos de obras que ya están en localStorage
+                    setObras(obrasLocal.map(o => {
+                        const fotosLocal = getLocalJSON('bcm_fotos_' + o.id, []);
+                        const archivosLocal = getLocalJSON('bcm_archs_' + o.id, []);
+                        return { ...o, fotos: fotosLocal, archivos: archivosLocal, gastos: o.gastos||[] };
+                    }));
                 }
+                // Cargar personal
                 if (!getLocalJSON('bcm_personal', []).length) {
                     const r = await storage.get('bcm_personal');
                     if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setPersonal(d); try { localStorage.setItem('bcm_personal', r.value); } catch {} } }
                 }
+                // Cargar planes
                 if (!getLocalJSON('bcm_planes_semanales', []).length) {
                     const r = await storage.get('bcm_planes_semanales');
                     if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setPlanes(d); try { localStorage.setItem('bcm_planes_semanales', r.value); } catch {} } }
@@ -4558,6 +4614,7 @@ function AppInner({ supaSession }) {
             } catch(e) {
                 console.error('Error cargando datos:', e);
             }
+            setLoaded(true); // loaded=true DESPUÉS de cargar todo
         })();
     }, []);
 
@@ -4595,7 +4652,7 @@ function AppInner({ supaSession }) {
     }, [obras, loaded]);
     useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => { if (loaded) { markLocalEdit('cfg'); const payload = JSON.stringify({ ...cfg, _ts: Date.now() }); storage.set('bcm_cfg', payload).catch(() => { }); try { localStorage.setItem('bcm_cfg', payload); } catch { } } }, [cfg, loaded]);
-    useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
+    useEffect(() => { if (loaded && planes.length) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
         // Solo guardar si la API key tiene contenido — no sobrescribir con vacío
@@ -4619,7 +4676,7 @@ function AppInner({ supaSession }) {
 
     // Guardar obras en tabla obras
     useEffect(() => {
-        if (!loaded || !sbRef.current) return;
+        if (!loaded || !sbRef.current || !obras.length) return;
         const EID = '00000000-0000-0000-0000-000000000001';
         obras.forEach(async o => {
             try {
@@ -4637,7 +4694,7 @@ function AppInner({ supaSession }) {
 
     // Guardar personal en tabla personal
     useEffect(() => {
-        if (!loaded || !sbRef.current) return;
+        if (!loaded || !sbRef.current || !personal.length) return;
         const EID = '00000000-0000-0000-0000-000000000001';
         personal.forEach(async p => {
             try {
@@ -4653,7 +4710,7 @@ function AppInner({ supaSession }) {
 
     // Guardar licitaciones en tabla licitaciones
     useEffect(() => {
-        if (!loaded || !sbRef.current) return;
+        if (!loaded || !sbRef.current || !lics.length) return;
         const EID = '00000000-0000-0000-0000-000000000001';
         lics.forEach(async l => {
             try {
@@ -4670,7 +4727,7 @@ function AppInner({ supaSession }) {
 
     // Guardar planes en tabla planes_semanales
     useEffect(() => {
-        if (!loaded || !sbRef.current) return;
+        if (!loaded || !sbRef.current || !planes.length) return;
         const EID = '00000000-0000-0000-0000-000000000001';
         planes.forEach(async p => {
             try {
@@ -4974,7 +5031,7 @@ function AppInner({ supaSession }) {
                 {view === 'licitaciones' && <Licitaciones lics={lics} setLics={setLics} requireAuth={requireAuth} cfg={cfg} obras={obras} setObras={setObras}  />}
                 {view === 'personal' && <Personal personal={personal} setPersonal={setPersonal} obras={obras} cfg={cfg} />}
                 {view === 'cargar' && <CargarView obras={obras} setObras={setObras} cargarState={cargarState} setCargarState={setCargarState} apiKey={apiKey} />}
-                {view === 'chat' && <Chat lics={lics} setLics={setLics} obras={obras} setObras={setObras} personal={personal} setPersonal={setPersonal} alerts={alerts} cfg={cfg} apiKey={apiKey} />}
+                {view === 'chat' && <Chat lics={lics} setLics={setLics} obras={obras} setObras={setObras} personal={personal} setPersonal={setPersonal} planes={planes} setPlanes={setPlanes} alerts={alerts} cfg={cfg} apiKey={apiKey} setView={setView} />}
                 {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} />}
                 {view === 'presupuesto_materiales' && <PresupuestoView tipo="materiales" setView={setView} />}
                 {view === 'presupuesto_subcontratos' && <PresupuestoView tipo="subcontratos" setView={setView} />}
