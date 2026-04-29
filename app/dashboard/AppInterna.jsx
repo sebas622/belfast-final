@@ -1021,7 +1021,7 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
                 licId={detail.id}
                 visitas={detail.visitas || []}
                 onUpdate={nuevasVisitas => {
-                    const key = `bcm_lic_vis_${detail.id}`;
+                    const key = `${SP}lic_vis_${detail.id}`;
                     const json = JSON.stringify(nuevasVisitas);
                     try {
                         localStorage.setItem(key, json);
@@ -1633,7 +1633,7 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
             if (o.id !== id) return o;
             const updated = { ...o, ...patch };
             if (patch.fotos !== undefined) {
-                const key = `bcm_fotos_${id}`;
+                const key = `${SP}fotos_${id}`;
                 const json = JSON.stringify(patch.fotos);
                 try {
                     localStorage.setItem(key, json);
@@ -1644,7 +1644,7 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                 storage.set(key, json).catch(() => { });
             }
             if (patch.archivos !== undefined) {
-                const key = `bcm_archs_${id}`;
+                const key = `${SP}archs_${id}`;
                 try { localStorage.setItem(key, JSON.stringify(patch.archivos)); } catch { }
                 storage.set(key, JSON.stringify(patch.archivos)).catch(() => { });
             }
@@ -1807,7 +1807,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
     useEffect(() => {
         (async () => {
             try {
-                const r = await storage.get('bcm_presentismo');
+                const r = await storage.get((window.__APP_SP||'bcm_')+'presentismo');
                 if (r?.value) { const d = JSON.parse(r.value); setPresentismo(d.registros || {}); }
             } catch { }
             setPresentismoLoaded(true);
@@ -2242,7 +2242,7 @@ function PresupuestoView({ tipo, setView }) {
 
 // ── VIGILANCIA · PRESENTISMO ─────────────────────────────────────────
 function PanelVigilancia({ setView }) {
-    const [camaras, setCamaras] = useStoredState('bcm_camaras', []);
+    const [camaras, setCamaras] = useStoredState((window.__APP_SP||'bcm_')+'camaras', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', url: '', sector: '', ap: 'aep', tipo: 'ip' });
     function add() { if (!form.nombre || !form.url) return; setCamaras(p => [...p, { ...form, id: uid() }]); setForm({ nombre: '', url: '', sector: '', ap: 'aep', tipo: 'ip' }); setShowNew(false); }
@@ -2311,7 +2311,7 @@ async function getCurrentPosition() {
 }
 
 function Presentismo({ personal, setPersonal, obras, setObras, currentUser, setView }) {
-    const [presentismoData, setPresentismoData] = useStoredState('bcm_presentismo', { registros: {}, bioLink: '', trackingAuto: false });
+    const [presentismoData, setPresentismoData] = useStoredState((window.__APP_SP||'bcm_')+'presentismo', { registros: {}, bioLink: '', trackingAuto: false });
     const registros = presentismoData.registros || {};
     const bioLink = presentismoData.bioLink || '';
     const trackingAuto = !!presentismoData.trackingAuto;
@@ -2549,7 +2549,7 @@ function Presentismo({ personal, setPersonal, obras, setObras, currentUser, setV
 
 // ── ARCHIVOS · SEGUIMIENTO · RESUMEN ────────────────────────────────
 function Archivos({ setView }) {
-    const [files, setFiles] = useStoredState('bcm_archivos', []);
+    const [files, setFiles] = useStoredState((window.__APP_SP||'bcm_')+'archivos', []);
     const inputRef = useRef(null);
 
     async function handleUp(e) {
@@ -2642,7 +2642,7 @@ function CotizacionView({ setView, apiKey, cfg }) {
     const [tipologia, setTipologia] = useState('refaccion');
     const [loading, setLoading] = useState(false);
     const [resultado, setResultado] = useState(null);
-    const [historial, setHistorial] = useStoredState('bcm_cotizaciones', []);
+    const [historial, setHistorial] = useStoredState((window.__APP_SP||'bcm_')+'cotizaciones', []);
     const camRef = useRef(null);
     const galRef = useRef(null);
 
@@ -2986,7 +2986,7 @@ function MensajesView({ setView, currentUser, personal }) {
 
     async function loadMensajes() {
         try {
-            const r = await storage.get('bcm_mensajes');
+            const r = await storage.get((window.__APP_SP||'bcm_')+'mensajes');
             if (r?.value) setMensajes(JSON.parse(r.value));
         } catch { }
         setLoaded(true);
@@ -3002,14 +3002,14 @@ function MensajesView({ setView, currentUser, personal }) {
         const nuevo = { id: uid(), de: myId, deName: myName, para: selUser.id, paraName: selUser.nombre, txt: txt.trim(), fecha: new Date().toISOString(), leido: false };
         const actualizados = [...mensajes, nuevo];
         setMensajes(actualizados); setTxt('');
-        try { await storage.set('bcm_mensajes', JSON.stringify(actualizados)); } catch { }
+        try { await storage.set((window.__APP_SP||'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
     }
 
     async function marcarLeidos() {
         if (!selUser) return;
         const actualizados = mensajes.map(m => (m.para === myId && m.de === selUser.id && !m.leido) ? { ...m, leido: true } : m);
         setMensajes(actualizados);
-        try { await storage.set('bcm_mensajes', JSON.stringify(actualizados)); } catch { }
+        try { await storage.set((window.__APP_SP||'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
     }
     useEffect(() => { if (selUser) marcarLeidos(); }, [selUser]);
 
@@ -3058,7 +3058,7 @@ function MensajesView({ setView, currentUser, personal }) {
 }
 
 function ContactosView({ setView }) {
-    const [contactos, setContactos] = useStoredState('bcm_contactos', []);
+    const [contactos, setContactos] = useStoredState((window.__APP_SP||'bcm_')+'contactos', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', email: '', notas: '' });
     function add() { if (!form.nombre.trim()) return; setContactos(p => [...p, { ...form, id: uid() }]); setForm({ nombre: '', empresa: '', telefono: '', email: '', notas: '' }); setShowNew(false); }
@@ -3097,7 +3097,7 @@ function ContactosView({ setView }) {
 }
 
 function ProveedoresView({ setView }) {
-    const [provs, setProvs] = useStoredState('bcm_proveedores', []);
+    const [provs, setProvs] = useStoredState((window.__APP_SP||'bcm_')+'proveedores', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', rubro: '', telefono: '', email: '', cuit: '', notas: '' });
     const RUBROS = ['Materiales', 'Eléctrico', 'Plomería', 'Aberturas', 'Pintura', 'Herrería', 'Servicios', 'Transporte', 'Otros'];
@@ -3413,7 +3413,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     // Cargar mensajes desde localStorage sincrónicamente
     const [msgs, setMsgs] = useState(() => {
         try {
-            const saved = localStorage.getItem('bcm_chat_msgs');
+            const saved = localStorage.getItem((window.__APP_SP||'bcm_')+'chat_msgs');
             if (!saved) return [];
             const { msgs: m, lastAt } = JSON.parse(saved);
             // Si pasó más de 1 hora sin actividad, empezar de cero
@@ -3425,10 +3425,10 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     const [loading, setLoading] = useState(false);
     const [listening, setListening] = useState(false);
     const [userName, setUserName] = useState(() => {
-        try { return localStorage.getItem('bcm_chat_user') || ''; } catch { return ''; }
+        try { return localStorage.getItem((window.__APP_SP||'bcm_')+'chat_user') || ''; } catch { return ''; }
     });
     const [askedName, setAskedName] = useState(() => {
-        try { return !!localStorage.getItem('bcm_chat_user'); } catch { return false; }
+        try { return !!localStorage.getItem((window.__APP_SP||'bcm_')+'chat_user'); } catch { return false; }
     });
     const [chatLoaded, setChatLoaded] = useState(false);
     const [attach, setAttach] = useState(null);
@@ -3449,7 +3449,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 ...m,
                 attach: m.attach?.isImage ? null : m.attach, // no guardar imágenes
             }));
-            localStorage.setItem('bcm_chat_msgs', JSON.stringify({ msgs: msgsLimpios, lastAt: Date.now() }));
+            localStorage.setItem((window.__APP_SP||'bcm_')+'chat_msgs', JSON.stringify({ msgs: msgsLimpios, lastAt: Date.now() }));
         } catch { }
     }, [msgs]);
 
@@ -3464,18 +3464,18 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     // Botón para limpiar chat manualmente
     function limpiarChat() {
         setMsgs([]);
-        try { localStorage.removeItem('bcm_chat_msgs'); } catch { }
+        try { localStorage.removeItem((window.__APP_SP||'bcm_')+'chat_msgs'); } catch { }
     }
 
     // También consultar Supabase por si fue guardado desde otro dispositivo
     useEffect(() => {
         (async () => {
             try {
-                const r = await storage.get('bcm_chat_user');
+                const r = await storage.get((window.__APP_SP||'bcm_')+'chat_user');
                 if (r?.value && r.value !== userName) {
                     setUserName(r.value);
                     setAskedName(true);
-                    try { localStorage.setItem('bcm_chat_user', r.value); } catch { }
+                    try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', r.value); } catch { }
                 }
             } catch { }
             setChatLoaded(true);
@@ -3543,8 +3543,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             setMsgs(p => [...p, { id: uid(), role: 'user', text: txt }]);
             setUserName(txt);
             setAskedName(true);
-            try { await storage.set('bcm_chat_user', txt); } catch { }
-            try { localStorage.setItem('bcm_chat_user', txt); } catch { }
+            try { await storage.set((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
+            try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
             setInput('');
             setTimeout(() => setMsgs(p => [...p, { id: uid(), role: 'assistant', text: `Hola ${txt}, soy tu asistente IA para BelfastCM. Tengo acceso en tiempo real a todas tus obras, licitaciones, personal y alertas. ¿En qué puedo ayudarte?` }]), 400);
             return;
@@ -3919,7 +3919,7 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
                                 try { localStorage.setItem(SP+'obras', json); } catch {}
                                 storage.set(SP+'obras', json).catch(() => {});
                                 const fotosObra = nuevo.find(o => o.id === accion.obraId)?.fotos || [];
-                                const fkey = 'bcm_fotos_' + accion.obraId;
+                                const fkey = SP+'fotos_' + accion.obraId;
                                 try { localStorage.setItem(fkey, JSON.stringify(fotosObra)); } catch {}
                                 storage.set(fkey, JSON.stringify(fotosObra)).catch(() => {});
                                 texto += '\n\n✅ Foto guardada en "' + obraName + '" → Fotos.' + (gpsData ? '\n📍 ' + (gpsData.direccion || gpsData.lat + ', ' + gpsData.lon) : '');
@@ -3937,7 +3937,7 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
                                 try { localStorage.setItem(SP+'lics', json); } catch {}
                                 storage.set(SP+'lics', json).catch(() => {});
                                 const visitas = nuevo.find(l => l.id === accion.licId)?.visitas || [];
-                                const vkey = 'bcm_lic_vis_' + accion.licId;
+                                const vkey = SP+'lic_vis_' + accion.licId;
                                 try { localStorage.setItem(vkey, JSON.stringify(visitas)); } catch {}
                                 storage.set(vkey, JSON.stringify(visitas)).catch(() => {});
                                 texto += '\n\n✅ Foto guardada en "' + licName + '" → Visitas.' + (gpsData ? '\n📍 ' + (gpsData.direccion || gpsData.lat + ', ' + gpsData.lon) : '');
@@ -3998,12 +3998,12 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
     async function guardarEnArchivos(att) {
         try {
             // Leer del localStorage primero (síncrono y confiable)
-            const localVal = storage.getLocal('bcm_archivos');
+            const localVal = storage.getLocal((window.__APP_SP||'bcm_')+'archivos');
             const arr = localVal?.value ? JSON.parse(localVal.value) : [];
             arr.push({ id: uid(), nombre: att.name, ext: att.name.split('.').pop().toUpperCase(), url: att.url, fecha: new Date().toLocaleDateString('es-AR'), size: att.size ? (att.size / 1024).toFixed(0) + 'KB' : '—' });
             // Guardar inmediatamente en localStorage + Supabase en background
-            try { localStorage.setItem('bcm_archivos', JSON.stringify(arr)); } catch { }
-            storage.set('bcm_archivos', JSON.stringify(arr)).catch(() => {});
+            try { localStorage.setItem((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)); } catch { }
+            storage.set((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)).catch(() => {});
         } catch { }
         setShowSaveDialog(null);
         setShowAttachMenu(false);
@@ -4200,8 +4200,8 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
             setMsgs(p => [...p, { id: uid(), role: 'user', text: txt }]);
             setUserName(txt);
             setAskedName(true);
-            try { await storage.set('bcm_chat_user', txt); } catch { }
-            try { localStorage.setItem('bcm_chat_user', txt); } catch { }
+            try { await storage.set((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
+            try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
             const resp = 'Hola ' + txt + ', soy tu asistente IA para BelfastCM. Tengo acceso en tiempo real a todas tus obras, licitaciones, personal y alertas. ¿En qué puedo ayudarte?';
             setTimeout(() => {
                 setMsgs(p => [...p, { id: uid(), role: 'assistant', text: resp }]);
@@ -4375,7 +4375,7 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                             </button>
                         ))}
                     </div>
-                    {userName && <button onClick={async () => { setUserName(''); setAskedName(false); try { await storage.delete('bcm_chat_user'); } catch { } try { localStorage.removeItem('bcm_chat_user'); } catch { } }} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline", marginTop: 20 }}>
+                    {userName && <button onClick={async () => { setUserName(''); setAskedName(false); try { await storage.delete((window.__APP_SP||'bcm_')+'chat_user'); } catch { } try { localStorage.removeItem((window.__APP_SP||'bcm_')+'chat_user'); } catch { } }} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline", marginTop: 20 }}>
                         No soy {userName}
                     </button>}
                 </div>
@@ -4407,11 +4407,11 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                                     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
                                     const url = URL.createObjectURL(blob);
                                     const nombre = 'IA_' + titulo.slice(0,30).replace(/\s/g,'_') + '_' + fecha.replace(/\//g,'-') + '.html';
-                                    const localVal = storage.getLocal('bcm_archivos');
+                                    const localVal = storage.getLocal((window.__APP_SP||'bcm_')+'archivos');
                                     const arr = localVal?.value ? JSON.parse(localVal.value) : [];
                                     arr.unshift({ id: uid(), nombre, ext: 'HTML', url, fecha, size: (blob.size/1024).toFixed(0)+'KB' });
-                                    try { localStorage.setItem('bcm_archivos', JSON.stringify(arr)); } catch {}
-                                    storage.set('bcm_archivos', JSON.stringify(arr)).catch(()=>{});
+                                    try { localStorage.setItem((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)); } catch {}
+                                    storage.set((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)).catch(()=>{});
                                     const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
                                     setTimeout(()=>URL.revokeObjectURL(url), 3000);
                                 }} style={{ background: "none", border: "none", fontSize: 10, color: T.muted, cursor: "pointer", padding: "5px 0", display: "flex", alignItems: "center", gap: 4 }}>
@@ -4885,7 +4885,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
 
     function logout() {
         setUser(null);
-        try { storage.delete('bcm_current_user'); } catch { }
+        try { storage.delete(SP+'current_user'); } catch { }
         setView('login');
     }
 
@@ -5219,17 +5219,19 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         pass: '',
     } : null;
 
-    const [user, setUser] = useState(() => supaUser || getLocalJSON('bcm_current_user', null));
+    const [user, setUser] = useState(() => supaUser || getLocalJSON(SP+'current_user', null));
     const [view, setView] = useState('chat');
     const [detailObraId, setDetailObraId] = useState(null);
     // Prefijo de storage según empresa (evita mezclar datos Belfast/VV)
     const SP = empresa === 'vv' ? 'vv_' : 'bcm_';
+    // Exponer SP globalmente para que componentes hijos puedan usarlo
+    window.__APP_SP = SP;
     const [lics, setLics] = useState(() => {
         const licsBase = getLocalJSON(SP + 'lics', []);
         // Restaurar visitas (fotos) desde keys separadas al arrancar
         return licsBase.map(l => ({
             ...l,
-            visitas: getLocalJSON('bcm_lic_vis_' + l.id, l.visitas || [])
+            visitas: getLocalJSON(SP+'lic_vis_' + l.id, l.visitas || [])
         }));
     });
     const [obras, setObras] = useState(() => {
@@ -5237,8 +5239,8 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         // Restaurar fotos desde keys separadas al arrancar
         return obrasBase.map(o => ({
             ...o,
-            fotos: getLocalJSON('bcm_fotos_' + o.id, []),
-            archivos: getLocalJSON('bcm_archs_' + o.id, []),
+            fotos: getLocalJSON(SP+'fotos_' + o.id, []),
+            archivos: getLocalJSON(SP+'archs_' + o.id, []),
             gastos: o.gastos || []
         }));
     });
@@ -5255,7 +5257,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         }
         return merged;
     });
-    const [apiKey, setApiKey] = useState(() => getLocalStr('bcm_api_key', ''));
+    const [apiKey, setApiKey] = useState(() => getLocalStr(SP+'api_key', ''));
     const [loaded, setLoaded] = useState(false);
     const [realtimeOk, setRealtimeOk] = useState(false); // indicador de conexión en tiempo real
     const [authRequest, setAuthRequest] = useState(null);
@@ -5288,20 +5290,20 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                     }
                 }
                 // Cargar lics desde bcm_storage si localStorage vacío
-                if (!getLocalJSON('bcm_lics', []).length) {
-                    const r = await storage.get('bcm_lics');
+                if (!getLocalJSON(SP+'lics', []).length) {
+                    const r = await storage.get(SP+'lics');
                     if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setLics(d); try { localStorage.setItem(SP+'lics', r.value); } catch {} } }
                 }
                 // Cargar obras y restaurar fotos desde keys separadas
-                const obrasLocal = getLocalJSON('bcm_obras', []);
+                const obrasLocal = getLocalJSON(SP+'obras', []);
                 if (!obrasLocal.length) {
-                    const r = await storage.get('bcm_obras');
+                    const r = await storage.get(SP+'obras');
                     if (r?.value) { 
                         const d = JSON.parse(r.value); 
                         if (d?.length) { 
                             const obrasConFotos = d.map(o => {
-                                const fotosLocal = getLocalJSON('bcm_fotos_' + o.id, []);
-                                const archivosLocal = getLocalJSON('bcm_archs_' + o.id, []);
+                                const fotosLocal = getLocalJSON(SP+'fotos_' + o.id, []);
+                                const archivosLocal = getLocalJSON(SP+'archs_' + o.id, []);
                                 return { ...o, fotos: fotosLocal, archivos: archivosLocal, gastos: o.gastos||[] };
                             });
                             setObras(obrasConFotos); 
@@ -5311,19 +5313,19 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                 } else {
                     // Restaurar fotos de obras que ya están en localStorage
                     setObras(obrasLocal.map(o => {
-                        const fotosLocal = getLocalJSON('bcm_fotos_' + o.id, []);
-                        const archivosLocal = getLocalJSON('bcm_archs_' + o.id, []);
+                        const fotosLocal = getLocalJSON(SP+'fotos_' + o.id, []);
+                        const archivosLocal = getLocalJSON(SP+'archs_' + o.id, []);
                         return { ...o, fotos: fotosLocal, archivos: archivosLocal, gastos: o.gastos||[] };
                     }));
                 }
                 // Cargar personal
-                if (!getLocalJSON('bcm_personal', []).length) {
-                    const r = await storage.get('bcm_personal');
+                if (!getLocalJSON(SP+'personal', []).length) {
+                    const r = await storage.get(SP+'personal');
                     if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setPersonal(d); try { localStorage.setItem(SP+'personal', r.value); } catch {} } }
                 }
                 // Cargar planes
-                if (!getLocalJSON('bcm_planes_semanales', []).length) {
-                    const r = await storage.get('bcm_planes_semanales');
+                if (!getLocalJSON(SP+'planes_semanales', []).length) {
+                    const r = await storage.get(SP+'planes_semanales');
                     if (r?.value) { const d = JSON.parse(r.value); if (d?.length) { setPlanes(d); try { localStorage.setItem(SP+'planes_semanales', r.value); } catch {} } }
                 }
             } catch(e) {
@@ -5350,7 +5352,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         // Guardar visitas de cada lic en su propia key
         lics.forEach(l => {
             if (!l.visitas?.length) return;
-            const key = 'bcm_lic_vis_' + l.id;
+            const key = SP+'lic_vis_' + l.id;
             const vjson = JSON.stringify(l.visitas);
             try { localStorage.setItem(key, vjson); } catch { }
             storage.set(key, vjson).catch(() => { });
@@ -5465,7 +5467,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         if (!loaded || !user) return;
 
         // Keys de medios (fotos/archivos) — hay que buscarlas por prefijo
-        const MEDIA_PREFIXES = ['bcm_fotos_', 'bcm_archs_', 'bcm_lic_vis_'];
+        const MEDIA_PREFIXES = [SP+'fotos_', SP+'archs_', SP+'lic_vis_'];
         // Timestamp de la última vez que YO guardé algo (para no pisar mi propio cambio)
         const myLastSave = { lics: 0, obras: 0, personal: 0, cfg: 0 };
         const PROTECT_MS = 8000; // 8s protección post-guardado propio
@@ -5474,7 +5476,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         async function applyRemoteKey(key, value) {
             const now = Date.now();
             try {
-                if (key === 'bcm_lics' && now - myLastSave.lics > PROTECT_MS) {
+                if (key === SP+'lics' && now - myLastSave.lics > PROTECT_MS) {
                     const licsRemota = JSON.parse(value);
                     setLics(cur => licsRemota.map(l => {
                         const local = cur.find(x => x.id === l.id);
@@ -5482,7 +5484,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                     }));
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                else if (key === 'bcm_obras' && now - myLastSave.obras > PROTECT_MS) {
+                else if (key === SP+'obras' && now - myLastSave.obras > PROTECT_MS) {
                     const obrasRemota = JSON.parse(value);
                     setObras(cur => obrasRemota.map(o => {
                         const local = cur.find(x => x.id === o.id);
@@ -5497,36 +5499,36 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                     }));
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                else if (key === 'bcm_personal' && now - myLastSave.personal > PROTECT_MS) {
+                else if (key === SP+'personal' && now - myLastSave.personal > PROTECT_MS) {
                     const nv = JSON.parse(value); setPersonal(nv);
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                else if (key === 'bcm_cfg' && now - myLastSave.cfg > PROTECT_MS) {
+                else if (key === SP+'cfg' && now - myLastSave.cfg > PROTECT_MS) {
                     const nv = JSON.parse(value); setCfg({ ...DEFAULT_CONFIG, ...nv });
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 // Fotos de obras
-                else if (key.startsWith('bcm_fotos_')) {
-                    const obraId = key.replace('bcm_fotos_', '');
+                else if (key.startsWith(SP+'fotos_')) {
+                    const obraId = key.replace(SP+'fotos_', '');
                     const fotos = JSON.parse(value);
                     setObras(cur => cur.map(o => o.id === obraId ? { ...o, fotos } : o));
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 // Archivos de obras
-                else if (key.startsWith('bcm_archs_')) {
-                    const obraId = key.replace('bcm_archs_', '');
+                else if (key.startsWith(SP+'archs_')) {
+                    const obraId = key.replace(SP+'archs_', '');
                     const archivos = JSON.parse(value);
                     setObras(cur => cur.map(o => o.id === obraId ? { ...o, archivos } : o));
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 // Visitas de licitaciones
-                else if (key.startsWith('bcm_lic_vis_')) {
-                    const licId = key.replace('bcm_lic_vis_', '');
+                else if (key.startsWith(SP+'lic_vis_')) {
+                    const licId = key.replace(SP+'lic_vis_', '');
                     const visitas = JSON.parse(value);
                     setLics(cur => cur.map(l => l.id === licId ? { ...l, visitas } : l));
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                else if (key === 'bcm_planes_semanales') {
+                else if (key === SP+'planes_semanales') {
                     const nv = JSON.parse(value);
                     setPlanes(nv);
                     try { localStorage.setItem(key, value); } catch {}
@@ -5539,15 +5541,15 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
             try {
                 // Solo 5 requests por sync (no sync de fotos por obra que genera N requests)
                 const [rLics, rObras, rPers, rCfg, rPlanes] = await Promise.all([
-                    storage.get('bcm_lics'), storage.get('bcm_obras'),
-                    storage.get('bcm_personal'), storage.get('bcm_cfg'),
-                    storage.get('bcm_planes_semanales'),
+                    storage.get(SP+'lics'), storage.get(SP+'obras'),
+                    storage.get(SP+'personal'), storage.get(SP+'cfg'),
+                    storage.get(SP+'planes_semanales'),
                 ]);
-                if (rLics?.value) { const loc = storage.getLocal('bcm_lics'); if (loc?.value !== rLics.value) await applyRemoteKey('bcm_lics', rLics.value); }
-                if (rObras?.value) { const loc = storage.getLocal('bcm_obras'); if (loc?.value !== rObras.value) await applyRemoteKey('bcm_obras', rObras.value); }
-                if (rPers?.value) { const loc = storage.getLocal('bcm_personal'); if (loc?.value !== rPers.value) await applyRemoteKey('bcm_personal', rPers.value); }
-                if (rCfg?.value) { const loc = storage.getLocal('bcm_cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey('bcm_cfg', rCfg.value); }
-                if (rPlanes?.value) { const loc = storage.getLocal('bcm_planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem(SP+'planes_semanales', rPlanes.value); } catch {} } }
+                if (rLics?.value) { const loc = storage.getLocal(SP+'lics'); if (loc?.value !== rLics.value) await applyRemoteKey(SP+'lics', rLics.value); }
+                if (rObras?.value) { const loc = storage.getLocal(SP+'obras'); if (loc?.value !== rObras.value) await applyRemoteKey(SP+'obras', rObras.value); }
+                if (rPers?.value) { const loc = storage.getLocal(SP+'personal'); if (loc?.value !== rPers.value) await applyRemoteKey(SP+'personal', rPers.value); }
+                if (rCfg?.value) { const loc = storage.getLocal(SP+'cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey(SP+'cfg', rCfg.value); }
+                if (rPlanes?.value) { const loc = storage.getLocal(SP+'planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem(SP+'planes_semanales', rPlanes.value); } catch {} } }
                 // NO sincronizar fotos/archivos por obra — demasiadas requests al Supabase gratuito
             } catch { }
         }
@@ -5620,10 +5622,10 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         // Interceptar el storage.set original para marcar mis propios cambios
         const origSet = storage.set.bind(storage);
         storage.set = async (key, value) => {
-            if (key === 'bcm_lics') myLastSave.lics = Date.now();
-            else if (key === 'bcm_obras') myLastSave.obras = Date.now();
-            else if (key === 'bcm_personal') myLastSave.personal = Date.now();
-            else if (key === 'bcm_cfg') myLastSave.cfg = Date.now();
+            if (key === SP+'lics') myLastSave.lics = Date.now();
+            else if (key === SP+'obras') myLastSave.obras = Date.now();
+            else if (key === SP+'personal') myLastSave.personal = Date.now();
+            else if (key === SP+'cfg') myLastSave.cfg = Date.now();
             return origSet(key, value);
         };
 
@@ -5891,7 +5893,7 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
     // Cargar logos guardados desde localStorage
     const [logos, setLogos] = React.useState(() => {
         try {
-            const saved = localStorage.getItem('bcm_selector_logos');
+            const saved = localStorage.getItem((window.__APP_SP||'bcm_')+'selector_logos');
             return saved ? JSON.parse(saved) : { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' };
         } catch { return { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' }; }
     });
@@ -5899,8 +5901,8 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
 
     function guardarLogos(nuevos) {
         setLogos(nuevos);
-        try { localStorage.setItem('bcm_selector_logos', JSON.stringify(nuevos)); } catch {}
-        storage.set('bcm_selector_logos', JSON.stringify(nuevos)).catch(() => {});
+        try { localStorage.setItem((window.__APP_SP||'bcm_')+'selector_logos', JSON.stringify(nuevos)); } catch {}
+        storage.set((window.__APP_SP||'bcm_')+'selector_logos', JSON.stringify(nuevos)).catch(() => {});
     }
 
     async function handleLogoUpload(key, file) {
