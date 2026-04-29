@@ -185,6 +185,28 @@ const ROLES = ["Arquitecto a cargo", "Ingeniero a cargo", "Directivos", "Direcci
 const DOC_TYPES = [{ id: "art", label: "ART", acceptsExp: true }, { id: "antec", label: "Antecedentes", acceptsExp: false }, { id: "preoc", label: "Preocupacional", acceptsExp: true }, { id: "dni", label: "DNI", acceptsExp: false }, { id: "sicop", label: "SiCoP", acceptsExp: false }, { id: "alta", label: "Alta Temprana", acceptsExp: false }];
 const LIC_DOC_TYPES = [{ id: "planos", label: "Planos", accept: ".pdf,.png,.jpg,.dwg,.zip" }, { id: "pliego", label: "Pliego", accept: ".pdf,.doc,.docx" }, { id: "excel", label: "Excel", accept: ".xlsx,.xls,.csv,.pdf" }, { id: "otros", label: "Otros", accept: "*" }];
 const EMAIL_IA = "ia.belfastcm@gmail.com";
+
+// ── PERMISOS POR USUARIO ─────────────────────────────────────────────
+// 'ambas' → ve el selector y puede entrar a las dos
+// 'belfast' → entra directo a Belfast sin ver el selector
+// 'vv' → entra directo a V+V sin ver el selector
+const PERMISOS_EMPRESA = {
+    // Super admins — ven las dos empresas
+    'sebas622@gmail.com': 'ambas',
+    // Usuarios solo Belfast
+    'usuario.belfast@ejemplo.com': 'belfast',
+    // Usuarios solo V+V
+    'usuario.vv@ejemplo.com': 'vv',
+};
+// Email por defecto si no está en la lista → accede a ambas
+const PERMISO_DEFAULT = 'ambas';
+
+function getPermisoEmpresa(email) {
+    if (!email) return PERMISO_DEFAULT;
+    const key = email.toLowerCase().trim();
+    return PERMISOS_EMPRESA[key] || PERMISO_DEFAULT;
+}
+
 const ADMIN_CREDS = [{ user: "admin", pass: "belfast2025", rol: "Administrador", nivel: "directivo" }, { user: "supervisor", pass: "obra2025", rol: "Supervisor", nivel: "directivo" }];
 const USERS = ADMIN_CREDS;
 
@@ -6021,9 +6043,24 @@ export default function App() {
   const [empresa, setEmpresa] = useState(null)
 
   useEffect(() => {
-    getSB().auth.getSession().then(({ data: { session } }) => setSession(session))
-    const { data: { subscription } } = getSB().auth.onAuthStateChange((_, s) => { setSession(s); if (!s) setEmpresa(null); })
-    return () => subscription.unsubscribe()
+    getSB().auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      // Si el usuario tiene acceso a una sola empresa, entrar directo
+      if (session?.user?.email) {
+        const permiso = getPermisoEmpresa(session.user.email);
+        if (permiso !== 'ambas') setEmpresa(permiso);
+      }
+    });
+    const { data: { subscription } } = getSB().auth.onAuthStateChange((_, s) => {
+      setSession(s);
+      if (!s) { setEmpresa(null); return; }
+      // Al loguear, verificar permisos
+      if (s?.user?.email) {
+        const permiso = getPermisoEmpresa(s.user.email);
+        if (permiso !== 'ambas') setEmpresa(permiso);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, [])
 
   if (session === undefined) return (
@@ -6036,5 +6073,9 @@ export default function App() {
 
   if (!empresa) return <SelectorEmpresa session={session} onSelect={setEmpresa} onLogout={() => { getSB().auth.signOut(); setSession(null); }} />
 
-  return <AppInterna supaSession={session} empresa={empresa} onCambiarEmpresa={() => setEmpresa(null)} />
+  return <AppInterna supaSession={session} empresa={empresa} onCambiarEmpresa={() => {
+    // Solo puede cambiar de empresa si tiene permiso para ambas
+    const permiso = getPermisoEmpresa(session?.user?.email);
+    if (permiso === 'ambas') setEmpresa(null);
+  }} />
 }
