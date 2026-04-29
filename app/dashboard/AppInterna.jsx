@@ -191,8 +191,9 @@ const EMAIL_IA = "ia.belfastcm@gmail.com";
 // 'belfast' → entra directo a Belfast
 // 'vv' → entra directo a V+V
 const PERMISOS_EMPRESA = {
-    'sebas': 'ambas',            // super admin — ve las dos
-    'sebas@belfast.cm.com': 'ambas', // por si usa email
+    'sebas': 'ambas',
+    'sebas@belfast.cm.com': 'ambas',
+    'sebas@belfastcm.com': 'ambas',
 };
 // Todos los demás → solo Belfast
 const PERMISO_DEFAULT = 'belfast';
@@ -4929,7 +4930,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                     <span style={{ fontSize: 18, color: T.muted }}>→</span>
                 </div>
             </Card>
-            {onCambiarEmpresa && user?.nivel === 'superadmin' && (
+            {onCambiarEmpresa && (user?.nivel === 'superadmin' || user?.empresa === 'ambas') && (
                 <Card style={{ padding: "14px 16px", cursor: "pointer", marginBottom: 10 }} onClick={onCambiarEmpresa}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ width: 42, height: 42, borderRadius: 10, background: empresa === 'vv' ? '#EFF6FF' : '#DCFCE7', color: empresa === 'vv' ? '#1D4ED8' : '#16A34A', display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -4957,7 +4958,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
         </div>
         {showCfg && (<Sheet title="Configuración" onClose={() => setShowCfg(false)}>
             <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto" }}>
-                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '📸 Fotos' }, ...(user?.nivel === 'superadmin' ? [{ id: 'usuarios', l: '👥 Usuarios' }] : [])].map(s => (
+                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '📸 Fotos' }, ...(user?.nivel === 'superadmin' || user?.empresa === 'ambas' ? [{ id: 'usuarios', l: '👥 Usuarios' }] : [])].map(s => (
                     <button key={s.id} onClick={() => setCfgSection(s.id)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: '1.5px solid ' + cfgSection === s.id ? T.accent : T.border, background: cfgSection === s.id ? T.accentLight : T.card, color: cfgSection === s.id ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s.l}</button>
                 ))}
             </div>
@@ -5105,7 +5106,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
             </div>)}
 
             {cfgSection === 'fotos' && (<RecuperarFotos obras={obras} setObras={setObras} lics={lics} setLics={setLics} />)}
-            {cfgSection === 'usuarios' && user?.nivel === 'superadmin' && (<GestionUsuarios />)}
+            {cfgSection === 'usuarios' && (user?.nivel === 'superadmin' || user?.empresa === 'ambas') && (<GestionUsuarios />)}
 
             <PBtn full onClick={() => setShowCfg(false)} style={{ marginTop: 14 }}>✓ Guardar y cerrar</PBtn>
         </Sheet>)}
@@ -5632,12 +5633,18 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
             }
         }
 
-        // SYNC DESACTIVADO — borraba datos al volver al foco con tablas vacías
-        // connectRealtime();
-        // syncAll();
-        const iv = null;
-        const onFocus = () => {};
-        // NO escuchar focus ni online para no pisar localStorage con Supabase vacío
+        // SYNC EN TIEMPO REAL — polling cada 5 segundos
+        // PROTECT_MS evita que un sync pise un cambio local reciente
+        syncAll();
+        const iv = setInterval(syncAll, 5000);
+
+        // Al volver al foco (cambiar de pestaña) sincronizar inmediatamente
+        const onFocus = () => syncAll();
+        window.addEventListener('focus', onFocus);
+        window.addEventListener('online', () => syncAll());
+
+        // Intentar Realtime WebSocket también
+        connectRealtime();
 
         // Interceptar el storage.set original para marcar mis propios cambios
         const origSet = storage.set.bind(storage);
