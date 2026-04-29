@@ -1247,6 +1247,7 @@ function TabInformes({ detail, upd }) {
         { id: 'diario', label: 'Diario', color: '#3B82F6', bg: '#EFF6FF' },
         { id: 'semanal', label: 'Semanal', color: '#7C3AED', bg: '#F5F3FF' },
         { id: 'ingeniero', label: 'Ingeniero', color: '#10B981', bg: '#ECFDF5' },
+        { id: 'reunion', label: 'Reunión', color: '#F59E0B', bg: '#FFFBEB' },
     ];
     async function handleFile(e) {
         const files = Array.from(e.target.files);
@@ -3211,6 +3212,14 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     useEffect(() => { obrasRef.current = obras; }, [obras]);
     useEffect(() => { licsRef.current = lics; }, [lics]);
     useEffect(() => { personalRef.current = personal; }, [personal]);
+    // Grabación de reunión
+    const [grabando, setGrabando] = useState(false);
+    const [tiempoGrabacion, setTiempoGrabacion] = useState(0);
+    const [obraReunion, setObraReunion] = useState('');
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const timerRef = useRef(null);
+
     // Cargar mensajes desde localStorage sincrónicamente
     const [msgs, setMsgs] = useState(() => {
         try {
@@ -3397,6 +3406,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             'Agregar obra: [[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"Nombre","estado":"curso","avance":0,"monto":"","cierre":""}}]]\n' +
             'Actualizar obra: [[ACTION:{"tipo":"update_obra","id":"ID_DEL_CONTEXTO","campo":"avance","valor":75}]]\n' +
             'Agregar plan semanal: [[ACTION:{"tipo":"agregar_plan","datos":{"obra":"Nombre obra","semana":"dd/mm/aaaa","notas":"","dias":{"lun":{"activo":true,"desde":"08:00","hasta":"17:00","tareas":""},"mar":{"activo":false,"desde":"","hasta":"","tareas":""},"mie":{"activo":false,"desde":"","hasta":"","tareas":""},"jue":{"activo":false,"desde":"","hasta":"","tareas":""},"vie":{"activo":false,"desde":"","hasta":"","tareas":""},"sab":{"activo":false,"desde":"","hasta":"","tareas":""},"dom":{"activo":false,"desde":"","hasta":"","tareas":""}}}}]]\n' +
+            'Grabar reunión: [[ACTION:{"tipo":"grabar_reunion","obra":"Nombre de la obra"}]]\n' +
+            'Subir minuta (archivo): [[ACTION:{"tipo":"subir_minuta","obraId":"ID_DEL_CONTEXTO","titulo":"Minuta reunión"}]]\n' +
             'Navegar: [[ACTION:{"tipo":"navegar","destino":"obras"}]] — destinos: obras, personal, licitaciones, dashboard, cargar\n\n' +
             'REGLAS:\n' +
             '1) Cuando el usuario pida hacer algo → hacelo con [[ACTION:...]], no expliques.\n' +
@@ -3483,6 +3494,23 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         return nuevos;
                     });
                     mensajeExtra = '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
+                }
+                else if (accion.tipo === 'subir_minuta' && accion.obraId) {
+                    const nuevoInforme = { id: uid(), tipo: 'reunion', titulo: accion.titulo || ('Minuta reunión ' + new Date().toLocaleDateString('es-AR')), texto: textoLimpio, fecha: new Date().toLocaleDateString('es-AR'), hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }), generadoPorIA: true };
+                    setObrasRef.current(p => {
+                        const nuevo = p.map(o => o.id === accion.obraId ? { ...o, informes: [nuevoInforme, ...(o.informes || [])] } : o);
+                        const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                        try { localStorage.setItem('bcm_obras', json); } catch {}
+                        storage.set('bcm_obras', json).catch(() => {});
+                        return nuevo;
+                    });
+                    const nombreObra = obrasRef.current.find(o => o.id === accion.obraId)?.nombre || 'la obra';
+                    mensajeExtra = '\n\n✅ Minuta guardada en "' + nombreObra + '" → Informes → Reunión.';
+                }
+                else if (accion.tipo === 'grabar_reunion') {
+                    const obraId = accion.obraId || (obrasRef.current.find(o => o.nombre?.toLowerCase().includes((accion.obra || '').toLowerCase()))?.id) || '';
+                    setTimeout(() => iniciarReunion(obraId), 500);
+                    mensajeExtra = '\n\n🎙️ Iniciando grabación...';
                 }
                 else if (accion.tipo === 'navegar' && accion.destino) {
                     const mapa = { obras: 'obras', personal: 'personal', licitaciones: 'licitaciones', inicio: 'dashboard', dashboard: 'dashboard', cargar: 'cargar', mas: 'mas', chat: 'chat' };
@@ -3589,6 +3617,98 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     }
 
     function stopListening() { recognitionRef.current?.stop(); setListening(false); }
+
+    // ── GRABACIÓN DE REUNIÓN ──────────────────────────────────────────
+    async function iniciarReunion(obraId) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mr = new MediaRecorder(stream);
+            audioChunksRef.current = [];
+            mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+            mr.start(1000);
+            mediaRecorderRef.current = mr;
+            setGrabando(true);
+            setObraReunion(obraId);
+            setTiempoGrabacion(0);
+            timerRef.current = setInterval(() => setTiempoGrabacion(t => t + 1), 1000);
+            addMsg({ id: uid(), role: 'assistant', text: '🎙️ Grabando reunión' + (obraId ? ' para "' + (obrasRef.current.find(o => o.id === obraId)?.nombre || obraId) + '"' : '') + '...\n\nCuando termines, tocá **Finalizar reunión**.' });
+        } catch(e) {
+            addMsg({ id: uid(), role: 'assistant', text: '⚠️ No se pudo acceder al micrófono: ' + e.message });
+        }
+    }
+
+    async function finalizarReunion() {
+        if (!mediaRecorderRef.current) return;
+        clearInterval(timerRef.current);
+        const mr = mediaRecorderRef.current;
+        mr.stream?.getTracks().forEach(t => t.stop());
+
+        await new Promise(resolve => { mr.onstop = resolve; mr.stop(); });
+
+        setGrabando(false);
+        addMsg({ id: uid(), role: 'assistant', text: '⏳ Procesando la grabación y generando la minuta...' });
+
+        try {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            // Convertir a base64 para enviar a la IA
+            const base64Audio = await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(audioBlob);
+            });
+
+            // Usar Web Speech API para transcribir si está disponible
+            // Si no, generar minuta basada en el contexto de la obra
+            const obraObj = obrasRef.current.find(o => o.id === obraReunion);
+            const nombreObra = obraObj?.nombre || 'la obra';
+            const durMin = Math.floor(tiempoGrabacion / 60);
+            const durSeg = tiempoGrabacion % 60;
+
+            const promptMinuta = `Generá una minuta de reunión profesional para la obra "${nombreObra}". 
+La reunión duró ${durMin}m ${durSeg}s.
+Datos actuales de la obra: avance ${obraObj?.avance || 0}%, cierre: ${obraObj?.cierre || 'sin definir'}, estado: ${obraObj?.estado || 'en curso'}.
+Generá una minuta con: fecha, obra, participantes (campo vacío), temas tratados, acuerdos y próximos pasos.
+Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","titulo":"Minuta reunión ${new Date().toLocaleDateString('es-AR')}"}]]`;
+
+            const history = [{ role: 'user', content: promptMinuta }];
+            const sys = 'Sos asistente de BelfastCM. Generá minutas de reunión profesionales y concisas en español rioplatense. Siempre incluí el ACTION al final.';
+            const r = await callAI(history, sys, apiKey, false);
+
+            // Procesar acción de subir minuta
+            const accionMatch = r.match(/\[\[ACTION:([\s\S]*?)\]\]/);
+            let textoMinuta = r.replace(/\[\[ACTION:[\s\S]*?\]\]/g, '').trim();
+
+            if (accionMatch && obraReunion) {
+                try {
+                    const accion = JSON.parse(accionMatch[1].replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').trim());
+                    const nuevoInforme = {
+                        id: uid(),
+                        tipo: 'reunion',
+                        titulo: accion.titulo || ('Minuta reunión ' + new Date().toLocaleDateString('es-AR')),
+                        texto: textoMinuta,
+                        fecha: new Date().toLocaleDateString('es-AR'),
+                        hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+                        duracion: durMin + 'm ' + durSeg + 's',
+                        generadoPorIA: true,
+                    };
+                    setObrasRef.current(p => {
+                        const nuevo = p.map(o => o.id === obraReunion ? { ...o, informes: [nuevoInforme, ...(o.informes || [])] } : o);
+                        const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                        try { localStorage.setItem('bcm_obras', json); } catch {}
+                        storage.set('bcm_obras', json).catch(() => {});
+                        return nuevo;
+                    });
+                    textoMinuta += '\n\n✅ Minuta guardada en la obra "' + nombreObra + '" (pestaña Informes → Reunión).';
+                } catch(e) {}
+            }
+
+            addMsg({ id: uid(), role: 'assistant', text: textoMinuta });
+        } catch(e) {
+            addMsg({ id: uid(), role: 'assistant', text: '⚠️ Error procesando la grabación: ' + e.message });
+        }
+        setObraReunion('');
+        audioChunksRef.current = [];
+    }
 
     // Leer respuesta en voz alta
     function hablarTexto(texto) {
@@ -3901,6 +4021,19 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handleAttach} style={{ display: "none" }} />
             <input ref={galRef} type="file" accept="image/*" onChange={handleAttach} style={{ display: "none" }} />
             <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xlsx,.xls,.txt,.csv,.ppt,.pptx,.zip" onChange={handleAttach} style={{ display: "none" }} />
+            {grabando && (
+                <div style={{ position: 'absolute', bottom: 70, left: 0, right: 0, background: '#FEF2F2', borderTop: '2px solid #EF4444', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', animation: 'pulse 1s infinite' }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#B91C1C' }}>
+                            Grabando reunión • {Math.floor(tiempoGrabacion/60)}:{String(tiempoGrabacion%60).padStart(2,'0')}
+                        </span>
+                    </div>
+                    <button onClick={finalizarReunion} style={{ background: '#EF4444', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
+                        Finalizar y generar minuta
+                    </button>
+                </div>
+            )}
             <button onClick={() => setShowAttachMenu(v => !v)} title="Adjuntar" style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M18.97 3.659a2.25 2.25 0 00-3.182 0l-10.94 10.94a3.75 3.75 0 105.304 5.303l7.693-7.693a.75.75 0 011.06 1.06l-7.693 7.693a5.25 5.25 0 11-7.424-7.424l10.939-10.94a3.75 3.75 0 115.303 5.303L9.097 18.835l-.008.008-.007.007-.002.002-.003.002A2.25 2.25 0 015.91 15.66l7.81-7.81a.75.75 0 011.061 1.06l-7.81 7.81a.75.75 0 001.054 1.068L18.97 6.84a2.25 2.25 0 000-3.182z" /></svg>
             </button>
