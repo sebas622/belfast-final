@@ -5557,22 +5557,80 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
             } catch { }
         }
 
-        // Función de sync completo (polling de respaldo)
+        // ── SYNC ROBUSTO ─────────────────────────────────────────────
+        // Regla: Supabase gana SOLO si tiene MÁS datos que local
+        // Nunca pisamos datos locales con remoto más chico
         async function syncAll() {
             try {
-                // Solo 5 requests por sync (no sync de fotos por obra que genera N requests)
-                const [rLics, rObras, rPers, rCfg, rPlanes] = await Promise.all([
-                    storage.get(SP+'lics'), storage.get(SP+'obras'),
-                    storage.get(SP+'personal'), storage.get(SP+'cfg'),
-                    storage.get(SP+'planes_semanales'),
+                const [rLics, rObras, rPers] = await Promise.all([
+                    storage.get(SP+'lics'),
+                    storage.get(SP+'obras'),
+                    storage.get(SP+'personal'),
                 ]);
-                if (rLics?.value) { const loc = storage.getLocal(SP+'lics'); if (loc?.value !== rLics.value) await applyRemoteKey(SP+'lics', rLics.value); }
-                if (rObras?.value) { const loc = storage.getLocal(SP+'obras'); if (loc?.value !== rObras.value) await applyRemoteKey(SP+'obras', rObras.value); }
-                if (rPers?.value) { const loc = storage.getLocal(SP+'personal'); if (loc?.value !== rPers.value) await applyRemoteKey(SP+'personal', rPers.value); }
-                if (rCfg?.value) { const loc = storage.getLocal(SP+'cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey(SP+'cfg', rCfg.value); }
-                if (rPlanes?.value) { const loc = storage.getLocal(SP+'planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem(SP+'planes_semanales', rPlanes.value); } catch {} } }
-                // NO sincronizar fotos/archivos por obra — demasiadas requests al Supabase gratuito
-            } catch { }
+
+                // PERSONAL — el más importante para sync entre dispositivos
+                if (rPers?.value) {
+                    try {
+                        const remoto = JSON.parse(rPers.value);
+                        const localStr = storage.getLocal(SP+'personal')?.value;
+                        const local = localStr ? JSON.parse(localStr) : [];
+                        // Aplicar si remoto tiene más o igual cantidad Y es diferente
+                        if (remoto.length >= local.length && rPers.value !== localStr) {
+                            // Fusionar: mantener cambios locales recientes
+                            const ahora = Date.now();
+                            if (ahora - myLastSave.personal > PROTECT_MS) {
+                                setPersonal(remoto);
+                                try { localStorage.setItem(SP+'personal', rPers.value); } catch {}
+                            }
+                        }
+                    } catch {}
+                }
+
+                // LICITACIONES
+                if (rLics?.value) {
+                    try {
+                        const remoto = JSON.parse(rLics.value);
+                        const localStr = storage.getLocal(SP+'lics')?.value;
+                        const local = localStr ? JSON.parse(localStr) : [];
+                        if (remoto.length >= local.length && rLics.value !== localStr) {
+                            const ahora = Date.now();
+                            if (ahora - myLastSave.lics > PROTECT_MS) {
+                                setLics(cur => remoto.map(l => {
+                                    const loc = cur.find(x => x.id === l.id);
+                                    return { ...l, visitas: loc?.visitas?.length ? loc.visitas : l.visitas || [] };
+                                }));
+                                try { localStorage.setItem(SP+'lics', rLics.value); } catch {}
+                            }
+                        }
+                    } catch {}
+                }
+
+                // OBRAS
+                if (rObras?.value) {
+                    try {
+                        const remoto = JSON.parse(rObras.value);
+                        const localStr = storage.getLocal(SP+'obras')?.value;
+                        const local = localStr ? JSON.parse(localStr) : [];
+                        if (remoto.length >= local.length && rObras.value !== localStr) {
+                            const ahora = Date.now();
+                            if (ahora - myLastSave.obras > PROTECT_MS) {
+                                setObras(cur => remoto.map(o => {
+                                    const loc = cur.find(x => x.id === o.id);
+                                    return {
+                                        ...o,
+                                        fotos: loc?.fotos?.length ? loc.fotos : [],
+                                        archivos: loc?.archivos?.length ? loc.archivos : [],
+                                        gastos: loc?.gastos?.length >= (o.gastos?.length||0) ? (loc?.gastos||[]) : (o.gastos||[]),
+                                        obs: loc?.obs?.length >= (o.obs?.length||0) ? (loc?.obs||[]) : (o.obs||[]),
+                                        informes: loc?.informes?.length >= (o.informes?.length||0) ? (loc?.informes||[]) : (o.informes||[]),
+                                    };
+                                }));
+                                try { localStorage.setItem(SP+'obras', rObras.value); } catch {}
+                            }
+                        }
+                    } catch {}
+                }
+            } catch {}
         }
 
         // Supabase Realtime — escucha cambios en bcm_storage en tiempo real
