@@ -188,19 +188,22 @@ const EMAIL_IA = "ia.belfastcm@gmail.com";
 
 // ── PERMISOS POR USUARIO ─────────────────────────────────────────────
 // 'ambas' → ve el selector y puede entrar a las dos
-// 'belfast' → entra directo a Belfast
-// 'vv' → entra directo a V+V
+// 'belfast' → entra directo a Belfast sin ver el selector
+// 'vv' → entra directo a V+V sin ver el selector
 const PERMISOS_EMPRESA = {
-    'sebastian': 'ambas',
-    'sebas@belfast.cm.com': 'ambas',
-    'sebas@belfastcm.com': 'ambas',
+    // Super admins — ven las dos empresas
+    'sebas622@gmail.com': 'ambas',
+    // Usuarios solo Belfast
+    'usuario.belfast@ejemplo.com': 'belfast',
+    // Usuarios solo V+V
+    'usuario.vv@ejemplo.com': 'vv',
 };
-// Todos los demás → solo Belfast
-const PERMISO_DEFAULT = 'belfast';
+// Email por defecto si no está en la lista → accede a ambas
+const PERMISO_DEFAULT = 'ambas';
 
-function getPermisoEmpresa(usuarioOEmail) {
-    if (!usuarioOEmail) return PERMISO_DEFAULT;
-    const key = usuarioOEmail.toLowerCase().trim();
+function getPermisoEmpresa(email) {
+    if (!email) return PERMISO_DEFAULT;
+    const key = email.toLowerCase().trim();
     return PERMISOS_EMPRESA[key] || PERMISO_DEFAULT;
 }
 
@@ -1826,7 +1829,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
     useEffect(() => {
         (async () => {
             try {
-                const r = await storage.get((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'presentismo');
+                const r = await storage.get((window.__APP_SP||'bcm_')+'presentismo');
                 if (r?.value) { const d = JSON.parse(r.value); setPresentismo(d.registros || {}); }
             } catch { }
             setPresentismoLoaded(true);
@@ -2261,7 +2264,7 @@ function PresupuestoView({ tipo, setView }) {
 
 // ── VIGILANCIA · PRESENTISMO ─────────────────────────────────────────
 function PanelVigilancia({ setView }) {
-    const [camaras, setCamaras] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'camaras', []);
+    const [camaras, setCamaras] = useStoredState((window.__APP_SP||'bcm_')+'camaras', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', url: '', sector: '', ap: 'aep', tipo: 'ip' });
     function add() { if (!form.nombre || !form.url) return; setCamaras(p => [...p, { ...form, id: uid() }]); setForm({ nombre: '', url: '', sector: '', ap: 'aep', tipo: 'ip' }); setShowNew(false); }
@@ -2330,7 +2333,7 @@ async function getCurrentPosition() {
 }
 
 function Presentismo({ personal, setPersonal, obras, setObras, currentUser, setView }) {
-    const [presentismoData, setPresentismoData] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'presentismo', { registros: {}, bioLink: '', trackingAuto: false });
+    const [presentismoData, setPresentismoData] = useStoredState((window.__APP_SP||'bcm_')+'presentismo', { registros: {}, bioLink: '', trackingAuto: false });
     const registros = presentismoData.registros || {};
     const bioLink = presentismoData.bioLink || '';
     const trackingAuto = !!presentismoData.trackingAuto;
@@ -2568,7 +2571,7 @@ function Presentismo({ personal, setPersonal, obras, setObras, currentUser, setV
 
 // ── ARCHIVOS · SEGUIMIENTO · RESUMEN ────────────────────────────────
 function Archivos({ setView }) {
-    const [files, setFiles] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', []);
+    const [files, setFiles] = useStoredState((window.__APP_SP||'bcm_')+'archivos', []);
     const inputRef = useRef(null);
 
     async function handleUp(e) {
@@ -2661,7 +2664,7 @@ function CotizacionView({ setView, apiKey, cfg }) {
     const [tipologia, setTipologia] = useState('refaccion');
     const [loading, setLoading] = useState(false);
     const [resultado, setResultado] = useState(null);
-    const [historial, setHistorial] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'cotizaciones', []);
+    const [historial, setHistorial] = useStoredState((window.__APP_SP||'bcm_')+'cotizaciones', []);
     const camRef = useRef(null);
     const galRef = useRef(null);
 
@@ -3005,7 +3008,7 @@ function MensajesView({ setView, currentUser, personal }) {
 
     async function loadMensajes() {
         try {
-            const r = await storage.get((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes');
+            const r = await storage.get((window.__APP_SP||'bcm_')+'mensajes');
             if (r?.value) setMensajes(JSON.parse(r.value));
         } catch { }
         setLoaded(true);
@@ -3021,14 +3024,14 @@ function MensajesView({ setView, currentUser, personal }) {
         const nuevo = { id: uid(), de: myId, deName: myName, para: selUser.id, paraName: selUser.nombre, txt: txt.trim(), fecha: new Date().toISOString(), leido: false };
         const actualizados = [...mensajes, nuevo];
         setMensajes(actualizados); setTxt('');
-        try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
+        try { await storage.set((window.__APP_SP||'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
     }
 
     async function marcarLeidos() {
         if (!selUser) return;
         const actualizados = mensajes.map(m => (m.para === myId && m.de === selUser.id && !m.leido) ? { ...m, leido: true } : m);
         setMensajes(actualizados);
-        try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
+        try { await storage.set((window.__APP_SP||'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
     }
     useEffect(() => { if (selUser) marcarLeidos(); }, [selUser]);
 
@@ -3077,7 +3080,7 @@ function MensajesView({ setView, currentUser, personal }) {
 }
 
 function ContactosView({ setView }) {
-    const [contactos, setContactos] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'contactos', []);
+    const [contactos, setContactos] = useStoredState((window.__APP_SP||'bcm_')+'contactos', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', email: '', notas: '' });
     function add() { if (!form.nombre.trim()) return; setContactos(p => [...p, { ...form, id: uid() }]); setForm({ nombre: '', empresa: '', telefono: '', email: '', notas: '' }); setShowNew(false); }
@@ -3116,7 +3119,7 @@ function ContactosView({ setView }) {
 }
 
 function ProveedoresView({ setView }) {
-    const [provs, setProvs] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'proveedores', []);
+    const [provs, setProvs] = useStoredState((window.__APP_SP||'bcm_')+'proveedores', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', rubro: '', telefono: '', email: '', cuit: '', notas: '' });
     const RUBROS = ['Materiales', 'Eléctrico', 'Plomería', 'Aberturas', 'Pintura', 'Herrería', 'Servicios', 'Transporte', 'Otros'];
@@ -3432,7 +3435,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     // Cargar mensajes desde localStorage sincrónicamente
     const [msgs, setMsgs] = useState(() => {
         try {
-            const saved = localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs');
+            const saved = localStorage.getItem((window.__APP_SP||'bcm_')+'chat_msgs');
             if (!saved) return [];
             const { msgs: m, lastAt } = JSON.parse(saved);
             // Si pasó más de 1 hora sin actividad, empezar de cero
@@ -3444,10 +3447,10 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     const [loading, setLoading] = useState(false);
     const [listening, setListening] = useState(false);
     const [userName, setUserName] = useState(() => {
-        try { return localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user') || ''; } catch { return ''; }
+        try { return localStorage.getItem((window.__APP_SP||'bcm_')+'chat_user') || ''; } catch { return ''; }
     });
     const [askedName, setAskedName] = useState(() => {
-        try { return !!localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user'); } catch { return false; }
+        try { return !!localStorage.getItem((window.__APP_SP||'bcm_')+'chat_user'); } catch { return false; }
     });
     const [chatLoaded, setChatLoaded] = useState(false);
     const [attach, setAttach] = useState(null);
@@ -3468,7 +3471,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 ...m,
                 attach: m.attach?.isImage ? null : m.attach, // no guardar imágenes
             }));
-            localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs', JSON.stringify({ msgs: msgsLimpios, lastAt: Date.now() }));
+            localStorage.setItem((window.__APP_SP||'bcm_')+'chat_msgs', JSON.stringify({ msgs: msgsLimpios, lastAt: Date.now() }));
         } catch { }
     }, [msgs]);
 
@@ -3483,18 +3486,18 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     // Botón para limpiar chat manualmente
     function limpiarChat() {
         setMsgs([]);
-        try { localStorage.removeItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs'); } catch { }
+        try { localStorage.removeItem((window.__APP_SP||'bcm_')+'chat_msgs'); } catch { }
     }
 
     // También consultar Supabase por si fue guardado desde otro dispositivo
     useEffect(() => {
         (async () => {
             try {
-                const r = await storage.get((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user');
+                const r = await storage.get((window.__APP_SP||'bcm_')+'chat_user');
                 if (r?.value && r.value !== userName) {
                     setUserName(r.value);
                     setAskedName(true);
-                    try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', r.value); } catch { }
+                    try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', r.value); } catch { }
                 }
             } catch { }
             setChatLoaded(true);
@@ -3562,8 +3565,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             setMsgs(p => [...p, { id: uid(), role: 'user', text: txt }]);
             setUserName(txt);
             setAskedName(true);
-            try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
-            try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
+            try { await storage.set((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
+            try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
             setInput('');
             setTimeout(() => setMsgs(p => [...p, { id: uid(), role: 'assistant', text: `Hola ${txt}, soy tu asistente IA para BelfastCM. Tengo acceso en tiempo real a todas tus obras, licitaciones, personal y alertas. ¿En qué puedo ayudarte?` }]), 400);
             return;
@@ -3606,11 +3609,10 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             '=== INSTRUCCIONES ===\n' +
             'Respondé SIEMPRE en español rioplatense, corto y directo.\n' +
             'Cuando el usuario pida agregar, crear, modificar o editar algo: HACELO INMEDIATAMENTE sin preguntar, incluyendo el bloque [[ACTION:...]] al final de tu respuesta.\n' +
-            'NUNCA expliques cómo funciona el código. NUNCA digas que necesitás ver el código. NUNCA sugieras refrescar. SOLO actuá.\n' +
-            'IMPORTANTE: Si el usuario lista VARIAS personas usá SIEMPRE agregar_personal_multiple con TODAS en UNA sola acción. NUNCA de a uno cuando son varios.\n\n' +
+            'NUNCA expliques cómo funciona el código. NUNCA digas que necesitás ver el código. NUNCA sugieras refrescar. SOLO actuá.\n\n' +
             '=== ACCIONES QUE PODÉS EJECUTAR ===\n' +
             'Agregar personal (uno): [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"Juan Pérez","rol":"Albañil","telefono":"","obra_id":""}}]]\n' +
-            'Agregar VARIAS personas (2 o más): [[ACTION:{"tipo":"agregar_personal_multiple","lista":[{"nombre":"Juan Pérez","rol":"Albañil","telefono":""},{"nombre":"Pedro García","rol":"Capataz","telefono":""}]}]]\n' +
+            'Agregar varios personales: [[ACTION:{"tipo":"agregar_personal_multiple","lista":[{"nombre":"Juan Pérez","rol":"Albañil","telefono":""},{"nombre":"Pedro García","rol":"Capataz","telefono":""}]}]]\n' +
             'Editar personal: [[ACTION:{"tipo":"editar_personal","id":"ID_DEL_CONTEXTO","datos":{"nombre":"","rol":"","telefono":""}}]]\n' +
             'Eliminar personal: [[ACTION:{"tipo":"eliminar_personal","id":"ID_DEL_CONTEXTO","nombre":"nombre"}]]\n' +
             'Agregar licitación: [[ACTION:{"tipo":"agregar_licitacion","datos":{"nombre":"Nombre","estado":"pendiente","monto":"","fecha":""}}]]\n' +
@@ -4018,12 +4020,12 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
     async function guardarEnArchivos(att) {
         try {
             // Leer del localStorage primero (síncrono y confiable)
-            const localVal = storage.getLocal((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos');
+            const localVal = storage.getLocal((window.__APP_SP||'bcm_')+'archivos');
             const arr = localVal?.value ? JSON.parse(localVal.value) : [];
             arr.push({ id: uid(), nombre: att.name, ext: att.name.split('.').pop().toUpperCase(), url: att.url, fecha: new Date().toLocaleDateString('es-AR'), size: att.size ? (att.size / 1024).toFixed(0) + 'KB' : '—' });
             // Guardar inmediatamente en localStorage + Supabase en background
-            try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)); } catch { }
-            storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)).catch(() => {});
+            try { localStorage.setItem((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)); } catch { }
+            storage.set((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)).catch(() => {});
         } catch { }
         setShowSaveDialog(null);
         setShowAttachMenu(false);
@@ -4220,8 +4222,8 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
             setMsgs(p => [...p, { id: uid(), role: 'user', text: txt }]);
             setUserName(txt);
             setAskedName(true);
-            try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
-            try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
+            try { await storage.set((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
+            try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
             const resp = 'Hola ' + txt + ', soy tu asistente IA para BelfastCM. Tengo acceso en tiempo real a todas tus obras, licitaciones, personal y alertas. ¿En qué puedo ayudarte?';
             setTimeout(() => {
                 setMsgs(p => [...p, { id: uid(), role: 'assistant', text: resp }]);
@@ -4395,7 +4397,7 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                             </button>
                         ))}
                     </div>
-                    {userName && <button onClick={async () => { setUserName(''); setAskedName(false); try { await storage.delete((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user'); } catch { } try { localStorage.removeItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user'); } catch { } }} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline", marginTop: 20 }}>
+                    {userName && <button onClick={async () => { setUserName(''); setAskedName(false); try { await storage.delete((window.__APP_SP||'bcm_')+'chat_user'); } catch { } try { localStorage.removeItem((window.__APP_SP||'bcm_')+'chat_user'); } catch { } }} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline", marginTop: 20 }}>
                         No soy {userName}
                     </button>}
                 </div>
@@ -4427,11 +4429,11 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                                     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
                                     const url = URL.createObjectURL(blob);
                                     const nombre = 'IA_' + titulo.slice(0,30).replace(/\s/g,'_') + '_' + fecha.replace(/\//g,'-') + '.html';
-                                    const localVal = storage.getLocal((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos');
+                                    const localVal = storage.getLocal((window.__APP_SP||'bcm_')+'archivos');
                                     const arr = localVal?.value ? JSON.parse(localVal.value) : [];
                                     arr.unshift({ id: uid(), nombre, ext: 'HTML', url, fecha, size: (blob.size/1024).toFixed(0)+'KB' });
-                                    try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)); } catch {}
-                                    storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)).catch(()=>{});
+                                    try { localStorage.setItem((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)); } catch {}
+                                    storage.set((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)).catch(()=>{});
                                     const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
                                     setTimeout(()=>URL.revokeObjectURL(url), 3000);
                                 }} style={{ background: "none", border: "none", fontSize: 10, color: T.muted, cursor: "pointer", padding: "5px 0", display: "flex", alignItems: "center", gap: 4 }}>
@@ -4517,7 +4519,7 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
             <button onClick={() => setShowAttachMenu(v => !v)} title="Adjuntar" style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M18.97 3.659a2.25 2.25 0 00-3.182 0l-10.94 10.94a3.75 3.75 0 105.304 5.303l7.693-7.693a.75.75 0 011.06 1.06l-7.693 7.693a5.25 5.25 0 11-7.424-7.424l10.939-10.94a3.75 3.75 0 115.303 5.303L9.097 18.835l-.008.008-.007.007-.002.002-.003.002A2.25 2.25 0 015.91 15.66l7.81-7.81a.75.75 0 011.061 1.06l-7.81 7.81a.75.75 0 001.054 1.068L18.97 6.84a2.25 2.25 0 000-3.182z" /></svg>
             </button>
-            <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); enviar(); } }} placeholder={listening ? 'Escuchando…' : 'Escribí o usá el micrófono…'} rows={2} style={{ flex: 1, background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 16, padding: "10px 14px", fontSize: 15, color: T.text, minWidth: 0, resize: "none", lineHeight: 1.5, fontFamily: "inherit" }} />
+            <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }} placeholder={listening ? 'Escuchando…' : 'Escribí o usá el micrófono…'} rows={2} style={{ flex: 1, background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 16, padding: "10px 14px", fontSize: 15, color: T.text, minWidth: 0, resize: "none", lineHeight: 1.5, fontFamily: "inherit" }} />
             <button onClick={listening ? stopListening : startListening} title="Hablar" style={{ background: listening ? "#EF4444" : T.bg, border: '1px solid ' + listening ? "#EF4444" : T.border, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: listening ? "#fff" : T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" /><path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" /></svg>
             </button>
@@ -4776,84 +4778,87 @@ function AlertasWA({ cfg, personal, lics, obras, alerts, setView }) {
 
 
 // ── RECUPERAR FOTOS DEL BUCKET ────────────────────────────────────────
-function RecuperarFotos({ obras, setObras, lics, setLics, personal, setPersonal, planes, setPlanes }) {
+function RecuperarFotos({ obras, setObras, lics, setLics, personal, setPersonal }) {
     const [estado, setEstado] = useState('idle');
     const [log, setLog] = useState([]);
-
     function addLog(msg) { setLog(p => [...p, msg]); }
 
-    async function recuperarTodo() {
+    async function limpiarVVYRestaurarBelfast() {
         setEstado('cargando'); setLog([]);
-        addLog('🔍 Buscando datos en Supabase...');
-        const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
+        addLog('🧹 Limpiando datos mezclados de VV...');
         
-        // Intentar con prefijo actual Y con bcm_ (por si estaban guardados antes)
-        const prefijos = [SP, 'bcm_'];
-        
-        for (const prefijo of prefijos) {
-            try {
-                // OBRAS
-                const rObras = await storage.get(prefijo + 'obras');
-                if (rObras?.value) {
-                    const d = JSON.parse(rObras.value);
-                    if (d?.length) {
-                        setObras(d.map(o => ({ ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[] })));
-                        try { localStorage.setItem(SP+'obras', rObras.value); } catch {}
-                        addLog('✅ Obras recuperadas: ' + d.length + ' (desde ' + prefijo + ')');
-                    }
+        // 1. Borrar keys vv_ del localStorage (datos que se mezclaron)
+        const keysVV = Object.keys(localStorage).filter(k => k.startsWith('vv_'));
+        keysVV.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+        addLog(`🗑 Eliminadas ${keysVV.length} keys de VV del localStorage`);
+
+        // 2. Recuperar datos Belfast desde Supabase (bcm_)
+        addLog('📥 Recuperando datos Belfast desde Supabase...');
+        try {
+            const rLics = await storage.get('bcm_lics');
+            if (rLics?.value) {
+                const d = JSON.parse(rLics.value);
+                if (d?.length) {
+                    const conVisitas = d.map(l => ({ ...l, visitas: l.visitas || [] }));
+                    setLics(conVisitas);
+                    try { localStorage.setItem('bcm_lics', rLics.value); } catch {}
+                    addLog('✅ ' + d.length + ' licitaciones de Belfast restauradas');
                 }
-                // LICITACIONES
-                const rLics = await storage.get(prefijo + 'lics');
-                if (rLics?.value) {
-                    const d = JSON.parse(rLics.value);
-                    if (d?.length) {
-                        setLics(d.map(l => ({ ...l, visitas: l.visitas||[] })));
-                        try { localStorage.setItem(SP+'lics', rLics.value); } catch {}
-                        addLog('✅ Licitaciones recuperadas: ' + d.length + ' (desde ' + prefijo + ')');
-                    }
+            } else { addLog('⚠ No se encontraron licitaciones en Supabase'); }
+
+            const rObras = await storage.get('bcm_obras');
+            if (rObras?.value) {
+                const d = JSON.parse(rObras.value);
+                if (d?.length) {
+                    setObras(d.map(o => ({ ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[] })));
+                    try { localStorage.setItem('bcm_obras', rObras.value); } catch {}
+                    addLog('✅ ' + d.length + ' obras de Belfast restauradas');
                 }
-                // PERSONAL
-                const rPers = await storage.get(prefijo + 'personal');
-                if (rPers?.value) {
-                    const d = JSON.parse(rPers.value);
-                    if (d?.length) {
-                        setPersonal(d);
-                        try { localStorage.setItem(SP+'personal', rPers.value); } catch {}
-                        addLog('✅ Personal recuperado: ' + d.length + ' (desde ' + prefijo + ')');
-                    }
+            }
+
+            const rPers = await storage.get('bcm_personal');
+            if (rPers?.value) {
+                const d = JSON.parse(rPers.value);
+                if (d?.length) {
+                    setPersonal(d);
+                    try { localStorage.setItem('bcm_personal', rPers.value); } catch {}
+                    addLog('✅ ' + d.length + ' personas de Belfast restauradas');
                 }
-                // PLANES
-                const rPlanes = await storage.get(prefijo + 'planes_semanales');
-                if (rPlanes?.value) {
-                    const d = JSON.parse(rPlanes.value);
-                    if (d?.length) {
-                        setPlanes(d);
-                        try { localStorage.setItem(SP+'planes_semanales', rPlanes.value); } catch {}
-                        addLog('✅ Planes recuperados: ' + d.length + ' (desde ' + prefijo + ')');
-                    }
-                }
-            } catch(e) { addLog('⚠ Error con prefijo ' + prefijo + ': ' + e.message); }
-        }
-        addLog('🏁 Recuperación completa. Cerrá esta pantalla para ver los datos.');
+            }
+
+            // 3. Limpiar VV en Supabase también (dejar vacío)
+            addLog('🧹 Limpiando VV en Supabase...');
+            await storage.set('vv_lics', JSON.stringify([])).catch(() => {});
+            await storage.set('vv_obras', JSON.stringify([])).catch(() => {});
+            await storage.set('vv_personal', JSON.stringify([])).catch(() => {});
+            addLog('✅ VV limpiada — ahora está vacía');
+
+        } catch(e) { addLog('❌ Error: ' + e.message); }
+
+        addLog('🏁 Listo. Cerrá configuración para ver los datos restaurados.');
         setEstado('done');
     }
 
     return (<div>
         <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: '14px', marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#B91C1C', marginBottom: 6 }}>🚨 Recuperación de emergencia</div>
-            <div style={{ fontSize: 12, color: '#7F1D1D', lineHeight: 1.6 }}>Si perdiste datos, tocá el botón para recuperarlos desde Supabase. Esto busca en todas las keys posibles.</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#B91C1C', marginBottom: 6 }}>🚨 Recuperar y separar datos</div>
+            <div style={{ fontSize: 12, color: '#7F1D1D', lineHeight: 1.7 }}>
+                Este botón:<br/>
+                1. Limpia los datos mezclados de VV<br/>
+                2. Restaura Belfast desde Supabase (licitaciones, obras, personal)<br/>
+                3. Deja VV vacía y separada
+            </div>
         </div>
-        <button onClick={recuperarTodo} disabled={estado === 'cargando'}
+        <button onClick={limpiarVVYRestaurarBelfast} disabled={estado === 'cargando'}
             style={{ width: '100%', background: estado === 'cargando' ? '#94A3B8' : '#DC2626', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 800, color: '#fff', cursor: estado === 'cargando' ? 'not-allowed' : 'pointer', marginBottom: 14 }}>
-            {estado === 'cargando' ? '⏳ Recuperando...' : '🔄 Recuperar todos los datos ahora'}
+            {estado === 'cargando' ? '⏳ Procesando...' : '🔄 Restaurar Belfast y limpiar VV'}
         </button>
         {log.length > 0 && (
             <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 10, padding: '12px 14px' }}>
-                {log.map((l, i) => <div key={i} style={{ fontSize: 12, color: '#15803D', marginBottom: 4 }}>{l}</div>)}
+                {log.map((l, i) => <div key={i} style={{ fontSize: 12, color: '#166534', marginBottom: 4, lineHeight: 1.5 }}>{l}</div>)}
             </div>
         )}
     </div>);
-}
 }
 
 // ── MAS (Más opciones + Configuración) ───────────────────────────────
@@ -4929,7 +4934,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                     <span style={{ fontSize: 18, color: T.muted }}>→</span>
                 </div>
             </Card>
-            {onCambiarEmpresa && (user?.nivel === 'superadmin' || user?.empresa === 'ambas') && (
+            {onCambiarEmpresa && (
                 <Card style={{ padding: "14px 16px", cursor: "pointer", marginBottom: 10 }} onClick={onCambiarEmpresa}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ width: 42, height: 42, borderRadius: 10, background: empresa === 'vv' ? '#EFF6FF' : '#DCFCE7', color: empresa === 'vv' ? '#1D4ED8' : '#16A34A', display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -4957,7 +4962,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
         </div>
         {showCfg && (<Sheet title="Configuración" onClose={() => setShowCfg(false)}>
             <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto" }}>
-                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '🚨 Recuperar' }, ...(user?.nivel === 'superadmin' || user?.empresa === 'ambas' ? [{ id: 'usuarios', l: '👥 Usuarios' }] : [])].map(s => (
+                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '📸 Fotos' }, ...(user?.nivel === 'superadmin' ? [{ id: 'usuarios', l: '👥 Usuarios' }] : [])].map(s => (
                     <button key={s.id} onClick={() => setCfgSection(s.id)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: '1.5px solid ' + cfgSection === s.id ? T.accent : T.border, background: cfgSection === s.id ? T.accentLight : T.card, color: cfgSection === s.id ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s.l}</button>
                 ))}
             </div>
@@ -5104,8 +5109,8 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                 <div style={{ fontSize: 11, color: T.muted, marginTop: 10, fontStyle: "italic" }}>... y muchos más. Podés editarlos todos desde el código fuente.</div>
             </div>)}
 
-            {cfgSection === 'fotos' && (<RecuperarFotos obras={obras} setObras={setObras} lics={lics} setLics={setLics} personal={personal} setPersonal={setPersonal} planes={planes} setPlanes={setPlanes} />)}
-            {cfgSection === 'usuarios' && (user?.nivel === 'superadmin' || user?.empresa === 'ambas') && (<GestionUsuarios />)}
+            {cfgSection === 'fotos' && (<RecuperarFotos obras={obras} setObras={setObras} lics={lics} setLics={setLics} personal={personal} setPersonal={setPersonal} />)}
+            {cfgSection === 'usuarios' && user?.nivel === 'superadmin' && (<GestionUsuarios />)}
 
             <PBtn full onClick={() => setShowCfg(false)} style={{ marginTop: 14 }}>✓ Guardar y cerrar</PBtn>
         </Sheet>)}
@@ -5207,7 +5212,7 @@ class ErrorBoundary extends React.Component {
     }
 }
 
-function AppInner({ supaSession, empresa, onCambiarEmpresa, authUser }) {
+function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     // Config base según empresa seleccionada
     const empresaConfig = empresa === 'vv' ? {
         empresa: 'V+V Construcciones',
@@ -5230,14 +5235,14 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa, authUser }) {
     function getLocalJSON(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
     function getLocalStr(k, def = '') { try { return localStorage.getItem(k) || def; } catch { return def; } }
 
-    // Usar authUser del sistema propio (tiene empresa, nivel, nombre correctos)
-    const supaUser = authUser || (supaSession?.user ? {
+    // Setear user desde sesión Supabase automáticamente
+    const supaUser = supaSession?.user ? {
         id: supaSession.user.id,
         nombre: supaSession.user.email?.split('@')[0] || 'Usuario',
         email: supaSession.user.email,
         rol: 'admin',
         pass: '',
-    } : null);
+    } : null;
 
     const [user, setUser] = useState(() => supaUser || getLocalJSON(SP+'current_user', null));
     const [view, setView] = useState('chat');
@@ -5556,80 +5561,22 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa, authUser }) {
             } catch { }
         }
 
-        // ── SYNC ROBUSTO ─────────────────────────────────────────────
-        // Regla: Supabase gana SOLO si tiene MÁS datos que local
-        // Nunca pisamos datos locales con remoto más chico
+        // Función de sync completo (polling de respaldo)
         async function syncAll() {
             try {
-                const [rLics, rObras, rPers] = await Promise.all([
-                    storage.get(SP+'lics'),
-                    storage.get(SP+'obras'),
-                    storage.get(SP+'personal'),
+                // Solo 5 requests por sync (no sync de fotos por obra que genera N requests)
+                const [rLics, rObras, rPers, rCfg, rPlanes] = await Promise.all([
+                    storage.get(SP+'lics'), storage.get(SP+'obras'),
+                    storage.get(SP+'personal'), storage.get(SP+'cfg'),
+                    storage.get(SP+'planes_semanales'),
                 ]);
-
-                // PERSONAL — el más importante para sync entre dispositivos
-                if (rPers?.value) {
-                    try {
-                        const remoto = JSON.parse(rPers.value);
-                        const localStr = storage.getLocal(SP+'personal')?.value;
-                        const local = localStr ? JSON.parse(localStr) : [];
-                        // Aplicar si remoto tiene más o igual cantidad Y es diferente
-                        if (remoto.length >= local.length && rPers.value !== localStr) {
-                            // Fusionar: mantener cambios locales recientes
-                            const ahora = Date.now();
-                            if (ahora - myLastSave.personal > PROTECT_MS) {
-                                setPersonal(remoto);
-                                try { localStorage.setItem(SP+'personal', rPers.value); } catch {}
-                            }
-                        }
-                    } catch {}
-                }
-
-                // LICITACIONES
-                if (rLics?.value) {
-                    try {
-                        const remoto = JSON.parse(rLics.value);
-                        const localStr = storage.getLocal(SP+'lics')?.value;
-                        const local = localStr ? JSON.parse(localStr) : [];
-                        if (remoto.length >= local.length && rLics.value !== localStr) {
-                            const ahora = Date.now();
-                            if (ahora - myLastSave.lics > PROTECT_MS) {
-                                setLics(cur => remoto.map(l => {
-                                    const loc = cur.find(x => x.id === l.id);
-                                    return { ...l, visitas: loc?.visitas?.length ? loc.visitas : l.visitas || [] };
-                                }));
-                                try { localStorage.setItem(SP+'lics', rLics.value); } catch {}
-                            }
-                        }
-                    } catch {}
-                }
-
-                // OBRAS
-                if (rObras?.value) {
-                    try {
-                        const remoto = JSON.parse(rObras.value);
-                        const localStr = storage.getLocal(SP+'obras')?.value;
-                        const local = localStr ? JSON.parse(localStr) : [];
-                        if (remoto.length >= local.length && rObras.value !== localStr) {
-                            const ahora = Date.now();
-                            if (ahora - myLastSave.obras > PROTECT_MS) {
-                                setObras(cur => remoto.map(o => {
-                                    const loc = cur.find(x => x.id === o.id);
-                                    return {
-                                        ...o,
-                                        fotos: loc?.fotos?.length ? loc.fotos : [],
-                                        archivos: loc?.archivos?.length ? loc.archivos : [],
-                                        gastos: loc?.gastos?.length >= (o.gastos?.length||0) ? (loc?.gastos||[]) : (o.gastos||[]),
-                                        obs: loc?.obs?.length >= (o.obs?.length||0) ? (loc?.obs||[]) : (o.obs||[]),
-                                        informes: loc?.informes?.length >= (o.informes?.length||0) ? (loc?.informes||[]) : (o.informes||[]),
-                                    };
-                                }));
-                                try { localStorage.setItem(SP+'obras', rObras.value); } catch {}
-                            }
-                        }
-                    } catch {}
-                }
-            } catch {}
+                if (rLics?.value) { const loc = storage.getLocal(SP+'lics'); if (loc?.value !== rLics.value) await applyRemoteKey(SP+'lics', rLics.value); }
+                if (rObras?.value) { const loc = storage.getLocal(SP+'obras'); if (loc?.value !== rObras.value) await applyRemoteKey(SP+'obras', rObras.value); }
+                if (rPers?.value) { const loc = storage.getLocal(SP+'personal'); if (loc?.value !== rPers.value) await applyRemoteKey(SP+'personal', rPers.value); }
+                if (rCfg?.value) { const loc = storage.getLocal(SP+'cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey(SP+'cfg', rCfg.value); }
+                if (rPlanes?.value) { const loc = storage.getLocal(SP+'planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem(SP+'planes_semanales', rPlanes.value); } catch {} } }
+                // NO sincronizar fotos/archivos por obra — demasiadas requests al Supabase gratuito
+            } catch { }
         }
 
         // Supabase Realtime — escucha cambios en bcm_storage en tiempo real
@@ -5690,18 +5637,12 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa, authUser }) {
             }
         }
 
-        // SYNC EN TIEMPO REAL — polling cada 5 segundos
-        // PROTECT_MS evita que un sync pise un cambio local reciente
-        syncAll();
-        const iv = setInterval(syncAll, 5000);
-
-        // Al volver al foco (cambiar de pestaña) sincronizar inmediatamente
-        const onFocus = () => syncAll();
-        window.addEventListener('focus', onFocus);
-        window.addEventListener('online', () => syncAll());
-
-        // Intentar Realtime WebSocket también
-        connectRealtime();
+        // SYNC DESACTIVADO — borraba datos al volver al foco con tablas vacías
+        // connectRealtime();
+        // syncAll();
+        const iv = null;
+        const onFocus = () => {};
+        // NO escuchar focus ni online para no pisar localStorage con Supabase vacío
 
         // Interceptar el storage.set original para marcar mis propios cambios
         const origSet = storage.set.bind(storage);
@@ -5871,8 +5812,8 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa, authUser }) {
 }
 
 // Wrapper con ErrorBoundary para evitar pantallas blancas
-function AppInterna({ supaSession, empresa, onCambiarEmpresa, authUser }) {
-    return <ErrorBoundary><AppInner supaSession={supaSession} empresa={empresa} onCambiarEmpresa={onCambiarEmpresa} authUser={authUser} /></ErrorBoundary>;
+function AppInterna({ supaSession, empresa, onCambiarEmpresa }) {
+    return <ErrorBoundary><AppInner supaSession={supaSession} empresa={empresa} onCambiarEmpresa={onCambiarEmpresa} /></ErrorBoundary>;
 }
 
 
@@ -5948,7 +5889,7 @@ function GestionUsuarios() {
 // Cada usuario: { id, usuario, passHash, nombre, empresa ('belfast'|'vv'|'ambas'), creado }
 // El super admin puede ver y gestionar todos los usuarios
 
-const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'ambas', nombre: 'Sebastián', nivel: 'superadmin' };
+const SUPER_ADMIN = { usuario: 'sebas', pass: 'Belfast2025!', empresa: 'ambas', nombre: 'Sebastián', nivel: 'superadmin' };
 const MAX_USUARIOS = 8;
 
 // Hash simple (no criptográfico pero suficiente para uso interno)
@@ -6130,7 +6071,7 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
     // Cargar logos guardados desde localStorage
     const [logos, setLogos] = React.useState(() => {
         try {
-            const saved = localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'selector_logos');
+            const saved = localStorage.getItem((window.__APP_SP||'bcm_')+'selector_logos');
             return saved ? JSON.parse(saved) : { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' };
         } catch { return { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' }; }
     });
@@ -6138,8 +6079,8 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
 
     function guardarLogos(nuevos) {
         setLogos(nuevos);
-        try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'selector_logos', JSON.stringify(nuevos)); } catch {}
-        storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'selector_logos', JSON.stringify(nuevos)).catch(() => {});
+        try { localStorage.setItem((window.__APP_SP||'bcm_')+'selector_logos', JSON.stringify(nuevos)); } catch {}
+        storage.set((window.__APP_SP||'bcm_')+'selector_logos', JSON.stringify(nuevos)).catch(() => {});
     }
 
     async function handleLogoUpload(key, file) {
@@ -6286,9 +6227,8 @@ export default function App() {
 
     function handleCambiarEmpresa() {
         if (authUser?.empresa === 'ambas') {
-            const nueva = empresa === 'belfast' ? 'vv' : 'belfast';
-            try { localStorage.setItem('bcm_auth_empresa', nueva); } catch {}
-            setEmpresa(nueva);
+            try { localStorage.removeItem('bcm_auth_empresa'); } catch {}
+            setEmpresa(null);
         }
     }
 
