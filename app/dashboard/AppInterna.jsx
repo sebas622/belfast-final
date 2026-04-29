@@ -188,22 +188,18 @@ const EMAIL_IA = "ia.belfastcm@gmail.com";
 
 // ── PERMISOS POR USUARIO ─────────────────────────────────────────────
 // 'ambas' → ve el selector y puede entrar a las dos
-// 'belfast' → entra directo a Belfast sin ver el selector
-// 'vv' → entra directo a V+V sin ver el selector
+// 'belfast' → entra directo a Belfast
+// 'vv' → entra directo a V+V
 const PERMISOS_EMPRESA = {
-    // Super admins — ven las dos empresas
-    'sebas622@gmail.com': 'ambas',
-    // Usuarios solo Belfast
-    'usuario.belfast@ejemplo.com': 'belfast',
-    // Usuarios solo V+V
-    'usuario.vv@ejemplo.com': 'vv',
+    'sebas': 'ambas',            // super admin — ve las dos
+    'sebas@belfast.cm.com': 'ambas', // por si usa email
 };
-// Email por defecto si no está en la lista → accede a ambas
-const PERMISO_DEFAULT = 'ambas';
+// Todos los demás → solo Belfast
+const PERMISO_DEFAULT = 'belfast';
 
-function getPermisoEmpresa(email) {
-    if (!email) return PERMISO_DEFAULT;
-    const key = email.toLowerCase().trim();
+function getPermisoEmpresa(usuarioOEmail) {
+    if (!usuarioOEmail) return PERMISO_DEFAULT;
+    const key = usuarioOEmail.toLowerCase().trim();
     return PERMISOS_EMPRESA[key] || PERMISO_DEFAULT;
 }
 
