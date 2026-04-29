@@ -5776,6 +5776,34 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
     const T2 = { navy: '#0F172A', accent: '#1D4ED8', bg: '#F8FAFC', text: '#1E293B', muted: '#94A3B8', border: '#E2E8F0', card: '#fff' };
     const email = session?.user?.email || '';
 
+    // Cargar logos guardados desde localStorage
+    const [logos, setLogos] = React.useState(() => {
+        try {
+            const saved = localStorage.getItem('bcm_selector_logos');
+            return saved ? JSON.parse(saved) : { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' };
+        } catch { return { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' }; }
+    });
+    const [editando, setEditando] = React.useState(false);
+
+    function guardarLogos(nuevos) {
+        setLogos(nuevos);
+        try { localStorage.setItem('bcm_selector_logos', JSON.stringify(nuevos)); } catch {}
+        storage.set('bcm_selector_logos', JSON.stringify(nuevos)).catch(() => {});
+    }
+
+    async function handleLogoUpload(key, file) {
+        const reader = new FileReader();
+        reader.onload = e => guardarLogos({ ...logos, [key]: e.target.result });
+        reader.readAsDataURL(file);
+    }
+
+    const empresasConLogos = EMPRESAS.map(emp => ({
+        ...emp,
+        logoCustom: emp.id === 'belfast' ? logos.belfast : logos.vv,
+        nombre: emp.id === 'belfast' ? (logos.belfastNombre || emp.nombre) : (logos.vvNombre || emp.nombre),
+        subtitulo: emp.id === 'belfast' ? (logos.belfastSub || emp.subtitulo) : (logos.vvSub || emp.subtitulo),
+    }));
+
     return (
         <div style={{ minHeight: '100vh', background: T2.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div style={{ width: '100%', maxWidth: 400 }}>
@@ -5788,13 +5816,15 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
 
                 {/* Cards de empresa */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-                    {EMPRESAS.map(emp => (
+                    {empresasConLogos.map(emp => (
                         <button key={emp.id} onClick={() => onSelect(emp.id)}
                             style={{ background: T2.card, border: `2px solid ${T2.border}`, borderRadius: 18, padding: '20px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 18, textAlign: 'left', transition: 'all .15s', boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = emp.color; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                             onMouseLeave={e => { e.currentTarget.style.borderColor = T2.border; e.currentTarget.style.transform = 'none'; }}>
-                            <div style={{ width: 64, height: 64, borderRadius: 16, background: emp.bg, color: emp.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                {emp.icon}
+                            <div style={{ width: 64, height: 64, borderRadius: 16, background: emp.bg, color: emp.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                                {emp.logoCustom
+                                    ? <img src={emp.logoCustom} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }} />
+                                    : emp.icon}
                             </div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 17, fontWeight: 800, color: T2.text, marginBottom: 3 }}>{emp.nombre}</div>
@@ -5805,12 +5835,67 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
                     ))}
                 </div>
 
-                {/* Cerrar sesión */}
-                <div style={{ textAlign: 'center' }}>
+                {/* Botones inferiores */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button onClick={() => setEditando(v => !v)} style={{ background: 'none', border: '1px solid rgba(255,255,255,.2)', borderRadius: 8, color: 'rgba(255,255,255,.5)', fontSize: 11, cursor: 'pointer', padding: '6px 12px' }}>
+                        ✏️ Personalizar logos
+                    </button>
                     <button onClick={onLogout} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.4)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
                         Cerrar sesión
                     </button>
                 </div>
+
+                {/* Panel de edición de logos */}
+                {editando && (
+                    <div style={{ background: 'rgba(255,255,255,.05)', borderRadius: 16, padding: '20px', marginTop: 16, border: '1px solid rgba(255,255,255,.1)' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 16 }}>Personalizar pantalla de empresas</div>
+                        {EMPRESAS.map(emp => (
+                            <div key={emp.id} style={{ marginBottom: 20 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                                    {emp.nombre}
+                                </div>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+                                    <div style={{ width: 52, height: 52, borderRadius: 12, background: emp.bg, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        {(emp.id === 'belfast' ? logos.belfast : logos.vv)
+                                            ? <img src={emp.id === 'belfast' ? logos.belfast : logos.vv} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
+                                            : <div style={{ color: emp.color }}>{emp.icon}</div>}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <input
+                                            type="file" accept="image/*"
+                                            onChange={e => e.target.files[0] && handleLogoUpload(emp.id, e.target.files[0])}
+                                            style={{ display: 'none' }}
+                                            id={`logo-upload-${emp.id}`}
+                                        />
+                                        <label htmlFor={`logo-upload-${emp.id}`} style={{ display: 'block', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#fff', cursor: 'pointer', textAlign: 'center', marginBottom: 6 }}>
+                                            📷 Subir logo
+                                        </label>
+                                        {(emp.id === 'belfast' ? logos.belfast : logos.vv) && (
+                                            <button onClick={() => guardarLogos({ ...logos, [emp.id]: '' })} style={{ width: '100%', background: 'rgba(239,68,68,.2)', border: '1px solid rgba(239,68,68,.4)', borderRadius: 8, padding: '6px', fontSize: 11, color: '#FCA5A5', cursor: 'pointer' }}>
+                                                ✕ Quitar logo
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <input
+                                    value={emp.id === 'belfast' ? (logos.belfastNombre || '') : (logos.vvNombre || '')}
+                                    onChange={e => guardarLogos({ ...logos, [emp.id === 'belfast' ? 'belfastNombre' : 'vvNombre']: e.target.value })}
+                                    placeholder={`Nombre (${emp.nombre})`}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#fff', marginBottom: 6, boxSizing: 'border-box' }}
+                                />
+                                <input
+                                    value={emp.id === 'belfast' ? (logos.belfastSub || '') : (logos.vvSub || '')}
+                                    onChange={e => guardarLogos({ ...logos, [emp.id === 'belfast' ? 'belfastSub' : 'vvSub']: e.target.value })}
+                                    placeholder={`Subtítulo (${emp.subtitulo})`}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'rgba(255,255,255,.7)', boxSizing: 'border-box' }}
+                                />
+                            </div>
+                        ))}
+                        <button onClick={() => setEditando(false)} style={{ width: '100%', background: '#1D4ED8', border: 'none', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', marginTop: 4 }}>
+                            ✓ Listo
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
