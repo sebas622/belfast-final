@@ -3536,6 +3536,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             'Agregar obra: [[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"Nombre","estado":"curso","avance":0,"monto":"","cierre":""}}]]\n' +
             'Actualizar obra: [[ACTION:{"tipo":"update_obra","id":"ID_DEL_CONTEXTO","campo":"avance","valor":75}]]\n' +
             'Agregar plan semanal: [[ACTION:{"tipo":"agregar_plan","datos":{"obra":"Nombre obra","semana":"dd/mm/aaaa","notas":"","dias":{"lun":{"activo":true,"desde":"08:00","hasta":"17:00","tareas":""},"mar":{"activo":false,"desde":"","hasta":"","tareas":""},"mie":{"activo":false,"desde":"","hasta":"","tareas":""},"jue":{"activo":false,"desde":"","hasta":"","tareas":""},"vie":{"activo":false,"desde":"","hasta":"","tareas":""},"sab":{"activo":false,"desde":"","hasta":"","tareas":""},"dom":{"activo":false,"desde":"","hasta":"","tareas":""}}}}]]\n' +
+            'Modificar código de la app (SOLO si el usuario lo pide explícitamente): [[ACTION:{"tipo":"modificar_codigo","descripcion":"qué cambio hacer","preview":true}]]\n' +
             'Agregar gasto a obra: [[ACTION:{"tipo":"agregar_gasto","obraId":"ID_DEL_CONTEXTO","datos":{"desc":"Estacionamiento","monto":"50000","tipo":"general","fecha":"dd/mm/aaaa","quien":""}}]]\n' +
             'Crear resumen fotográfico de avance: [[ACTION:{"tipo":"crear_resumen_fotos","obraId":"ID_DEL_CONTEXTO"}]]\n' +
             'Grabar reunión: [[ACTION:{"tipo":"grabar_reunion","obra":"Nombre de la obra"}]]\n' +
@@ -3638,6 +3639,31 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         return nuevos;
                     });
                     mensajeExtra = '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
+                }
+                else if (accion.tipo === 'modificar_codigo' && accion.descripcion) {
+                    mensajeExtra = '\n\n⚙️ Generando el cambio de código...';
+                    setMsgs(p => [...p, { id: uid(), role: 'assistant', text: textoLimpio + mensajeExtra }]);
+                    // Pedir a la IA que genere el código específico
+                    const codeSys = 'Sos un desarrollador experto en React y Next.js. Generás código limpio y funcional. Respondé SOLO con el código completo del archivo modificado, sin explicaciones ni markdown.';
+                    const codeHistory = [{ role: 'user', content: `El archivo actual es AppInterna.jsx con ${obras.length} obras, ${lics.length} licitaciones y ${personal.length} personas en el contexto. Realizá este cambio: ${accion.descripcion}. Devolvé el archivo completo modificado.` }];
+                    try {
+                        const res = await fetch('/api/update-code', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                filePath: 'app/dashboard/AppInterna.jsx',
+                                content: accion.codigo || '// pendiente',
+                                message: `🤖 IA: ${accion.descripcion}`,
+                                preview: accion.preview !== false
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                            mensajeExtra = `\n\n✅ Cambio generado en rama preview.\n🔗 Probalo en: ${data.previewUrl}\n\nCuando confirmes que funciona, decime "aplicar a producción".`;
+                        } else {
+                            mensajeExtra = '\n\n⚠️ Error al aplicar el cambio: ' + (data.error || 'desconocido');
+                        }
+                    } catch(e) { mensajeExtra = '\n\n⚠️ Error: ' + e.message; }
                 }
                 else if (accion.tipo === 'agregar_gasto' && accion.obraId && accion.datos?.desc) {
                     const nuevoGasto = { id: uid(), desc: accion.datos.desc, monto: accion.datos.monto || '0', tipo: accion.datos.tipo || 'general', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), quien: accion.datos.quien || '', comprobante: null };
