@@ -1357,18 +1357,23 @@ function TabInformes({ detail, upd }) {
 // ── OBRAS ────────────────────────────────────────────────────────────
 // ── TAB GASTOS (dentro de cada Obra) ─────────────────────────────────
 const TIPOS_GASTO = [
+    { id: 'general', label: 'Gastos generales', color: '#1D4ED8', bg: '#EFF6FF' },
     { id: 'viatico', label: 'Viático', color: '#F59E0B', bg: '#FFFBEB' },
-    { id: 'compra', label: 'Compra material', color: '#3B82F6', bg: '#EFF6FF' },
-    { id: 'herramienta', label: 'Herramienta', color: '#8B5CF6', bg: '#F5F3FF' },
-    { id: 'subcontrato', label: 'Subcontrato', color: '#10B981', bg: '#ECFDF5' },
+    { id: 'compra', label: 'Compras', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'pago', label: 'Pago', color: '#10B981', bg: '#ECFDF5' },
+    { id: 'personal', label: 'Personal', color: '#8B5CF6', bg: '#F5F3FF' },
     { id: 'combustible', label: 'Combustible', color: '#F97316', bg: '#FFF7ED' },
-    { id: 'otro', label: 'Otro', color: '#6B7280', bg: '#F9FAFB' },
+    { id: 'subcontrato', label: 'Subcontrato', color: '#EC4899', bg: '#FDF2F8' },
+    { id: 'herramienta', label: 'Herramienta', color: '#14B8A6', bg: '#F0FDFA' },
+    { id: 'otro', label: 'Otros', color: '#6B7280', bg: '#F9FAFB' },
 ];
 
-function TabGastos({ detail, upd }) {
+function TabGastos({ detail, upd, apiKey }) {
     const [showNew, setShowNew] = useState(false);
-    const [form, setForm] = useState({ desc: '', tipo: 'viatico', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
+    const [escaneando, setEscaneando] = useState(false);
+    const [form, setForm] = useState({ desc: '', tipo: 'general', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
     const compRef = useRef(null);
+    const ticketRef = useRef(null);
     const gastos = detail.gastos || [];
 
     const total = gastos.reduce((s, g) => s + parseMontoNum(g.monto), 0);
@@ -1381,15 +1386,74 @@ function TabGastos({ detail, upd }) {
         e.target.value = '';
     }
 
+    // Escanear ticket con IA
+    async function escanearTicket(e) {
+        const f = e.target.files?.[0]; if (!f) return;
+        const url = await toDataUrl(f);
+        e.target.value = '';
+        setEscaneando(true);
+        try {
+            const headers = { "Content-Type": "application/json", "anthropic-dangerous-direct-browser-access": "true", "anthropic-version": "2023-06-01" };
+            if (apiKey) headers["x-api-key"] = apiKey;
+            const body = {
+                model: "claude-sonnet-4-20250514", max_tokens: 500,
+                messages: [{ role: 'user', content: [
+                    { type: 'image', source: { type: 'base64', media_type: getMediaType(url), data: getBase64(url) } },
+                    { type: 'text', text: 'Analizá este ticket o factura. Extraé SOLO estos datos en JSON sin markdown:\n{"desc":"descripción corta del gasto","monto":"número sin símbolos","tipo":"general|viatico|compra|pago|personal|combustible|subcontrato|herramienta|otro","fecha":"dd/mm/aaaa","quien":"nombre del proveedor o persona si aparece"}\nSi no encontrás un campo, dejalo vacío. Respondé SOLO con el JSON.' }
+                ]}],
+            };
+            const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: JSON.stringify(body) });
+            if (r.ok) {
+                const d = await r.json();
+                const txt = d.content?.[0]?.text || '{}';
+                const datos = JSON.parse(txt.replace(/```json|```/g,'').trim());
+                setForm(p => ({
+                    ...p,
+                    desc: datos.desc || p.desc,
+                    monto: datos.monto || p.monto,
+                    tipo: datos.tipo || p.tipo,
+                    fecha: datos.fecha || p.fecha,
+                    quien: datos.quien || p.quien,
+                    comprobante: { url, nombre: f.name, ext: f.name.split('.').pop().toUpperCase() }
+                }));
+                setShowNew(true);
+            }
+        } catch(e) { alert('Error escaneando ticket: ' + e.message); }
+        setEscaneando(false);
+    }
+
     function agregar() {
         if (!form.desc.trim() || !form.monto) return;
         const nuevo = { id: uid(), ...form };
         upd(detail.id, { gastos: [...gastos, nuevo] });
-        setForm({ desc: '', tipo: 'viatico', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
+        setForm({ desc: '', tipo: 'general', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
         setShowNew(false);
     }
 
     function eliminar(id) { upd(detail.id, { gastos: gastos.filter(g => g.id !== id) }); }
+
+    // Exportar a Excel (CSV descargable)
+    function exportarExcel() {
+        const filas = [
+            ['Obra', 'Descripción', 'Categoría', 'Monto ($)', 'Fecha', 'Proveedor/Quien', 'Comprobante'],
+            ...gastos.map(g => [
+                detail.nombre,
+                g.desc,
+                TIPOS_GASTO.find(t => t.id === g.tipo)?.label || g.tipo,
+                parseMontoNum(g.monto).toString(),
+                g.fecha,
+                g.quien || '',
+                g.comprobante?.nombre || ''
+            ]),
+            ['', '', 'TOTAL', total.toString(), '', '', '']
+        ];
+        const csv = filas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Gastos_${detail.nombre}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.csv`;
+        a.click();
+    }
 
     return (<div>
         {/* Resumen */}
@@ -1406,16 +1470,29 @@ function TabGastos({ detail, upd }) {
             </div>}
         </div>
 
-        <button onClick={() => setShowNew(true)} style={{ width: "100%", background: T.accent, border: "none", borderRadius: T.rsm, padding: "12px", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" /></svg>
-            Cargar gasto
-        </button>
+        {/* Botones de acción */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+            <input type="file" accept="image/*" ref={ticketRef} style={{ display: 'none' }} onChange={escanearTicket} />
+            <button onClick={() => ticketRef.current?.click()} disabled={escaneando} style={{ background: escaneando ? '#94A3B8' : '#F59E0B', border: "none", borderRadius: T.rsm, padding: "12px 8px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: escaneando ? 'not-allowed' : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                {escaneando ? '⏳ Escaneando...' : '📷 Escanear ticket'}
+            </button>
+            <button onClick={() => setShowNew(true)} style={{ background: T.accent, border: "none", borderRadius: T.rsm, padding: "12px 8px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                ✏️ Cargar manual
+            </button>
+        </div>
+
+        {/* Exportar Excel */}
+        {gastos.length > 0 && (
+            <button onClick={exportarExcel} style={{ width: '100%', background: '#ECFDF5', border: '1.5px solid #86EFAC', borderRadius: T.rsm, padding: "10px", fontSize: 12, fontWeight: 700, color: '#15803D', cursor: "pointer", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                📊 Exportar planilla Excel ({gastos.length} gastos · ${total.toLocaleString('es-AR')})
+            </button>
+        )}
 
         {gastos.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "30px 0", color: T.muted, fontSize: 13 }}>Sin gastos registrados</div>
+            <div style={{ textAlign: "center", padding: "30px 0", color: T.muted, fontSize: 13 }}>Sin gastos registrados<br/><span style={{fontSize:11}}>Escaneá un ticket o cargá manualmente</span></div>
         ) : (
             [...gastos].reverse().map(g => {
-                const tipo = TIPOS_GASTO.find(t => t.id === g.tipo) || TIPOS_GASTO[5];
+                const tipo = TIPOS_GASTO.find(t => t.id === g.tipo) || TIPOS_GASTO[8];
                 return (<div key={g.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: T.rsm, padding: "12px 14px", marginBottom: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                         <div style={{ flex: 1 }}>
@@ -1432,13 +1509,19 @@ function TabGastos({ detail, upd }) {
                     </div>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         {g.comprobante && (
-                            <a href={g.comprobante.url} download={g.comprobante.nombre} style={{ textDecoration: "none", flex: 1 }}>
-                                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                                    <div style={{ width: 24, height: 24, borderRadius: 5, background: T.accentLight, color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800 }}>{g.comprobante.ext}</div>
-                                    <span style={{ fontSize: 11, color: T.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.comprobante.nombre}</span>
-                                    <span style={{ fontSize: 10, color: T.accent, fontWeight: 600, marginLeft: "auto" }}>↓</span>
+                            g.comprobante.ext?.match(/^(JPG|JPEG|PNG|WEBP|HEIC)$/i) ? (
+                                <div style={{ flex: 1, borderRadius: 8, overflow: 'hidden', maxHeight: 120 }}>
+                                    <img src={g.comprobante.url} alt="ticket" style={{ width: '100%', objectFit: 'cover', borderRadius: 8 }} />
                                 </div>
-                            </a>
+                            ) : (
+                                <a href={g.comprobante.url} download={g.comprobante.nombre} style={{ textDecoration: "none", flex: 1 }}>
+                                    <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                                        <div style={{ width: 24, height: 24, borderRadius: 5, background: T.accentLight, color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800 }}>{g.comprobante.ext}</div>
+                                        <span style={{ fontSize: 11, color: T.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.comprobante.nombre}</span>
+                                        <span style={{ fontSize: 10, color: T.accent, fontWeight: 600, marginLeft: "auto" }}>↓</span>
+                                    </div>
+                                </a>
+                            )
                         )}
                         <button onClick={() => eliminar(g.id)} style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "6px 10px", fontSize: 11, color: "#EF4444", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>✕</button>
                     </div>
@@ -1448,9 +1531,9 @@ function TabGastos({ detail, upd }) {
 
         {showNew && (<Sheet title="Cargar gasto" onClose={() => setShowNew(false)}>
             <Field label="Descripción">
-                <TInput value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} placeholder="Ej: Cemento Portland 25kg" />
+                <TInput value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} placeholder="Ej: Estacionamiento, cemento, etc." />
             </Field>
-            <Lbl>Tipo de gasto</Lbl>
+            <Lbl>Categoría</Lbl>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 12 }}>
                 {TIPOS_GASTO.map(t => (
                     <button key={t.id} onClick={() => setForm(p => ({ ...p, tipo: t.id }))} style={{ padding: "8px 4px", borderRadius: T.rsm, border: `1.5px solid ${form.tipo === t.id ? t.color : T.border}`, background: form.tipo === t.id ? t.bg : T.card, color: t.color, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>{t.label}</button>
@@ -1625,7 +1708,7 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                         {detail.archivos.length === 0 && <div style={{ textAlign: "center", padding: "32px 0", color: T.muted, fontSize: 13 }}>{t(cfg, 'obras_sin_archivos')}</div>}
                     </div>)}
                     {tab === "informes" && <TabInformes detail={detail} upd={upd} />}
-                    {tab === "gastos" && <TabGastos detail={detail} upd={upd} />}
+                    {tab === "gastos" && <TabGastos detail={detail} upd={upd} apiKey={apiKey} />}
                 </div>
             </div>
         );
@@ -3453,6 +3536,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             'Agregar obra: [[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"Nombre","estado":"curso","avance":0,"monto":"","cierre":""}}]]\n' +
             'Actualizar obra: [[ACTION:{"tipo":"update_obra","id":"ID_DEL_CONTEXTO","campo":"avance","valor":75}]]\n' +
             'Agregar plan semanal: [[ACTION:{"tipo":"agregar_plan","datos":{"obra":"Nombre obra","semana":"dd/mm/aaaa","notas":"","dias":{"lun":{"activo":true,"desde":"08:00","hasta":"17:00","tareas":""},"mar":{"activo":false,"desde":"","hasta":"","tareas":""},"mie":{"activo":false,"desde":"","hasta":"","tareas":""},"jue":{"activo":false,"desde":"","hasta":"","tareas":""},"vie":{"activo":false,"desde":"","hasta":"","tareas":""},"sab":{"activo":false,"desde":"","hasta":"","tareas":""},"dom":{"activo":false,"desde":"","hasta":"","tareas":""}}}}]]\n' +
+            'Agregar gasto a obra: [[ACTION:{"tipo":"agregar_gasto","obraId":"ID_DEL_CONTEXTO","datos":{"desc":"Estacionamiento","monto":"50000","tipo":"general","fecha":"dd/mm/aaaa","quien":""}}]]\n' +
             'Crear resumen fotográfico de avance: [[ACTION:{"tipo":"crear_resumen_fotos","obraId":"ID_DEL_CONTEXTO"}]]\n' +
             'Grabar reunión: [[ACTION:{"tipo":"grabar_reunion","obra":"Nombre de la obra"}]]\n' +
             'Subir minuta (archivo): [[ACTION:{"tipo":"subir_minuta","obraId":"ID_DEL_CONTEXTO","titulo":"Minuta reunión"}]]\n' +
@@ -3554,6 +3638,18 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         return nuevos;
                     });
                     mensajeExtra = '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
+                }
+                else if (accion.tipo === 'agregar_gasto' && accion.obraId && accion.datos?.desc) {
+                    const nuevoGasto = { id: uid(), desc: accion.datos.desc, monto: accion.datos.monto || '0', tipo: accion.datos.tipo || 'general', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), quien: accion.datos.quien || '', comprobante: null };
+                    setObrasRef.current(p => {
+                        const nuevo = p.map(o => o.id === accion.obraId ? { ...o, gastos: [...(o.gastos||[]), nuevoGasto] } : o);
+                        const obraName = nuevo.find(o => o.id === accion.obraId)?.nombre || 'la obra';
+                        const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                        try { localStorage.setItem('bcm_obras', json); } catch {}
+                        storage.set('bcm_obras', json).catch(() => {});
+                        mensajeExtra = '\n\n✅ Gasto "$' + Number(accion.datos.monto||0).toLocaleString('es-AR') + ' — ' + accion.datos.desc + '" guardado en "' + obraName + '".';
+                        return nuevo;
+                    });
                 }
                 else if (accion.tipo === 'crear_resumen_fotos' && accion.obraId) {
                     const obra = obrasRef.current.find(o => o.id === accion.obraId);
