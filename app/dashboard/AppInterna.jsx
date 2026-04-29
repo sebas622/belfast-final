@@ -3398,7 +3398,12 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
 
         if (accionMatch) {
             try {
-                const accion = JSON.parse(accionMatch[1]);
+                // Limpiar el JSON antes de parsear — la IA a veces genera comillas raras
+                let jsonStr = accionMatch[1]
+                    .replace(/[\u2018\u2019]/g, "'")
+                    .replace(/[\u201C\u201D]/g, '"')
+                    .trim();
+                const accion = JSON.parse(jsonStr);
                 if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
                     const nuevaPersona = {
                         id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario',
@@ -3603,7 +3608,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
         let textoFinal = r.replace(/\[\[ACTION:[\s\S]*?\]\]/g, '').trim();
         if (accionMatchV) {
             try {
-                const accion = JSON.parse(accionMatchV[1]);
+                let jsonStrV = accionMatchV[1].replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').trim();
+                const accion = JSON.parse(jsonStrV);
                 if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '' };
                     setPersonalRef.current(p => [...p, nueva]);
