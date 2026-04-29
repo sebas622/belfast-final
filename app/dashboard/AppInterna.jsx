@@ -1829,7 +1829,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
     useEffect(() => {
         (async () => {
             try {
-                const r = await storage.get((window.__APP_SP||'bcm_')+'presentismo');
+                const r = await storage.get((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'presentismo');
                 if (r?.value) { const d = JSON.parse(r.value); setPresentismo(d.registros || {}); }
             } catch { }
             setPresentismoLoaded(true);
@@ -2264,7 +2264,7 @@ function PresupuestoView({ tipo, setView }) {
 
 // ── VIGILANCIA · PRESENTISMO ─────────────────────────────────────────
 function PanelVigilancia({ setView }) {
-    const [camaras, setCamaras] = useStoredState((window.__APP_SP||'bcm_')+'camaras', []);
+    const [camaras, setCamaras] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'camaras', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', url: '', sector: '', ap: 'aep', tipo: 'ip' });
     function add() { if (!form.nombre || !form.url) return; setCamaras(p => [...p, { ...form, id: uid() }]); setForm({ nombre: '', url: '', sector: '', ap: 'aep', tipo: 'ip' }); setShowNew(false); }
@@ -2333,7 +2333,7 @@ async function getCurrentPosition() {
 }
 
 function Presentismo({ personal, setPersonal, obras, setObras, currentUser, setView }) {
-    const [presentismoData, setPresentismoData] = useStoredState((window.__APP_SP||'bcm_')+'presentismo', { registros: {}, bioLink: '', trackingAuto: false });
+    const [presentismoData, setPresentismoData] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'presentismo', { registros: {}, bioLink: '', trackingAuto: false });
     const registros = presentismoData.registros || {};
     const bioLink = presentismoData.bioLink || '';
     const trackingAuto = !!presentismoData.trackingAuto;
@@ -2571,7 +2571,7 @@ function Presentismo({ personal, setPersonal, obras, setObras, currentUser, setV
 
 // ── ARCHIVOS · SEGUIMIENTO · RESUMEN ────────────────────────────────
 function Archivos({ setView }) {
-    const [files, setFiles] = useStoredState((window.__APP_SP||'bcm_')+'archivos', []);
+    const [files, setFiles] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', []);
     const inputRef = useRef(null);
 
     async function handleUp(e) {
@@ -2664,7 +2664,7 @@ function CotizacionView({ setView, apiKey, cfg }) {
     const [tipologia, setTipologia] = useState('refaccion');
     const [loading, setLoading] = useState(false);
     const [resultado, setResultado] = useState(null);
-    const [historial, setHistorial] = useStoredState((window.__APP_SP||'bcm_')+'cotizaciones', []);
+    const [historial, setHistorial] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'cotizaciones', []);
     const camRef = useRef(null);
     const galRef = useRef(null);
 
@@ -3008,7 +3008,7 @@ function MensajesView({ setView, currentUser, personal }) {
 
     async function loadMensajes() {
         try {
-            const r = await storage.get((window.__APP_SP||'bcm_')+'mensajes');
+            const r = await storage.get((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes');
             if (r?.value) setMensajes(JSON.parse(r.value));
         } catch { }
         setLoaded(true);
@@ -3024,14 +3024,14 @@ function MensajesView({ setView, currentUser, personal }) {
         const nuevo = { id: uid(), de: myId, deName: myName, para: selUser.id, paraName: selUser.nombre, txt: txt.trim(), fecha: new Date().toISOString(), leido: false };
         const actualizados = [...mensajes, nuevo];
         setMensajes(actualizados); setTxt('');
-        try { await storage.set((window.__APP_SP||'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
+        try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
     }
 
     async function marcarLeidos() {
         if (!selUser) return;
         const actualizados = mensajes.map(m => (m.para === myId && m.de === selUser.id && !m.leido) ? { ...m, leido: true } : m);
         setMensajes(actualizados);
-        try { await storage.set((window.__APP_SP||'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
+        try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
     }
     useEffect(() => { if (selUser) marcarLeidos(); }, [selUser]);
 
@@ -3080,7 +3080,7 @@ function MensajesView({ setView, currentUser, personal }) {
 }
 
 function ContactosView({ setView }) {
-    const [contactos, setContactos] = useStoredState((window.__APP_SP||'bcm_')+'contactos', []);
+    const [contactos, setContactos] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'contactos', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', email: '', notas: '' });
     function add() { if (!form.nombre.trim()) return; setContactos(p => [...p, { ...form, id: uid() }]); setForm({ nombre: '', empresa: '', telefono: '', email: '', notas: '' }); setShowNew(false); }
@@ -3119,7 +3119,7 @@ function ContactosView({ setView }) {
 }
 
 function ProveedoresView({ setView }) {
-    const [provs, setProvs] = useStoredState((window.__APP_SP||'bcm_')+'proveedores', []);
+    const [provs, setProvs] = useStoredState((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'proveedores', []);
     const [showNew, setShowNew] = useState(false);
     const [form, setForm] = useState({ nombre: '', rubro: '', telefono: '', email: '', cuit: '', notas: '' });
     const RUBROS = ['Materiales', 'Eléctrico', 'Plomería', 'Aberturas', 'Pintura', 'Herrería', 'Servicios', 'Transporte', 'Otros'];
@@ -3435,7 +3435,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     // Cargar mensajes desde localStorage sincrónicamente
     const [msgs, setMsgs] = useState(() => {
         try {
-            const saved = localStorage.getItem((window.__APP_SP||'bcm_')+'chat_msgs');
+            const saved = localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs');
             if (!saved) return [];
             const { msgs: m, lastAt } = JSON.parse(saved);
             // Si pasó más de 1 hora sin actividad, empezar de cero
@@ -3447,10 +3447,10 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     const [loading, setLoading] = useState(false);
     const [listening, setListening] = useState(false);
     const [userName, setUserName] = useState(() => {
-        try { return localStorage.getItem((window.__APP_SP||'bcm_')+'chat_user') || ''; } catch { return ''; }
+        try { return localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user') || ''; } catch { return ''; }
     });
     const [askedName, setAskedName] = useState(() => {
-        try { return !!localStorage.getItem((window.__APP_SP||'bcm_')+'chat_user'); } catch { return false; }
+        try { return !!localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user'); } catch { return false; }
     });
     const [chatLoaded, setChatLoaded] = useState(false);
     const [attach, setAttach] = useState(null);
@@ -3471,7 +3471,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 ...m,
                 attach: m.attach?.isImage ? null : m.attach, // no guardar imágenes
             }));
-            localStorage.setItem((window.__APP_SP||'bcm_')+'chat_msgs', JSON.stringify({ msgs: msgsLimpios, lastAt: Date.now() }));
+            localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs', JSON.stringify({ msgs: msgsLimpios, lastAt: Date.now() }));
         } catch { }
     }, [msgs]);
 
@@ -3486,18 +3486,18 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     // Botón para limpiar chat manualmente
     function limpiarChat() {
         setMsgs([]);
-        try { localStorage.removeItem((window.__APP_SP||'bcm_')+'chat_msgs'); } catch { }
+        try { localStorage.removeItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs'); } catch { }
     }
 
     // También consultar Supabase por si fue guardado desde otro dispositivo
     useEffect(() => {
         (async () => {
             try {
-                const r = await storage.get((window.__APP_SP||'bcm_')+'chat_user');
+                const r = await storage.get((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user');
                 if (r?.value && r.value !== userName) {
                     setUserName(r.value);
                     setAskedName(true);
-                    try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', r.value); } catch { }
+                    try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', r.value); } catch { }
                 }
             } catch { }
             setChatLoaded(true);
@@ -3565,8 +3565,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             setMsgs(p => [...p, { id: uid(), role: 'user', text: txt }]);
             setUserName(txt);
             setAskedName(true);
-            try { await storage.set((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
-            try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
+            try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
+            try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
             setInput('');
             setTimeout(() => setMsgs(p => [...p, { id: uid(), role: 'assistant', text: `Hola ${txt}, soy tu asistente IA para BelfastCM. Tengo acceso en tiempo real a todas tus obras, licitaciones, personal y alertas. ¿En qué puedo ayudarte?` }]), 400);
             return;
@@ -4020,12 +4020,12 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
     async function guardarEnArchivos(att) {
         try {
             // Leer del localStorage primero (síncrono y confiable)
-            const localVal = storage.getLocal((window.__APP_SP||'bcm_')+'archivos');
+            const localVal = storage.getLocal((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos');
             const arr = localVal?.value ? JSON.parse(localVal.value) : [];
             arr.push({ id: uid(), nombre: att.name, ext: att.name.split('.').pop().toUpperCase(), url: att.url, fecha: new Date().toLocaleDateString('es-AR'), size: att.size ? (att.size / 1024).toFixed(0) + 'KB' : '—' });
             // Guardar inmediatamente en localStorage + Supabase en background
-            try { localStorage.setItem((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)); } catch { }
-            storage.set((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)).catch(() => {});
+            try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)); } catch { }
+            storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)).catch(() => {});
         } catch { }
         setShowSaveDialog(null);
         setShowAttachMenu(false);
@@ -4222,8 +4222,8 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
             setMsgs(p => [...p, { id: uid(), role: 'user', text: txt }]);
             setUserName(txt);
             setAskedName(true);
-            try { await storage.set((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
-            try { localStorage.setItem((window.__APP_SP||'bcm_')+'chat_user', txt); } catch { }
+            try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
+            try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user', txt); } catch { }
             const resp = 'Hola ' + txt + ', soy tu asistente IA para BelfastCM. Tengo acceso en tiempo real a todas tus obras, licitaciones, personal y alertas. ¿En qué puedo ayudarte?';
             setTimeout(() => {
                 setMsgs(p => [...p, { id: uid(), role: 'assistant', text: resp }]);
@@ -4397,7 +4397,7 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                             </button>
                         ))}
                     </div>
-                    {userName && <button onClick={async () => { setUserName(''); setAskedName(false); try { await storage.delete((window.__APP_SP||'bcm_')+'chat_user'); } catch { } try { localStorage.removeItem((window.__APP_SP||'bcm_')+'chat_user'); } catch { } }} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline", marginTop: 20 }}>
+                    {userName && <button onClick={async () => { setUserName(''); setAskedName(false); try { await storage.delete((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user'); } catch { } try { localStorage.removeItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user'); } catch { } }} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline", marginTop: 20 }}>
                         No soy {userName}
                     </button>}
                 </div>
@@ -4429,11 +4429,11 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                                     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
                                     const url = URL.createObjectURL(blob);
                                     const nombre = 'IA_' + titulo.slice(0,30).replace(/\s/g,'_') + '_' + fecha.replace(/\//g,'-') + '.html';
-                                    const localVal = storage.getLocal((window.__APP_SP||'bcm_')+'archivos');
+                                    const localVal = storage.getLocal((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos');
                                     const arr = localVal?.value ? JSON.parse(localVal.value) : [];
                                     arr.unshift({ id: uid(), nombre, ext: 'HTML', url, fecha, size: (blob.size/1024).toFixed(0)+'KB' });
-                                    try { localStorage.setItem((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)); } catch {}
-                                    storage.set((window.__APP_SP||'bcm_')+'archivos', JSON.stringify(arr)).catch(()=>{});
+                                    try { localStorage.setItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)); } catch {}
+                                    storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'archivos', JSON.stringify(arr)).catch(()=>{});
                                     const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
                                     setTimeout(()=>URL.revokeObjectURL(url), 3000);
                                 }} style={{ background: "none", border: "none", fontSize: 10, color: T.muted, cursor: "pointer", padding: "5px 0", display: "flex", alignItems: "center", gap: 4 }}>
@@ -6071,7 +6071,7 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
     // Cargar logos guardados desde localStorage
     const [logos, setLogos] = React.useState(() => {
         try {
-            const saved = localStorage.getItem((window.__APP_SP||'bcm_')+'selector_logos');
+            const saved = localStorage.getItem('bcm_selector_logos');
             return saved ? JSON.parse(saved) : { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' };
         } catch { return { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' }; }
     });
@@ -6079,8 +6079,8 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
 
     function guardarLogos(nuevos) {
         setLogos(nuevos);
-        try { localStorage.setItem((window.__APP_SP||'bcm_')+'selector_logos', JSON.stringify(nuevos)); } catch {}
-        storage.set((window.__APP_SP||'bcm_')+'selector_logos', JSON.stringify(nuevos)).catch(() => {});
+        try { localStorage.setItem('bcm_selector_logos', JSON.stringify(nuevos)); } catch {}
+        storage.set('bcm_selector_logos', JSON.stringify(nuevos)).catch(() => {});
     }
 
     async function handleLogoUpload(key, file) {
