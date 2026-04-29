@@ -850,6 +850,7 @@ function DocGrid({ docs, onUpload, onRemove, refs, prefix }) {
 
 // ── LICITACIONES ─────────────────────────────────────────────────────
 function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
+    const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
     const UBICS = getUbics(cfg);
     const [ap, setAp] = useState("todos");
     const [showNew, setShowNew] = useState(false);
@@ -1629,6 +1630,7 @@ function TabGastos({ detail, upd, apiKey }) {
 }
 
 function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg, apiKey }) {
+    const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
     const UBICS = getUbics(cfg);
     const defaultAp = UBICS[0]?.id || 'aep';
     const [showNew, setShowNew] = useState(false);
@@ -1816,6 +1818,7 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
 
 // ── PERSONAL ─────────────────────────────────────────────────────────
 function Personal({ personal, setPersonal, obras, cfg }) {
+    const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
     const [expanded, setExpanded] = useState(null);
     const [tabPersona, setTabPersona] = useState({}); // tab activo por persona: 'info' | 'historial'
     const [presentismo, setPresentismo] = useState({});
@@ -2081,6 +2084,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
 
 // ── CARGAR (Registro de avance) ─────────────────────────────────────
 function CargarView({ obras, setObras, cargarState, setCargarState, apiKey }) {
+    const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
     const { obraId, newFotos, report } = cargarState;
     const [loading, setLoading] = useState(false);
     const camRef = useRef(null); const galRef = useRef(null);
