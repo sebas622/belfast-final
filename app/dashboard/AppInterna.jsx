@@ -1034,7 +1034,7 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
                 }}
             />
 
-            <PBtn full variant="danger" onClick={() => del(detail.id)} style={{ marginTop: 8 }}>Eliminar licitación</PBtn>
+            <PBtn full variant="danger" onClick={() => { if (window.confirm(`¿Eliminar "${detail.nombre}"? Esta acción no se puede deshacer.`)) del(detail.id); }} style={{ marginTop: 8 }}>Eliminar licitación</PBtn>
         </Sheet>)}
     </div>);
 }
@@ -1729,7 +1729,7 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 14 }}>
                             {OBRA_ESTADOS.map(e => (<button key={e.id} onClick={() => upd(detail.id, { estado: e.id })} style={{ padding: "9px", borderRadius: T.rsm, border: `1.5px solid ${detail.estado === e.id ? e.color : T.border}`, background: detail.estado === e.id ? e.bg : T.card, color: e.color, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{e.label}</button>))}
                         </div>
-                        <button onClick={() => { setObras(p => p.filter(o => o.id !== detail.id)); setDetailId(null); }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'obras_eliminar')}</button>
+                        <button onClick={() => { if (window.confirm(`¿Eliminar "${detail.nombre}"? Esta acción no se puede deshacer.`)) { setObras(p => p.filter(o => o.id !== detail.id)); setDetailId(null); } }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'obras_eliminar')}</button>
                     </div>)}
                     {tab === "obs" && (<div>
                         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
@@ -1955,7 +1955,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
                                     </div>
                                 ))}
                             </div>
-                            <button onClick={() => { setPersonal(prev => prev.filter(x => x.id !== p.id)); if (expanded === p.id) setExpanded(null); }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'pers_eliminar')}</button>
+                            <button onClick={() => { if (window.confirm(`¿Eliminar a ${p.nombre}? Esta acción no se puede deshacer.`)) { setPersonal(prev => prev.filter(x => x.id !== p.id)); if (expanded === p.id) setExpanded(null); } }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'pers_eliminar')}</button>
                         </div>)}
 
                         {/* TAB HISTORIAL DE PRESENCIA */}
