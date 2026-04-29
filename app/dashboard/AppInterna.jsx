@@ -3194,6 +3194,13 @@ const CHAT_MAX_MSGS = 60;
 const CHAT_EXPIRE_MS = 60 * 60 * 1000; // 1 hora de inactividad → resetea
 
 function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, cfg, apiKey }) {
+    // Refs para asegurar que las funciones siempre estén disponibles en closures
+    const setPersonalRef = useRef(setPersonal);
+    const setLicsRef = useRef(setLics);
+    const setObrasRef = useRef(setObras);
+    useEffect(() => { setPersonalRef.current = setPersonal; }, [setPersonal]);
+    useEffect(() => { setLicsRef.current = setLics; }, [setLics]);
+    useEffect(() => { setObrasRef.current = setObras; }, [setObras]);
     // Cargar mensajes desde localStorage sincrónicamente
     const [msgs, setMsgs] = useState(() => {
         try {
@@ -3399,7 +3406,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
                         foto: '', obra_id: '', tareas: [], docs: {},
                         _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '',
                     };
-                    setPersonal(p => [...p, nuevaPersona]);
+                    setPersonalRef.current(p => [...p, nuevaPersona]);
                     mensajeExtra = '\n\n✅ ' + accion.datos.nombre + ' agregado al personal.';
                 }
                 if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
@@ -3408,11 +3415,11 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
                         monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'),
                         ap: '', visitas: [], archivos: {}, notas: '',
                     };
-                    setLics(p => [...p, nuevaLic]);
+                    setLicsRef.current(p => [...p, nuevaLic]);
                     mensajeExtra = '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
                 }
                 if (accion.tipo === 'update_obra' && accion.obraId) {
-                    setObras(p => p.map(o => o.id === accion.obraId ? { ...o, [accion.campo]: accion.valor } : o));
+                    setObrasRef.current(p => p.map(o => o.id === accion.obraId ? { ...o, [accion.campo]: accion.valor } : o));
                     mensajeExtra = '\n\n✅ Obra actualizada.';
                 }
             } catch { }
@@ -3423,7 +3430,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
             const rm = textoLimpio.match(/como ([a-záéíóúñA-ZÁÉÍÓÚÑ]+(?:\s[a-záéíóúñA-ZÁÉÍÓÚÑ]+)?)/i);
             if (nm && textoLimpio.toLowerCase().includes('personal')) {
                 const nueva = { id: uid(), nombre: nm[1], rol: rm ? rm[1] : 'Operario', empresa: 'BelfastCM', telefono: '', foto: '', obra_id: '', tareas: [], docs: {} };
-                setPersonal(p => [...p, nueva]);
+                setPersonalRef.current(p => [...p, nueva]);
                 mensajeExtra = '\n\n✅ ' + nm[1] + ' agregado al personal.';
             }
         }
@@ -3599,16 +3606,16 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
                 const accion = JSON.parse(accionMatchV[1]);
                 if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '' };
-                    setPersonal(p => [...p, nueva]);
+                    setPersonalRef.current(p => [...p, nueva]);
                     textoFinal += '\n\n✅ ' + accion.datos.nombre + ' agregado al personal.';
                 }
                 if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
                     const nuevaLic = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente', monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), ap: '', visitas: [], archivos: {}, notas: '' };
-                    setLics(p => [...p, nuevaLic]);
+                    setLicsRef.current(p => [...p, nuevaLic]);
                     textoFinal += '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
                 }
                 if (accion.tipo === 'update_obra' && accion.obraId) {
-                    setObras(p => p.map(o => o.id === accion.obraId ? { ...o, [accion.campo]: accion.valor } : o));
+                    setObrasRef.current(p => p.map(o => o.id === accion.obraId ? { ...o, [accion.campo]: accion.valor } : o));
                     textoFinal += '\n\n✅ Obra actualizada.';
                 }
             } catch(e) {
@@ -3623,7 +3630,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, c
                 const nombre = nombreMatch[1];
                 const rol = rolMatch ? rolMatch[1] : 'Operario';
                 const nueva = { id: uid(), nombre, rol, empresa: 'BelfastCM', telefono: '', foto: '', obra_id: '', tareas: [], docs: {} };
-                setPersonal(p => [...p, nueva]);
+                setPersonalRef.current(p => [...p, nueva]);
                 textoFinal += '\n\n✅ ' + nombre + ' agregado al personal.';
             }
         }
