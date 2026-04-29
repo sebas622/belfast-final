@@ -1152,6 +1152,16 @@ function RegistroVisitas({ visitas, onUpdate, licId }) {
                     </div>
                 </div>
                 <div style={{ padding: "10px 12px" }}>
+                    {/* GPS si tiene */}
+                    {foto.gps && (
+                        <a href={foto.gps.mapsUrl || `https://maps.google.com/?q=${foto.gps.lat},${foto.gps.lon}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 7, padding: '5px 8px', marginBottom: 8 }}>
+                            <span style={{ fontSize: 12 }}>📍</span>
+                            <span style={{ fontSize: 10, color: '#1E40AF', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {foto.gps.direccion || `${foto.gps.lat}, ${foto.gps.lon}`}
+                            </span>
+                            <span style={{ fontSize: 9, color: '#3B82F6', flexShrink: 0 }}>Ver mapa →</span>
+                        </a>
+                    )}
                     {/* Descripción editable */}
                     <textarea
                         value={foto.desc || ''}
@@ -3609,25 +3619,61 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
         setAttach(nuevoAttach);
         e.target.value = '';
 
-        // Si es imagen → la IA la analiza automáticamente y propone dónde guardarla
+        // Si es imagen → capturar GPS + analizar con IA
         if (isImage) {
             const obrasList = obrasRef.current.map(o => `• [ID:${o.id}] ${o.nombre}`).join('\n') || '(sin obras)';
             const licsList = licsRef.current.map(l => `• [ID:${l.id}] ${l.nombre}`).join('\n') || '(sin licitaciones)';
+
+            // Capturar ubicación GPS en paralelo
+            let gpsInfo = '';
+            let gpsData = null;
+            try {
+                const pos = await new Promise((res, rej) =>
+                    navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000, enableHighAccuracy: true })
+                );
+                const lat = pos.coords.latitude.toFixed(6);
+                const lon = pos.coords.longitude.toFixed(6);
+                const acc = Math.round(pos.coords.accuracy);
+                gpsData = { lat, lon, acc };
+                // Buscar dirección via API gratuita
+                try {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`);
+                    if (geoRes.ok) {
+                        const geo = await geoRes.json();
+                        const dir = geo.display_name || `${lat}, ${lon}`;
+                        gpsInfo = `\n📍 Ubicación GPS: ${dir}\nCoordenadas: ${lat}, ${lon} (precisión: ${acc}m)\nGoogle Maps: https://maps.google.com/?q=${lat},${lon}`;
+                        gpsData.direccion = dir;
+                        gpsData.mapsUrl = `https://maps.google.com/?q=${lat},${lon}`;
+                    }
+                } catch { gpsInfo = `\n📍 GPS: ${lat}, ${lon} (precisión: ${acc}m)`; }
+            } catch { gpsInfo = ''; } // Si no hay GPS, continuar igual
             setInput('');
             setTimeout(async () => {
                 setLoading(true);
-                setLoadingMsg('Analizando imagen…');
-                const userMsg = { id: uid(), role: 'user', text: '📷 [Foto adjunta]', attach: nuevoAttach };
+                setLoadingMsg('Analizando imagen y ubicación…');
+                const userMsg = { id: uid(), role: 'user', text: '📷 [Foto adjunta]' + (gpsInfo ? '\n' + gpsInfo : ''), attach: nuevoAttach };
                 setMsgs(p => [...p, userMsg]);
                 setAttach(null);
                 const history = [{
                     role: 'user',
                     content: [
                         { type: 'image', source: { type: 'base64', media_type: getMediaType(url), data: getBase64(url) } },
-                        { type: 'text', text: `Analizá esta foto. Describí brevemente qué ves (1-2 oraciones). Luego determiná si es de una obra de construcción, una licitación, un documento de personal (DNI, carnet), u otro.\n\nObras disponibles:\n${obrasList}\n\nLicitaciones disponibles:\n${licsList}\n\nSi la foto corresponde a alguna obra o licitación, guardala ahí. Si es un DNI o documento de personal, extraé los datos y agregá a la persona. Si no podés determinar, preguntame dónde la guardo.\n\nSiempre incluí el ACTION correspondiente.` }
+                        { type: 'text', text: `Analizá esta foto en detalle.${gpsInfo ? '\n\nUBICACIÓN CAPTURADA:' + gpsInfo : ''}
+
+OBRAS disponibles:\n${obrasList}
+
+LICITACIONES disponibles:\n${licsList}
+
+Tu análisis debe incluir:
+1. **Qué ves** — describí el terreno/predio/obra/documento en detalle
+2. **Estado general** — si es terreno: baldío, con construcción, urbanizado, etc.
+3. **Observaciones técnicas** — accesos, infraestructura visible, estado de avance
+${gpsData ? '4. **Ubicación** — usá las coordenadas para contextualizar geográficamente el lugar' : ''}
+
+Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
                     ]
                 }];
-                const sys = `Sos el asistente IA de BelfastCM. Analizás fotos y las guardás donde corresponde.\nCuando identifiques dónde guardar una foto de obra: [[ACTION:{"tipo":"guardar_foto_obra","obraId":"ID_EXACTO","descripcion":"..."}]]\nCuando identifiques dónde guardar en licitación: [[ACTION:{"tipo":"guardar_foto_lic","licId":"ID_EXACTO","descripcion":"..."}]]\nCuando sea DNI/documento: [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"...","rol":"Operario","telefono":"","dni":"..."}}]]\nRespondé en español rioplatense, breve y directo.`;
+                const sys = `Sos el asistente IA de BelfastCM, especializado en construcción y desarrollo inmobiliario.\nCuando guardás foto en obra: [[ACTION:{"tipo":"guardar_foto_obra","obraId":"ID_EXACTO","descripcion":"...","gps":${gpsData ? JSON.stringify(gpsData) : 'null'}}]]\nCuando guardás foto en licitación: [[ACTION:{"tipo":"guardar_foto_lic","licId":"ID_EXACTO","descripcion":"...","gps":${gpsData ? JSON.stringify(gpsData) : 'null'}}]]\nCuando es DNI/documento de personal: [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"...","rol":"Operario","telefono":"","dni":"..."}}]]\nRespondé en español rioplatense. Sé técnico y detallado en el análisis visual.`;
                 const r = await callAI(history, sys, apiKey, false);
                 // Procesar acción
                 const accionMatch = r.match(/\[\[ACTION:([\s\S]*?)\]\]/);
@@ -3638,26 +3684,25 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         if (accion.tipo === 'guardar_foto_obra' && accion.obraId) {
                             const fotoId = uid();
                             const fotoUrl = await uploadFoto(url, 'obras/' + accion.obraId, fotoId);
-                            const nuevaFoto = { id: fotoId, url: fotoUrl, nombre: f.name, fecha: new Date().toLocaleDateString('es-AR'), desc: accion.descripcion || '' };
+                            const nuevaFoto = { id: fotoId, url: fotoUrl, nombre: f.name, fecha: new Date().toLocaleDateString('es-AR'), desc: accion.descripcion || '', gps: accion.gps || gpsData || null };
                             setObrasRef.current(p => {
                                 const nuevo = p.map(o => o.id === accion.obraId ? { ...o, fotos: [...(o.fotos||[]), nuevaFoto] } : o);
                                 const obraName = nuevo.find(o => o.id === accion.obraId)?.nombre || 'la obra';
                                 const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
                                 try { localStorage.setItem('bcm_obras', json); } catch {}
                                 storage.set('bcm_obras', json).catch(() => {});
-                                // Guardar fotos en key separada
                                 const fotosObra = nuevo.find(o => o.id === accion.obraId)?.fotos || [];
                                 const fkey = 'bcm_fotos_' + accion.obraId;
                                 try { localStorage.setItem(fkey, JSON.stringify(fotosObra)); } catch {}
                                 storage.set(fkey, JSON.stringify(fotosObra)).catch(() => {});
-                                texto += '\n\n✅ Foto guardada en "' + obraName + '" → Fotos.';
+                                texto += '\n\n✅ Foto guardada en "' + obraName + '" → Fotos.' + (gpsData ? '\n📍 ' + (gpsData.direccion || gpsData.lat + ', ' + gpsData.lon) : '');
                                 return nuevo;
                             });
                         }
                         else if (accion.tipo === 'guardar_foto_lic' && accion.licId) {
                             const fotoId = uid();
                             const fotoUrl = await uploadFoto(url, 'licitaciones/' + accion.licId, fotoId);
-                            const nuevaVisita = { id: fotoId, url: fotoUrl, nombre: f.name, desc: accion.descripcion || '', etapa: 'durante', fecha: new Date().toLocaleDateString('es-AR'), hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) };
+                            const nuevaVisita = { id: fotoId, url: fotoUrl, nombre: f.name, desc: accion.descripcion || '', etapa: 'durante', fecha: new Date().toLocaleDateString('es-AR'), hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }), gps: accion.gps || gpsData || null };
                             setLicsRef.current(p => {
                                 const nuevo = p.map(l => l.id === accion.licId ? { ...l, visitas: [...(l.visitas||[]), nuevaVisita] } : l);
                                 const licName = nuevo.find(l => l.id === accion.licId)?.nombre || 'la licitación';
@@ -3668,7 +3713,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                                 const vkey = 'bcm_lic_vis_' + accion.licId;
                                 try { localStorage.setItem(vkey, JSON.stringify(visitas)); } catch {}
                                 storage.set(vkey, JSON.stringify(visitas)).catch(() => {});
-                                texto += '\n\n✅ Foto guardada en "' + licName + '" → Visitas.';
+                                texto += '\n\n✅ Foto guardada en "' + licName + '" → Visitas.' + (gpsData ? '\n📍 ' + (gpsData.direccion || gpsData.lat + ', ' + gpsData.lon) : '');
                                 return nuevo;
                             });
                         }
