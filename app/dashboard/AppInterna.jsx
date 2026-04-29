@@ -277,6 +277,43 @@ function getMediaType(d) { const m = d.match(/data:([^;]+);/); return m ? m[1] :
 
 // callAI con soporte de web_search real
 // useSearch=true activa búsqueda en internet (precios, proveedores, noticias, etc.)
+// Streaming — llama a la IA y va actualizando el mensaje en tiempo real
+async function callAIStream(msgs, sys, apiKey, onChunk) {
+    try {
+        const headers = {
+            "Content-Type": "application/json",
+            "anthropic-dangerous-direct-browser-access": "true",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": apiKey,
+        };
+        const body = { model: "claude-sonnet-4-20250514", max_tokens: 1500, stream: true, messages: msgs };
+        if (sys) body.system = sys;
+        const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: JSON.stringify(body) });
+        if (!r.ok) { const d = await r.json(); return d.error?.message || `Error ${r.status}`; }
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let texto = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const lines = decoder.decode(value).split('\n');
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+                try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+                        texto += parsed.delta.text;
+                        onChunk(texto);
+                    }
+                } catch {}
+            }
+        }
+        return texto;
+    } catch(e) { return '⚠ Error de conexión: ' + e.message; }
+}
+
 async function callAI(msgs, sys, apiKey, useSearch = false) {
     try {
         const headers = {
@@ -290,7 +327,7 @@ async function callAI(msgs, sys, apiKey, useSearch = false) {
 
         const body = {
             model: "claude-sonnet-4-20250514",
-            max_tokens: useSearch ? 3000 : 1500, // sin búsqueda, respuesta más corta y rápida
+            max_tokens: useSearch ? 3000 : 1500,
             messages: msgs,
         };
         if (sys) body.system = sys;
@@ -3416,7 +3453,19 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             '4) Si analizás un DNI o documento → extraé los datos y agregá la persona automáticamente.\n' +
             '5) Si el usuario pregunta por datos → respondé con la info del contexto de arriba.';
 
-        const r = await callAI(history, sys, apiKey, usarBusqueda);
+        // Streaming para respuestas más rápidas
+        let r;
+        if (!usarBusqueda) {
+            const streamMsgId = uid();
+            setMsgs(p => [...p, { id: streamMsgId, role: 'assistant', text: '…' }]);
+            setLoading(false);
+            r = await callAIStream(history, sys, apiKey, (texto) => {
+                setMsgs(p => p.map(m => m.id === streamMsgId ? { ...m, text: texto.replace(/\[\[ACTION:[\s\S]*?\]\]/g,'').trim() || '…' } : m));
+            });
+            setMsgs(p => p.filter(m => m.id !== streamMsgId));
+        } else {
+            r = await callAI(history, sys, apiKey, usarBusqueda);
+        }
 
         // Procesar acciones que la IA quiera ejecutar
         const actionTag = String.fromCharCode(96,96,96) + 'action';
@@ -3587,36 +3636,71 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     function startListening() {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) { alert('Tu navegador no soporta reconocimiento de voz'); return; }
-        // Cancelar cualquier voz que esté sonando
         window.speechSynthesis?.cancel();
         const rec = new SR();
         rec.lang = 'es-AR';
-        rec.continuous = false;
-        rec.interimResults = false;
+        rec.continuous = true;      // NO se corta solo
+        rec.interimResults = true;  // Muestra texto mientras hablás
+
+        let textoAcumulado = '';
+        let silencioTimer = null;
+        let ultimoInterim = '';
+
         rec.onresult = e => {
-            const transcript = e.results[0][0].transcript;
-            setInput(transcript);
-            setListening(false);
-            // Auto-enviar después de 600ms (tiempo para que el usuario vea lo que dijo)
-            setTimeout(() => {
-                setInput(t => {
-                    if (t.trim()) {
-                        // Disparar envío con el transcript
-                        enviarConTexto(transcript);
-                        return '';
-                    }
-                    return t;
-                });
-            }, 600);
+            let finalNuevo = '';
+            let interimActual = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                if (e.results[i].isFinal) {
+                    finalNuevo += e.results[i][0].transcript + ' ';
+                } else {
+                    interimActual += e.results[i][0].transcript;
+                }
+            }
+            if (finalNuevo) textoAcumulado += finalNuevo;
+            ultimoInterim = interimActual;
+            setInput((textoAcumulado + interimActual).trim());
+
+            // Reiniciar timer de silencio — envía después de 2.5s sin hablar
+            clearTimeout(silencioTimer);
+            silencioTimer = setTimeout(() => {
+                const textoFinal = (textoAcumulado + ultimoInterim).trim();
+                if (textoFinal) {
+                    rec.stop();
+                    setListening(false);
+                    setInput('');
+                    enviarConTexto(textoFinal);
+                }
+            }, 2500);
         };
-        rec.onend = () => setListening(false);
-        rec.onerror = () => setListening(false);
+
+        rec.onend = () => {
+            // Si el usuario tocó stop manualmente y hay texto, enviar
+            const textoFinal = textoAcumulado.trim();
+            if (textoFinal && listening) {
+                setListening(false);
+                setInput('');
+                enviarConTexto(textoFinal);
+            } else {
+                setListening(false);
+            }
+        };
+        rec.onerror = e => {
+            if (e.error !== 'no-speech') setListening(false);
+            // Si se corta por silencio, reiniciar automáticamente
+            if (e.error === 'no-speech' && listening) {
+                try { rec.start(); } catch {}
+            }
+        };
         rec.start();
         recognitionRef.current = rec;
         setListening(true);
     }
 
-    function stopListening() { recognitionRef.current?.stop(); setListening(false); }
+    function stopListening() {
+        clearTimeout(recognitionRef.current?._silencioTimer);
+        recognitionRef.current?.stop();
+        setListening(false);
+    }
 
     // ── GRABACIÓN DE REUNIÓN ──────────────────────────────────────────
     async function iniciarReunion(obraId) {
