@@ -5889,7 +5889,7 @@ function GestionUsuarios() {
 // Cada usuario: { id, usuario, passHash, nombre, empresa ('belfast'|'vv'|'ambas'), creado }
 // El super admin puede ver y gestionar todos los usuarios
 
-const SUPER_ADMIN = { usuario: 'sebas', pass: 'Belfast2025!', empresa: 'ambas', nombre: 'Sebastián', nivel: 'superadmin' };
+const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'ambas', nombre: 'Sebastián', nivel: 'superadmin' };
 const MAX_USUARIOS = 8;
 
 // Hash simple (no criptográfico pero suficiente para uso interno)
