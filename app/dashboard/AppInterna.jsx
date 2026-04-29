@@ -3193,7 +3193,7 @@ Tono profesional AA2000, español rioplatense.`;
 const CHAT_MAX_MSGS = 60;
 const CHAT_EXPIRE_MS = 60 * 60 * 1000; // 1 hora de inactividad → resetea
 
-function Chat({ lics, obras, setObras, personal, alerts, cfg, apiKey }) {
+function Chat({ lics, setLics, obras, setObras, personal, setPersonal, alerts, cfg, apiKey }) {
     // Cargar mensajes desde localStorage sincrónicamente
     const [msgs, setMsgs] = useState(() => {
         try {
@@ -4556,6 +4556,7 @@ function AppInner({ supaSession }) {
     // Persistir lics SIN visitas (las fotos van en bcm_lic_vis_{id})
     useEffect(() => {
         if (!loaded) return;
+        if (!lics.length) return; // NUNCA guardar vacío — pisaría datos reales
         markLocalEdit('lics');
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
@@ -4572,13 +4573,14 @@ function AppInner({ supaSession }) {
     }, [lics, loaded]);
     useEffect(() => {
         if (!loaded) return;
+        if (!obras.length) return; // NUNCA guardar vacío
         markLocalEdit('obras');
         // Guardar obras sin fotos/archivos para no superar el límite de 5MB
         const obrasSinMedia = obras.map(o => ({ ...o, fotos: [], archivos: [] }));
         storage.set('bcm_obras', JSON.stringify(obrasSinMedia)).catch(() => { });
         try { localStorage.setItem('bcm_obras', JSON.stringify(obrasSinMedia)); } catch { }
     }, [obras, loaded]);
-    useEffect(() => { if (loaded) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
+    useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set('bcm_personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem('bcm_personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => { if (loaded) { markLocalEdit('cfg'); const payload = JSON.stringify({ ...cfg, _ts: Date.now() }); storage.set('bcm_cfg', payload).catch(() => { }); try { localStorage.setItem('bcm_cfg', payload); } catch { } } }, [cfg, loaded]);
     useEffect(() => { if (loaded) { const json = JSON.stringify(planes); storage.set('bcm_planes_semanales', json).catch(() => { }); try { localStorage.setItem('bcm_planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
@@ -4959,7 +4961,7 @@ function AppInner({ supaSession }) {
                 {view === 'licitaciones' && <Licitaciones lics={lics} setLics={setLics} requireAuth={requireAuth} cfg={cfg} obras={obras} setObras={setObras}  />}
                 {view === 'personal' && <Personal personal={personal} setPersonal={setPersonal} obras={obras} cfg={cfg} />}
                 {view === 'cargar' && <CargarView obras={obras} setObras={setObras} cargarState={cargarState} setCargarState={setCargarState} apiKey={apiKey} />}
-                {view === 'chat' && <Chat lics={lics} obras={obras} setObras={setObras} personal={personal} alerts={alerts} cfg={cfg} apiKey={apiKey} />}
+                {view === 'chat' && <Chat lics={lics} setLics={setLics} obras={obras} setObras={setObras} personal={personal} setPersonal={setPersonal} alerts={alerts} cfg={cfg} apiKey={apiKey} />}
                 {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} />}
                 {view === 'presupuesto_materiales' && <PresupuestoView tipo="materiales" setView={setView} />}
                 {view === 'presupuesto_subcontratos' && <PresupuestoView tipo="subcontratos" setView={setView} />}
