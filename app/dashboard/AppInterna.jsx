@@ -3424,7 +3424,13 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
 
                 if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '' };
-                    setPersonalRef.current(p => [...p, nueva]);
+                    setPersonalRef.current(p => {
+                        const nuevo = [...p, nueva];
+                        const json = JSON.stringify(nuevo);
+                        try { localStorage.setItem('bcm_personal', json); } catch {}
+                        storage.set('bcm_personal', json).catch(() => {});
+                        return nuevo;
+                    });
                     mensajeExtra = '\n\n✅ ' + accion.datos.nombre + ' agregado al personal.';
                 }
                 else if (accion.tipo === 'editar_personal' && accion.id) {
@@ -3433,7 +3439,14 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 }
                 else if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente', monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), ap: '', visitas: [], archivos: {}, notas: '' };
-                    setLicsRef.current(p => [...p, nueva]);
+                    setLicsRef.current(p => {
+                        const nuevasLics = [...p, nueva];
+                        // Guardar inmediatamente sin esperar el useEffect
+                        const json = JSON.stringify(nuevasLics.map(l => ({ ...l, visitas: [] })));
+                        try { localStorage.setItem('bcm_lics', json); } catch {}
+                        storage.set('bcm_lics', json).catch(() => {});
+                        return nuevasLics;
+                    });
                     mensajeExtra = '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
                 }
                 else if (accion.tipo === 'editar_licitacion' && accion.id) {
@@ -3442,7 +3455,13 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 }
                 else if (accion.tipo === 'agregar_obra' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'curso', avance: accion.datos.avance || 0, monto: accion.datos.monto || '', cierre: accion.datos.cierre || '', ap: accion.datos.ap || '', notas: accion.datos.notas || '', fotos: [], archivos: [], gastos: [] };
-                    setObrasRef.current(p => [...p, nueva]);
+                    setObrasRef.current(p => {
+                        const nuevo = [...p, nueva];
+                        const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                        try { localStorage.setItem('bcm_obras', json); } catch {}
+                        storage.set('bcm_obras', json).catch(() => {});
+                        return nuevo;
+                    });
                     mensajeExtra = '\n\n✅ Obra "' + accion.datos.nombre + '" agregada.';
                 }
                 else if (accion.tipo === 'update_obra' && (accion.id || accion.obraId)) {
@@ -3453,7 +3472,13 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 else if (accion.tipo === 'agregar_plan' && accion.datos?.obra) {
                     const diasBase = { lun: { activo: false, desde: '', hasta: '', tareas: '' }, mar: { activo: false, desde: '', hasta: '', tareas: '' }, mie: { activo: false, desde: '', hasta: '', tareas: '' }, jue: { activo: false, desde: '', hasta: '', tareas: '' }, vie: { activo: false, desde: '', hasta: '', tareas: '' }, sab: { activo: false, desde: '', hasta: '', tareas: '' }, dom: { activo: false, desde: '', hasta: '', tareas: '' } };
                     const nuevo = { id: uid(), obra: accion.datos.obra, semana: accion.datos.semana || new Date().toLocaleDateString('es-AR'), notas: accion.datos.notas || '', dias: { ...diasBase, ...(accion.datos.dias || {}) }, fechaCreacion: new Date().toLocaleDateString('es-AR') };
-                    setPlanesRef.current(p => [nuevo, ...p]);
+                    setPlanesRef.current(p => {
+                        const nuevos = [nuevo, ...p];
+                        const json = JSON.stringify(nuevos);
+                        try { localStorage.setItem('bcm_planes_semanales', json); } catch {}
+                        storage.set('bcm_planes_semanales', json).catch(() => {});
+                        return nuevos;
+                    });
                     mensajeExtra = '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
                 }
                 else if (accion.tipo === 'navegar' && accion.destino) {
@@ -3656,7 +3681,13 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 }
                 else if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente', monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), ap: '', visitas: [], archivos: {}, notas: '' };
-                    setLicsRef.current(p => [...p, nueva]);
+                    setLicsRef.current(p => {
+                        const nuevasLics = [...p, nueva];
+                        const json = JSON.stringify(nuevasLics.map(l => ({ ...l, visitas: [] })));
+                        try { localStorage.setItem('bcm_lics', json); } catch {}
+                        storage.set('bcm_lics', json).catch(() => {});
+                        return nuevasLics;
+                    });
                     textoFinal += '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
                 }
                 else if (accion.tipo === 'editar_licitacion' && accion.id) {
@@ -3665,7 +3696,13 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 }
                 else if (accion.tipo === 'agregar_obra' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'curso', avance: accion.datos.avance || 0, monto: accion.datos.monto || '', cierre: accion.datos.cierre || '', ap: accion.datos.ap || '', notas: accion.datos.notas || '', fotos: [], archivos: [], gastos: [] };
-                    setObrasRef.current(p => [...p, nueva]);
+                    setObrasRef.current(p => {
+                        const nuevo = [...p, nueva];
+                        const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                        try { localStorage.setItem('bcm_obras', json); } catch {}
+                        storage.set('bcm_obras', json).catch(() => {});
+                        return nuevo;
+                    });
                     textoFinal += '\n\n✅ Obra "' + accion.datos.nombre + '" agregada.';
                 }
                 else if (accion.tipo === 'update_obra' && (accion.id || accion.obraId)) {
@@ -3676,7 +3713,13 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 else if (accion.tipo === 'agregar_plan' && accion.datos?.obra) {
                     const diasBase = { lun: { activo: false, desde: '', hasta: '', tareas: '' }, mar: { activo: false, desde: '', hasta: '', tareas: '' }, mie: { activo: false, desde: '', hasta: '', tareas: '' }, jue: { activo: false, desde: '', hasta: '', tareas: '' }, vie: { activo: false, desde: '', hasta: '', tareas: '' }, sab: { activo: false, desde: '', hasta: '', tareas: '' }, dom: { activo: false, desde: '', hasta: '', tareas: '' } };
                     const nuevo = { id: uid(), obra: accion.datos.obra, semana: accion.datos.semana || new Date().toLocaleDateString('es-AR'), notas: accion.datos.notas || '', dias: { ...diasBase, ...(accion.datos.dias || {}) }, fechaCreacion: new Date().toLocaleDateString('es-AR') };
-                    setPlanesRef.current(p => [nuevo, ...p]);
+                    setPlanesRef.current(p => {
+                        const nuevos = [nuevo, ...p];
+                        const json = JSON.stringify(nuevos);
+                        try { localStorage.setItem('bcm_planes_semanales', json); } catch {}
+                        storage.set('bcm_planes_semanales', json).catch(() => {});
+                        return nuevos;
+                    });
                     textoFinal += '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
                 }
                 else if (accion.tipo === 'navegar' && accion.destino) {
