@@ -134,7 +134,6 @@ async function uploadFoto(dataUrl, carpeta, nombre) {
     // Fallback: devolver el base64 directamente (se guarda en localStorage)
     return dataUrl;
 }
-}
 // Carga desde localStorage SINCRÓNICAMENTE (sin flash), persiste en ambos lados
 function useStoredState(key, defaultValue) {
     const [state, setState] = useState(() => {
