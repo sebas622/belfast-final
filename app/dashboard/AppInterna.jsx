@@ -5202,7 +5202,15 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     const [planes, setPlanes] = useState(() => getLocalJSON(SP + 'planes_semanales', []));
     const [alerts, setAlerts] = useState([]);
 
-    const [cfg, setCfg] = useState(() => ({ ...DEFAULT_CONFIG, ...empresaConfig, ...getLocalJSON(SP + 'cfg', {}) }));
+    const [cfg, setCfg] = useState(() => {
+        const saved = getLocalJSON(SP + 'cfg', {});
+        const merged = { ...DEFAULT_CONFIG, ...empresaConfig, ...saved };
+        // Los textos de empresa SIEMPRE tienen prioridad sobre el cfg guardado
+        if (empresaConfig.textos) {
+            merged.textos = { ...DEFAULT_CONFIG.textos, ...(saved.textos || {}), ...empresaConfig.textos };
+        }
+        return merged;
+    });
     const [apiKey, setApiKey] = useState(() => getLocalStr('bcm_api_key', ''));
     const [loaded, setLoaded] = useState(false);
     const [realtimeOk, setRealtimeOk] = useState(false); // indicador de conexión en tiempo real
