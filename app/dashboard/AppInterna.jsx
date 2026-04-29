@@ -904,7 +904,7 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
     const detail = showDetail ? lics.find(l => l.id === showDetail) : null;
 
     return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
-        <AppHeader title="Licitaciones" sub={`${filtered.length} registros`} right={<PlusBtn onClick={() => requireAuth(() => setShowNew(true), "Nueva licitación")} />} />
+        <AppHeader title={t(cfg, 'lic_titulo')} sub={`${filtered.length} registros`} right={<PlusBtn onClick={() => requireAuth(() => setShowNew(true), t(cfg, 'lic_nueva'))} />} />
         {/* Filtros por ubicación — usa UBICS configuradas */}
         <div style={{ padding: "10px 18px", display: "flex", gap: 6, overflowX: "auto" }}>
             {[{ id: "todos", label: "Todos" }, ...UBICS.map(a => ({ id: a.id, label: a.code }))].map(f => (
@@ -5125,6 +5125,15 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         subtituloAsistente: 'Gestión de proyectos privados',
         themeId: 'verde',
         colors: { accent: '#16A34A', al: '#DCFCE7', bg: '#F0FDF4', card: '#fff', border: '#BBF7D0', text: '#0F172A', sub: '#475569', muted: '#94A3B8', navy: '#14532D' },
+        textos: {
+            nav_licitaciones: 'Obras',
+            lic_titulo: 'Obras',
+            lic_nueva: 'Nueva obra',
+            lic_crear: 'Crear obra',
+            lic_eliminar: 'Eliminar obra',
+            dash_licitaciones: 'Obras',
+            dash_nueva_lic: 'Nueva obra',
+        },
     } : {};
     // Helpers de carga sincrónica desde localStorage
     function getLocalJSON(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
