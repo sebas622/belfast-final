@@ -119,15 +119,21 @@ const mediaStorage = {
     isRemoteUrl: (url) => url && (url.startsWith('http://') || url.startsWith('https://')),
 };
 
-// Wrapper que sube una foto al bucket y devuelve la URL pública.
-// Si falla el upload (sin internet, bucket no existe), devuelve el base64 como fallback.
+// Wrapper que guarda una foto como base64 en localStorage Y intenta subir al bucket.
+// La foto queda disponible INMEDIATAMENTE en local, el bucket es bonus.
 async function uploadFoto(dataUrl, carpeta, nombre) {
     if (!dataUrl) return null;
     // Si ya es URL remota, no re-subir
     if (mediaStorage.isRemoteUrl(dataUrl)) return dataUrl;
-    const path = `${carpeta}/${nombre || uid()}`;
-    const remoteUrl = await mediaStorage.upload(path, dataUrl);
-    return remoteUrl || dataUrl; // fallback a base64 si falla
+    // Intentar subir al bucket en background — si falla, el base64 es el fallback
+    try {
+        const path = `${carpeta}/${nombre || uid()}`;
+        const remoteUrl = await mediaStorage.upload(path, dataUrl);
+        if (remoteUrl) return remoteUrl;
+    } catch { }
+    // Fallback: devolver el base64 directamente (se guarda en localStorage)
+    return dataUrl;
+}
 }
 // Carga desde localStorage SINCRÓNICAMENTE (sin flash), persiste en ambos lados
 function useStoredState(key, defaultValue) {
@@ -251,19 +257,20 @@ function getUbics(cfg) { return (cfg?.ubicaciones?.length ? cfg.ubicaciones : DE
 function getLabelUbic(cfg) { return cfg?.labelUbicacion || "Aeropuerto"; }
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
-function toDataUrl(f, maxW = 1400) {
+function toDataUrl(f, maxW = 800) {
     return new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = e => {
             if (!f.type.startsWith('image/')) { res(e.target.result); return; }
             const img = new Image();
             img.onload = () => {
-                if (img.width <= maxW) { res(e.target.result); return; }
+                // Siempre comprimir — aunque sea más chica que maxW
                 const c = document.createElement('canvas');
-                const ratio = maxW / img.width;
-                c.width = maxW; c.height = Math.round(img.height * ratio);
+                const ratio = img.width > maxW ? maxW / img.width : 1;
+                c.width = Math.round(img.width * ratio);
+                c.height = Math.round(img.height * ratio);
                 c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-                res(c.toDataURL('image/jpeg', 0.85));
+                res(c.toDataURL('image/jpeg', 0.7)); // 70% calidad para reducir tamaño
             };
             img.onerror = () => res(e.target.result);
             img.src = e.target.result;
@@ -1593,11 +1600,16 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
         setObras(p => p.map(o => {
             if (o.id !== id) return o;
             const updated = { ...o, ...patch };
-            // Si el patch incluye fotos o archivos, guardarlos en su propia key inmediatamente
             if (patch.fotos !== undefined) {
                 const key = `bcm_fotos_${id}`;
-                try { localStorage.setItem(key, JSON.stringify(patch.fotos)); } catch { }
-                storage.set(key, JSON.stringify(patch.fotos)).catch(() => { });
+                const json = JSON.stringify(patch.fotos);
+                try {
+                    localStorage.setItem(key, json);
+                } catch {
+                    // Si falla por tamaño, guardar solo las últimas 5 fotos
+                    try { localStorage.setItem(key, JSON.stringify(patch.fotos.slice(-5))); } catch { }
+                }
+                storage.set(key, json).catch(() => { });
             }
             if (patch.archivos !== undefined) {
                 const key = `bcm_archs_${id}`;
