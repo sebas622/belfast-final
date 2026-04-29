@@ -3386,12 +3386,13 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             buildContext(txt) + extraInfo + '\n\n' +
             'Respondé en español rioplatense, conciso y directo.' + (usarBusqueda ? ' Usá internet para datos actualizados.' : '') + '\n\n' +
             'ACCIONES DISPONIBLES — Cuando el usuario pida hacer algo, HACELO e incluí el bloque [[ACTION:...]] al final:\n\n' +
-            'Agregar persona al personal:\n[[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"Juan Pérez","rol":"Albañil","telefono":"","dni":"","fechaNac":""}}]]\n\n' +
+            'Agregar persona al personal:\n[[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"Juan Pérez","rol":"Albañil","telefono":"","dni":""}}]]\n\n' +
             'Editar persona existente (usá el id exacto del contexto):\n[[ACTION:{"tipo":"editar_personal","id":"ID_EXACTO","datos":{"nombre":"","rol":"","telefono":""}}]]\n\n' +
             'Agregar licitación:\n[[ACTION:{"tipo":"agregar_licitacion","datos":{"nombre":"Nombre","estado":"pendiente","monto":"","fecha":""}}]]\n\n' +
             'Editar licitación:\n[[ACTION:{"tipo":"editar_licitacion","id":"ID_EXACTO","datos":{"nombre":"","estado":"","monto":""}}]]\n\n' +
             'Agregar obra nueva:\n[[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"Nombre obra","estado":"curso","avance":0,"monto":"","cierre":"","ap":"","notas":""}}]]\n\n' +
             'Actualizar campo de obra:\n[[ACTION:{"tipo":"update_obra","id":"ID_EXACTO","campo":"avance","valor":75}]]\n\n' +
+            'Agregar plan semanal:\n[[ACTION:{"tipo":"agregar_plan","datos":{"obra":"Nombre de obra","semana":"dd/mm/aaaa","notas":"","dias":{"lun":{"activo":true,"desde":"08:00","hasta":"17:00","tareas":"Tarea 1\\nTarea 2"},"mar":{"activo":false,"desde":"","hasta":"","tareas":""},"mie":{"activo":false,"desde":"","hasta":"","tareas":""},"jue":{"activo":false,"desde":"","hasta":"","tareas":""},"vie":{"activo":false,"desde":"","hasta":"","tareas":""},"sab":{"activo":false,"desde":"","hasta":"","tareas":""},"dom":{"activo":false,"desde":"","hasta":"","tareas":""}}}}]]\n\n' +
             'Navegar a una sección:\n[[ACTION:{"tipo":"navegar","destino":"obras"}]] (destinos: obras, personal, licitaciones, dashboard, cargar, mas)\n\n' +
             'REGLAS ABSOLUTAS:\n' +
             '1) SIEMPRE incluí [[ACTION:...]] cuando el usuario pida agregar, editar o modificar algo.\n' +
@@ -3399,7 +3400,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             '3) NUNCA digas que no podés hacer algo — siempre intentá.\n' +
             '4) Si el usuario manda una foto de DNI, extraé los datos y agregá a la persona.\n' +
             '5) Sos parte de la app, no un sistema externo.\n' +
-            '6) JSON del ACTION sin comillas curvas, sin saltos de línea adentro.';
+            '6) JSON del ACTION sin comillas curvas, sin saltos de línea adentro del JSON.';
 
         const r = await callAI(history, sys, apiKey, usarBusqueda);
 
@@ -3448,6 +3449,12 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     const id = accion.id || accion.obraId;
                     setObrasRef.current(p => p.map(o => o.id === id ? { ...o, [accion.campo]: accion.valor } : o));
                     mensajeExtra = '\n\n✅ Obra actualizada.';
+                }
+                else if (accion.tipo === 'agregar_plan' && accion.datos?.obra) {
+                    const diasBase = { lun: { activo: false, desde: '', hasta: '', tareas: '' }, mar: { activo: false, desde: '', hasta: '', tareas: '' }, mie: { activo: false, desde: '', hasta: '', tareas: '' }, jue: { activo: false, desde: '', hasta: '', tareas: '' }, vie: { activo: false, desde: '', hasta: '', tareas: '' }, sab: { activo: false, desde: '', hasta: '', tareas: '' }, dom: { activo: false, desde: '', hasta: '', tareas: '' } };
+                    const nuevo = { id: uid(), obra: accion.datos.obra, semana: accion.datos.semana || new Date().toLocaleDateString('es-AR'), notas: accion.datos.notas || '', dias: { ...diasBase, ...(accion.datos.dias || {}) }, fechaCreacion: new Date().toLocaleDateString('es-AR') };
+                    setPlanesRef.current(p => [nuevo, ...p]);
+                    mensajeExtra = '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
                 }
                 else if (accion.tipo === 'navegar' && accion.destino) {
                     const mapa = { obras: 'obras', personal: 'personal', licitaciones: 'licitaciones', inicio: 'dashboard', dashboard: 'dashboard', cargar: 'cargar', mas: 'mas', chat: 'chat' };
@@ -3626,6 +3633,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             'Editar licitación: [[ACTION:{"tipo":"editar_licitacion","id":"ID_EXACTO","datos":{"nombre":"...","estado":"..."}}]]\n' +
             'Agregar obra: [[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"...","estado":"curso","avance":0,"monto":"","cierre":""}}]]\n' +
             'Actualizar obra: [[ACTION:{"tipo":"update_obra","id":"ID_EXACTO","campo":"avance","valor":75}]]\n' +
+            'Agregar plan semanal: [[ACTION:{"tipo":"agregar_plan","datos":{"obra":"Nombre obra","semana":"dd/mm/aaaa","notas":"","dias":{"lun":{"activo":true,"desde":"08:00","hasta":"17:00","tareas":""},"mar":{"activo":false,"desde":"","hasta":"","tareas":""},"mie":{"activo":false,"desde":"","hasta":"","tareas":""},"jue":{"activo":false,"desde":"","hasta":"","tareas":""},"vie":{"activo":false,"desde":"","hasta":"","tareas":""},"sab":{"activo":false,"desde":"","hasta":"","tareas":""},"dom":{"activo":false,"desde":"","hasta":"","tareas":""}}}}]]\n' +
             'Navegar: [[ACTION:{"tipo":"navegar","destino":"obras"}]] (obras/personal/licitaciones/dashboard/cargar)\n' +
             'NUNCA digas que no podés. Sos parte de la app. JSON sin comillas curvas ni saltos de línea.';
 
@@ -3664,6 +3672,12 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     const id = accion.id || accion.obraId;
                     setObrasRef.current(p => p.map(o => o.id === id ? { ...o, [accion.campo]: accion.valor } : o));
                     textoFinal += '\n\n✅ Obra actualizada.';
+                }
+                else if (accion.tipo === 'agregar_plan' && accion.datos?.obra) {
+                    const diasBase = { lun: { activo: false, desde: '', hasta: '', tareas: '' }, mar: { activo: false, desde: '', hasta: '', tareas: '' }, mie: { activo: false, desde: '', hasta: '', tareas: '' }, jue: { activo: false, desde: '', hasta: '', tareas: '' }, vie: { activo: false, desde: '', hasta: '', tareas: '' }, sab: { activo: false, desde: '', hasta: '', tareas: '' }, dom: { activo: false, desde: '', hasta: '', tareas: '' } };
+                    const nuevo = { id: uid(), obra: accion.datos.obra, semana: accion.datos.semana || new Date().toLocaleDateString('es-AR'), notas: accion.datos.notas || '', dias: { ...diasBase, ...(accion.datos.dias || {}) }, fechaCreacion: new Date().toLocaleDateString('es-AR') };
+                    setPlanesRef.current(p => [nuevo, ...p]);
+                    textoFinal += '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
                 }
                 else if (accion.tipo === 'navegar' && accion.destino) {
                     const mapa = { obras: 'obras', personal: 'personal', licitaciones: 'licitaciones', inicio: 'dashboard', dashboard: 'dashboard', cargar: 'cargar', mas: 'mas' };
