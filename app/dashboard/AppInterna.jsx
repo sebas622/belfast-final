@@ -5151,8 +5151,7 @@ function AppInner({ supaSession }) {
     // Persistir lics SIN visitas (las fotos van en bcm_lic_vis_{id})
     useEffect(() => {
         if (!loaded) return;
-        if (!lics.length) { console.log('[BCM] lics vacío — NO guardando'); return; }
-        console.log('[BCM] Guardando lics:', lics.length, 'items');
+        if (!lics.length) return; // NUNCA guardar vacío — pisaría datos reales
         markLocalEdit('lics');
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
