@@ -3324,7 +3324,7 @@ Tono profesional AA2000, español rioplatense.`;
 const CHAT_MAX_MSGS = 60;
 const CHAT_EXPIRE_MS = 60 * 60 * 1000; // 1 hora de inactividad → resetea
 
-function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, setPlanes, alerts, cfg, apiKey, setView }) {
+function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, setPlanes, alerts, cfg, apiKey, setView, SP = 'bcm_' }) {
     // Refs para closures — garantizan que las funciones siempre estén actualizadas
     const setPersonalRef = useRef(setPersonal);
     const setLicsRef = useRef(setLics);
@@ -3586,8 +3586,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     setPersonalRef.current(p => {
                         const nuevo = [...p, nueva];
                         const json = JSON.stringify(nuevo);
-                        try { localStorage.setItem('bcm_personal', json); } catch {}
-                        storage.set('bcm_personal', json).catch(() => {});
+                        try { localStorage.setItem(SP+'personal', json); } catch {}
+                        storage.set(SP+'personal', json).catch(() => {});
                         return nuevo;
                     });
                     mensajeExtra = '\n\n✅ ' + accion.datos.nombre + ' agregado al personal.';
@@ -3602,8 +3602,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         const nuevasLics = [...p, nueva];
                         // Guardar inmediatamente sin esperar el useEffect
                         const json = JSON.stringify(nuevasLics.map(l => ({ ...l, visitas: [] })));
-                        try { localStorage.setItem('bcm_lics', json); } catch {}
-                        storage.set('bcm_lics', json).catch(() => {});
+                        try { localStorage.setItem(SP+'lics', json); } catch {}
+                        storage.set(SP+'lics', json).catch(() => {});
                         return nuevasLics;
                     });
                     mensajeExtra = '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
@@ -3617,8 +3617,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     setObrasRef.current(p => {
                         const nuevo = [...p, nueva];
                         const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
-                        try { localStorage.setItem('bcm_obras', json); } catch {}
-                        storage.set('bcm_obras', json).catch(() => {});
+                        try { localStorage.setItem(SP+'obras', json); } catch {}
+                        storage.set(SP+'obras', json).catch(() => {});
                         return nuevo;
                     });
                     mensajeExtra = '\n\n✅ Obra "' + accion.datos.nombre + '" agregada.';
@@ -3634,8 +3634,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     setPlanesRef.current(p => {
                         const nuevos = [nuevo, ...p];
                         const json = JSON.stringify(nuevos);
-                        try { localStorage.setItem('bcm_planes_semanales', json); } catch {}
-                        storage.set('bcm_planes_semanales', json).catch(() => {});
+                        try { localStorage.setItem(SP+'planes_semanales', json); } catch {}
+                        storage.set(SP+'planes_semanales', json).catch(() => {});
                         return nuevos;
                     });
                     mensajeExtra = '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
@@ -3671,8 +3671,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         const nuevo = p.map(o => o.id === accion.obraId ? { ...o, gastos: [...(o.gastos||[]), nuevoGasto] } : o);
                         const obraName = nuevo.find(o => o.id === accion.obraId)?.nombre || 'la obra';
                         const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
-                        try { localStorage.setItem('bcm_obras', json); } catch {}
-                        storage.set('bcm_obras', json).catch(() => {});
+                        try { localStorage.setItem(SP+'obras', json); } catch {}
+                        storage.set(SP+'obras', json).catch(() => {});
                         mensajeExtra = '\n\n✅ Gasto "$' + Number(accion.datos.monto||0).toLocaleString('es-AR') + ' — ' + accion.datos.desc + '" guardado en "' + obraName + '".';
                         return nuevo;
                     });
@@ -3690,8 +3690,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         setObrasRef.current(p => {
                             const nuevo = p.map(o => o.id === accion.obraId ? { ...o, informes: [nuevoInforme, ...(o.informes||[])] } : o);
                             const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
-                            try { localStorage.setItem('bcm_obras', json); } catch {}
-                            storage.set('bcm_obras', json).catch(() => {});
+                            try { localStorage.setItem(SP+'obras', json); } catch {}
+                            storage.set(SP+'obras', json).catch(() => {});
                             return nuevo;
                         });
                         mensajeExtra = '\n\n✅ Resumen fotográfico generado y guardado en "' + obra.nombre + '" → Informes.';
@@ -3703,8 +3703,8 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     setObrasRef.current(p => {
                         const nuevo = p.map(o => o.id === accion.obraId ? { ...o, informes: [nuevoInforme, ...(o.informes || [])] } : o);
                         const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
-                        try { localStorage.setItem('bcm_obras', json); } catch {}
-                        storage.set('bcm_obras', json).catch(() => {});
+                        try { localStorage.setItem(SP+'obras', json); } catch {}
+                        storage.set(SP+'obras', json).catch(() => {});
                         return nuevo;
                     });
                     const nombreObra = obrasRef.current.find(o => o.id === accion.obraId)?.nombre || 'la obra';
@@ -3811,8 +3811,8 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
                                 const nuevo = p.map(o => o.id === accion.obraId ? { ...o, fotos: [...(o.fotos||[]), nuevaFoto] } : o);
                                 const obraName = nuevo.find(o => o.id === accion.obraId)?.nombre || 'la obra';
                                 const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
-                                try { localStorage.setItem('bcm_obras', json); } catch {}
-                                storage.set('bcm_obras', json).catch(() => {});
+                                try { localStorage.setItem(SP+'obras', json); } catch {}
+                                storage.set(SP+'obras', json).catch(() => {});
                                 const fotosObra = nuevo.find(o => o.id === accion.obraId)?.fotos || [];
                                 const fkey = 'bcm_fotos_' + accion.obraId;
                                 try { localStorage.setItem(fkey, JSON.stringify(fotosObra)); } catch {}
@@ -3829,8 +3829,8 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
                                 const nuevo = p.map(l => l.id === accion.licId ? { ...l, visitas: [...(l.visitas||[]), nuevaVisita] } : l);
                                 const licName = nuevo.find(l => l.id === accion.licId)?.nombre || 'la licitación';
                                 const json = JSON.stringify(nuevo.map(l => ({ ...l, visitas: [] })));
-                                try { localStorage.setItem('bcm_lics', json); } catch {}
-                                storage.set('bcm_lics', json).catch(() => {});
+                                try { localStorage.setItem(SP+'lics', json); } catch {}
+                                storage.set(SP+'lics', json).catch(() => {});
                                 const visitas = nuevo.find(l => l.id === accion.licId)?.visitas || [];
                                 const vkey = 'bcm_lic_vis_' + accion.licId;
                                 try { localStorage.setItem(vkey, JSON.stringify(visitas)); } catch {}
@@ -3844,8 +3844,8 @@ Luego determiná dónde guardar y ejecutá la acción correspondiente.` }
                             setPersonalRef.current(p => {
                                 const nuevo = [...p, nueva];
                                 const json = JSON.stringify(nuevo);
-                                try { localStorage.setItem('bcm_personal', json); } catch {}
-                                storage.set('bcm_personal', json).catch(() => {});
+                                try { localStorage.setItem(SP+'personal', json); } catch {}
+                                storage.set(SP+'personal', json).catch(() => {});
                                 return nuevo;
                             });
                             texto += '\n\n✅ ' + accion.datos.nombre + ' agregado al personal con la foto.';
@@ -4049,8 +4049,8 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                     setObrasRef.current(p => {
                         const nuevo = p.map(o => o.id === obraReunion ? { ...o, informes: [nuevoInforme, ...(o.informes || [])] } : o);
                         const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
-                        try { localStorage.setItem('bcm_obras', json); } catch {}
-                        storage.set('bcm_obras', json).catch(() => {});
+                        try { localStorage.setItem(SP+'obras', json); } catch {}
+                        storage.set(SP+'obras', json).catch(() => {});
                         return nuevo;
                     });
                     textoMinuta += '\n\n✅ Minuta guardada en la obra "' + nombreObra + '" (pestaña Informes → Reunión).';
@@ -4165,8 +4165,8 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                     setLicsRef.current(p => {
                         const nuevasLics = [...p, nueva];
                         const json = JSON.stringify(nuevasLics.map(l => ({ ...l, visitas: [] })));
-                        try { localStorage.setItem('bcm_lics', json); } catch {}
-                        storage.set('bcm_lics', json).catch(() => {});
+                        try { localStorage.setItem(SP+'lics', json); } catch {}
+                        storage.set(SP+'lics', json).catch(() => {});
                         return nuevasLics;
                     });
                     textoFinal += '\n\n✅ Licitación "' + accion.datos.nombre + '" agregada.';
@@ -4180,8 +4180,8 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                     setObrasRef.current(p => {
                         const nuevo = [...p, nueva];
                         const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
-                        try { localStorage.setItem('bcm_obras', json); } catch {}
-                        storage.set('bcm_obras', json).catch(() => {});
+                        try { localStorage.setItem(SP+'obras', json); } catch {}
+                        storage.set(SP+'obras', json).catch(() => {});
                         return nuevo;
                     });
                     textoFinal += '\n\n✅ Obra "' + accion.datos.nombre + '" agregada.';
@@ -4197,8 +4197,8 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
                     setPlanesRef.current(p => {
                         const nuevos = [nuevo, ...p];
                         const json = JSON.stringify(nuevos);
-                        try { localStorage.setItem('bcm_planes_semanales', json); } catch {}
-                        storage.set('bcm_planes_semanales', json).catch(() => {});
+                        try { localStorage.setItem(SP+'planes_semanales', json); } catch {}
+                        storage.set(SP+'planes_semanales', json).catch(() => {});
                         return nuevos;
                     });
                     textoFinal += '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
@@ -5097,7 +5097,16 @@ function AppInner({ supaSession, empresa }) {
     // Prefijo de storage según empresa (evita mezclar datos Belfast/VV)
     const SP = empresa === 'vv' ? 'vv_' : 'bcm_';
     const [lics, setLics] = useState(() => getLocalJSON(SP + 'lics', []));
-    const [obras, setObras] = useState(() => getLocalJSON(SP + 'obras', []));
+    const [obras, setObras] = useState(() => {
+        const obrasBase = getLocalJSON(SP + 'obras', []);
+        // Restaurar fotos desde keys separadas al arrancar
+        return obrasBase.map(o => ({
+            ...o,
+            fotos: getLocalJSON('bcm_fotos_' + o.id, []),
+            archivos: getLocalJSON('bcm_archs_' + o.id, []),
+            gastos: o.gastos || []
+        }));
+    });
     const [personal, setPersonal] = useState(() => getLocalJSON(SP + 'personal', []));
     const [planes, setPlanes] = useState(() => getLocalJSON(SP + 'planes_semanales', []));
     const [alerts, setAlerts] = useState([]);
@@ -5594,7 +5603,7 @@ function AppInner({ supaSession, empresa }) {
                 {view === 'licitaciones' && <Licitaciones lics={lics} setLics={setLics} requireAuth={requireAuth} cfg={cfg} obras={obras} setObras={setObras}  />}
                 {view === 'personal' && <Personal personal={personal} setPersonal={setPersonal} obras={obras} cfg={cfg} />}
                 {view === 'cargar' && <CargarView obras={obras} setObras={setObras} cargarState={cargarState} setCargarState={setCargarState} apiKey={apiKey} />}
-                {view === 'chat' && <Chat lics={lics} setLics={setLics} obras={obras} setObras={setObras} personal={personal} setPersonal={setPersonal} planes={planes} setPlanes={setPlanes} alerts={alerts} cfg={cfg} apiKey={apiKey} setView={setView} />}
+                {view === 'chat' && <Chat lics={lics} setLics={setLics} obras={obras} setObras={setObras} personal={personal} setPersonal={setPersonal} planes={planes} setPlanes={setPlanes} alerts={alerts} cfg={cfg} apiKey={apiKey} setView={setView} SP={SP} />}
                 {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} />}
                 {view === 'presupuesto_materiales' && <PresupuestoView tipo="materiales" setView={setView} />}
                 {view === 'presupuesto_subcontratos' && <PresupuestoView tipo="subcontratos" setView={setView} />}
