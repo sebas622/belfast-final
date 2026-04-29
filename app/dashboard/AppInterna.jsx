@@ -996,7 +996,12 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
                 onUpdate={nuevasVisitas => {
                     const key = `bcm_lic_vis_${detail.id}`;
                     const json = JSON.stringify(nuevasVisitas);
-                    try { localStorage.setItem(key, json); } catch { }
+                    try {
+                        localStorage.setItem(key, json);
+                    } catch {
+                        // Si falla por tamaño, guardar solo las últimas 5 visitas
+                        try { localStorage.setItem(key, JSON.stringify(nuevasVisitas.slice(-5))); } catch { }
+                    }
                     storage.set(key, json).catch(() => { });
                     setLics(p => p.map(l => l.id === detail.id ? { ...l, visitas: nuevasVisitas } : l));
                 }}
@@ -5139,7 +5144,14 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     const [detailObraId, setDetailObraId] = useState(null);
     // Prefijo de storage según empresa (evita mezclar datos Belfast/VV)
     const SP = empresa === 'vv' ? 'vv_' : 'bcm_';
-    const [lics, setLics] = useState(() => getLocalJSON(SP + 'lics', []));
+    const [lics, setLics] = useState(() => {
+        const licsBase = getLocalJSON(SP + 'lics', []);
+        // Restaurar visitas (fotos) desde keys separadas al arrancar
+        return licsBase.map(l => ({
+            ...l,
+            visitas: getLocalJSON('bcm_lic_vis_' + l.id, l.visitas || [])
+        }));
+    });
     const [obras, setObras] = useState(() => {
         const obrasBase = getLocalJSON(SP + 'obras', []);
         // Restaurar fotos desde keys separadas al arrancar
