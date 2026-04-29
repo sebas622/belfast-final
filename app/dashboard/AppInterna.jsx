@@ -935,6 +935,33 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
                     })}
                 </div>);
             })}
+            {/* Licitaciones con estado inválido o sin estado */}
+            {(() => {
+                const estadosValidos = LIC_ESTADOS.map(e => e.id);
+                const sinEstado = filtered.filter(l => !estadosValidos.includes(l.estado));
+                if (!sinEstado.length) return null;
+                return (<div style={{ marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#94A3B8" }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sin estado</span>
+                        <span style={{ fontSize: 11, color: T.muted }}>({sinEstado.length})</span>
+                    </div>
+                    {sinEstado.map(lic => (
+                        <Card key={lic.id} onClick={() => setShowDetail(lic.id)} style={{ padding: "13px 14px", marginBottom: 7, cursor: "pointer" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <div style={{ flex: 1, paddingRight: 8 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{lic.nombre}</div>
+                                    <div style={{ fontSize: 11, color: T.muted }}>{lic.ap || "—"}{lic.sector ? " · " + lic.sector : ""}</div>
+                                </div>
+                                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>{lic.monto}</div>
+                                    <div style={{ fontSize: 10, color: T.muted, marginTop: 2 }}>{lic.fecha}</div>
+                                </div>
+                            </div>
+                        </Card>
+                    ))}
+                </div>);
+            })()}
         </div>
         {showNew && (<Sheet title="Nueva licitación" onClose={() => setShowNew(false)}>
             <Field label="Nombre"><TInput value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Refacción Terminal B" /></Field>
