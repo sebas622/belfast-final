@@ -3589,11 +3589,14 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             'Cuando el usuario pida agregar, crear, modificar o editar algo: HACELO INMEDIATAMENTE sin preguntar, incluyendo el bloque [[ACTION:...]] al final de tu respuesta.\n' +
             'NUNCA expliques cómo funciona el código. NUNCA digas que necesitás ver el código. NUNCA sugieras refrescar. SOLO actuá.\n\n' +
             '=== ACCIONES QUE PODÉS EJECUTAR ===\n' +
-            'Agregar personal: [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"Juan Pérez","rol":"Albañil","telefono":"","dni":""}}]]\n' +
+            'Agregar personal (uno): [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"Juan Pérez","rol":"Albañil","telefono":"","obra_id":""}}]]\n' +
+            'Agregar varios personales: [[ACTION:{"tipo":"agregar_personal_multiple","lista":[{"nombre":"Juan Pérez","rol":"Albañil","telefono":""},{"nombre":"Pedro García","rol":"Capataz","telefono":""}]}]]\n' +
             'Editar personal: [[ACTION:{"tipo":"editar_personal","id":"ID_DEL_CONTEXTO","datos":{"nombre":"","rol":"","telefono":""}}]]\n' +
+            'Eliminar personal: [[ACTION:{"tipo":"eliminar_personal","id":"ID_DEL_CONTEXTO","nombre":"nombre"}]]\n' +
             'Agregar licitación: [[ACTION:{"tipo":"agregar_licitacion","datos":{"nombre":"Nombre","estado":"pendiente","monto":"","fecha":""}}]]\n' +
             'Editar licitación: [[ACTION:{"tipo":"editar_licitacion","id":"ID_DEL_CONTEXTO","datos":{"nombre":"","estado":"","monto":""}}]]\n' +
-            'Agregar obra: [[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"Nombre","estado":"curso","avance":0,"monto":"","cierre":""}}]]\n' +
+            'Eliminar licitación: [[ACTION:{"tipo":"eliminar_licitacion","id":"ID_DEL_CONTEXTO","nombre":"nombre"}]]\n' +
+            'Eliminar obra: [[ACTION:{"tipo":"eliminar_obra","id":"ID_DEL_CONTEXTO","nombre":"nombre"}]]\n' +
             'Actualizar obra: [[ACTION:{"tipo":"update_obra","id":"ID_DEL_CONTEXTO","campo":"avance","valor":75}]]\n' +
             'Agregar plan semanal: [[ACTION:{"tipo":"agregar_plan","datos":{"obra":"Nombre obra","semana":"dd/mm/aaaa","notas":"","dias":{"lun":{"activo":true,"desde":"08:00","hasta":"17:00","tareas":""},"mar":{"activo":false,"desde":"","hasta":"","tareas":""},"mie":{"activo":false,"desde":"","hasta":"","tareas":""},"jue":{"activo":false,"desde":"","hasta":"","tareas":""},"vie":{"activo":false,"desde":"","hasta":"","tareas":""},"sab":{"activo":false,"desde":"","hasta":"","tareas":""},"dom":{"activo":false,"desde":"","hasta":"","tareas":""}}}}]]\n' +
             'Modificar código de la app (SOLO si el usuario lo pide explícitamente): [[ACTION:{"tipo":"modificar_codigo","descripcion":"qué cambio hacer","preview":true}]]\n' +
@@ -3642,7 +3645,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                 const accion = JSON.parse(jsonStr);
 
                 if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
-                    const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '', _fechaNac: accion.datos.fechaNac || '' };
+                    const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: accion.datos.empresa || 'BelfastCM', telefono: accion.datos.telefono || '', foto: '', obra_id: accion.datos.obra_id || '', tareas: [], docs: {} };
                     setPersonalRef.current(p => {
                         const nuevo = [...p, nueva];
                         const json = JSON.stringify(nuevo);
@@ -3652,9 +3655,50 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     });
                     mensajeExtra = '\n\n✅ ' + accion.datos.nombre + ' agregado al personal.';
                 }
+                else if (accion.tipo === 'agregar_personal_multiple' && accion.lista?.length) {
+                    const nuevos = accion.lista.map(d => ({ id: uid(), nombre: d.nombre, rol: d.rol || 'Operario', empresa: d.empresa || 'BelfastCM', telefono: d.telefono || '', foto: '', obra_id: d.obra_id || '', tareas: [], docs: {} }));
+                    setPersonalRef.current(p => {
+                        const nuevo = [...p, ...nuevos];
+                        const json = JSON.stringify(nuevo);
+                        try { localStorage.setItem(SP+'personal', json); } catch {}
+                        storage.set(SP+'personal', json).catch(() => {});
+                        return nuevo;
+                    });
+                    mensajeExtra = '\n\n✅ ' + nuevos.length + ' personas agregadas al personal:\n' + nuevos.map(n => '• ' + n.nombre + ' (' + n.rol + ')').join('\n');
+                }
                 else if (accion.tipo === 'editar_personal' && accion.id) {
                     setPersonalRef.current(p => p.map(x => x.id === accion.id ? { ...x, ...accion.datos } : x));
                     mensajeExtra = '\n\n✅ Personal actualizado.';
+                }
+                else if (accion.tipo === 'eliminar_personal' && accion.id) {
+                    setPersonalRef.current(p => {
+                        const nuevo = p.filter(x => x.id !== accion.id);
+                        const json = JSON.stringify(nuevo);
+                        try { localStorage.setItem(SP+'personal', json); } catch {}
+                        storage.set(SP+'personal', json).catch(() => {});
+                        return nuevo;
+                    });
+                    mensajeExtra = '\n\n✅ ' + (accion.nombre || 'Persona') + ' eliminado del personal.';
+                }
+                else if (accion.tipo === 'eliminar_licitacion' && accion.id) {
+                    setLicsRef.current(p => {
+                        const nuevo = p.filter(l => l.id !== accion.id);
+                        const json = JSON.stringify(nuevo.map(l => ({ ...l, visitas: [] })));
+                        try { localStorage.setItem(SP+'lics', json); } catch {}
+                        storage.set(SP+'lics', json).catch(() => {});
+                        return nuevo;
+                    });
+                    mensajeExtra = '\n\n✅ ' + (accion.nombre || 'Licitación') + ' eliminada.';
+                }
+                else if (accion.tipo === 'eliminar_obra' && accion.id) {
+                    setObrasRef.current(p => {
+                        const nuevo = p.filter(o => o.id !== accion.id);
+                        const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                        try { localStorage.setItem(SP+'obras', json); } catch {}
+                        storage.set(SP+'obras', json).catch(() => {});
+                        return nuevo;
+                    });
+                    mensajeExtra = '\n\n✅ ' + (accion.nombre || 'Obra') + ' eliminada.';
                 }
                 else if (accion.tipo === 'agregar_licitacion' && accion.datos?.nombre) {
                     const nueva = { id: uid(), nombre: accion.datos.nombre, estado: accion.datos.estado || 'pendiente', monto: accion.datos.monto || '', fecha: accion.datos.fecha || new Date().toLocaleDateString('es-AR'), ap: '', visitas: [], archivos: {}, notas: '' };
