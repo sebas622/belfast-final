@@ -3443,6 +3443,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             'Agregar obra: [[ACTION:{"tipo":"agregar_obra","datos":{"nombre":"Nombre","estado":"curso","avance":0,"monto":"","cierre":""}}]]\n' +
             'Actualizar obra: [[ACTION:{"tipo":"update_obra","id":"ID_DEL_CONTEXTO","campo":"avance","valor":75}]]\n' +
             'Agregar plan semanal: [[ACTION:{"tipo":"agregar_plan","datos":{"obra":"Nombre obra","semana":"dd/mm/aaaa","notas":"","dias":{"lun":{"activo":true,"desde":"08:00","hasta":"17:00","tareas":""},"mar":{"activo":false,"desde":"","hasta":"","tareas":""},"mie":{"activo":false,"desde":"","hasta":"","tareas":""},"jue":{"activo":false,"desde":"","hasta":"","tareas":""},"vie":{"activo":false,"desde":"","hasta":"","tareas":""},"sab":{"activo":false,"desde":"","hasta":"","tareas":""},"dom":{"activo":false,"desde":"","hasta":"","tareas":""}}}}]]\n' +
+            'Crear resumen fotográfico de avance: [[ACTION:{"tipo":"crear_resumen_fotos","obraId":"ID_DEL_CONTEXTO"}]]\n' +
             'Grabar reunión: [[ACTION:{"tipo":"grabar_reunion","obra":"Nombre de la obra"}]]\n' +
             'Subir minuta (archivo): [[ACTION:{"tipo":"subir_minuta","obraId":"ID_DEL_CONTEXTO","titulo":"Minuta reunión"}]]\n' +
             'Navegar: [[ACTION:{"tipo":"navegar","destino":"obras"}]] — destinos: obras, personal, licitaciones, dashboard, cargar\n\n' +
@@ -3544,6 +3545,27 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                     });
                     mensajeExtra = '\n\n✅ Plan semanal para "' + accion.datos.obra + '" creado.';
                 }
+                else if (accion.tipo === 'crear_resumen_fotos' && accion.obraId) {
+                    const obra = obrasRef.current.find(o => o.id === accion.obraId);
+                    if (obra) {
+                        setLoading(true); setLoadingMsg('Generando resumen fotográfico…');
+                        const fotos = obra.fotos || [];
+                        const content = [];
+                        fotos.slice(-8).forEach(f => { try { if (f.url?.startsWith('data:')) content.push({ type: 'image', source: { type: 'base64', media_type: getMediaType(f.url), data: getBase64(f.url) } }); } catch {} });
+                        content.push({ type: 'text', text: `Generá un resumen fotográfico profesional de avance de obra para "${obra.nombre}". Describí el estado actual, los trabajos visibles, el avance estimado y las observaciones técnicas. Formato: título, fecha, estado general, descripción por foto, conclusiones.` });
+                        const rFotos = await callAI([{ role: 'user', content }], 'Sos inspector de obras AA2000. Generás informes técnicos en español rioplatense.', apiKey, false);
+                        const nuevoInforme = { id: uid(), tipo: 'semanal', titulo: 'Resumen fotográfico ' + new Date().toLocaleDateString('es-AR'), texto: rFotos, fecha: new Date().toLocaleDateString('es-AR'), generadoPorIA: true };
+                        setObrasRef.current(p => {
+                            const nuevo = p.map(o => o.id === accion.obraId ? { ...o, informes: [nuevoInforme, ...(o.informes||[])] } : o);
+                            const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                            try { localStorage.setItem('bcm_obras', json); } catch {}
+                            storage.set('bcm_obras', json).catch(() => {});
+                            return nuevo;
+                        });
+                        mensajeExtra = '\n\n✅ Resumen fotográfico generado y guardado en "' + obra.nombre + '" → Informes.';
+                        setLoading(false); setLoadingMsg('');
+                    }
+                }
                 else if (accion.tipo === 'subir_minuta' && accion.obraId) {
                     const nuevoInforme = { id: uid(), tipo: 'reunion', titulo: accion.titulo || ('Minuta reunión ' + new Date().toLocaleDateString('es-AR')), texto: textoLimpio, fecha: new Date().toLocaleDateString('es-AR'), hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }), generadoPorIA: true };
                     setObrasRef.current(p => {
@@ -3585,8 +3607,90 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
         const isPDF = f.type === 'application/pdf';
         const nuevoAttach = { url, name: f.name, type: f.type, isImage, size: f.size };
         setAttach(nuevoAttach);
-        if (!isImage && !isPDF) setShowSaveDialog(nuevoAttach);
         e.target.value = '';
+
+        // Si es imagen → la IA la analiza automáticamente y propone dónde guardarla
+        if (isImage) {
+            const obrasList = obrasRef.current.map(o => `• [ID:${o.id}] ${o.nombre}`).join('\n') || '(sin obras)';
+            const licsList = licsRef.current.map(l => `• [ID:${l.id}] ${l.nombre}`).join('\n') || '(sin licitaciones)';
+            setInput('');
+            setTimeout(async () => {
+                setLoading(true);
+                setLoadingMsg('Analizando imagen…');
+                const userMsg = { id: uid(), role: 'user', text: '📷 [Foto adjunta]', attach: nuevoAttach };
+                setMsgs(p => [...p, userMsg]);
+                setAttach(null);
+                const history = [{
+                    role: 'user',
+                    content: [
+                        { type: 'image', source: { type: 'base64', media_type: getMediaType(url), data: getBase64(url) } },
+                        { type: 'text', text: `Analizá esta foto. Describí brevemente qué ves (1-2 oraciones). Luego determiná si es de una obra de construcción, una licitación, un documento de personal (DNI, carnet), u otro.\n\nObras disponibles:\n${obrasList}\n\nLicitaciones disponibles:\n${licsList}\n\nSi la foto corresponde a alguna obra o licitación, guardala ahí. Si es un DNI o documento de personal, extraé los datos y agregá a la persona. Si no podés determinar, preguntame dónde la guardo.\n\nSiempre incluí el ACTION correspondiente.` }
+                    ]
+                }];
+                const sys = `Sos el asistente IA de BelfastCM. Analizás fotos y las guardás donde corresponde.\nCuando identifiques dónde guardar una foto de obra: [[ACTION:{"tipo":"guardar_foto_obra","obraId":"ID_EXACTO","descripcion":"..."}]]\nCuando identifiques dónde guardar en licitación: [[ACTION:{"tipo":"guardar_foto_lic","licId":"ID_EXACTO","descripcion":"..."}]]\nCuando sea DNI/documento: [[ACTION:{"tipo":"agregar_personal","datos":{"nombre":"...","rol":"Operario","telefono":"","dni":"..."}}]]\nRespondé en español rioplatense, breve y directo.`;
+                const r = await callAI(history, sys, apiKey, false);
+                // Procesar acción
+                const accionMatch = r.match(/\[\[ACTION:([\s\S]*?)\]\]/);
+                let texto = r.replace(/\[\[ACTION:[\s\S]*?\]\]/g, '').trim();
+                if (accionMatch) {
+                    try {
+                        const accion = JSON.parse(accionMatch[1].replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').trim());
+                        if (accion.tipo === 'guardar_foto_obra' && accion.obraId) {
+                            const fotoId = uid();
+                            const fotoUrl = await uploadFoto(url, 'obras/' + accion.obraId, fotoId);
+                            const nuevaFoto = { id: fotoId, url: fotoUrl, nombre: f.name, fecha: new Date().toLocaleDateString('es-AR'), desc: accion.descripcion || '' };
+                            setObrasRef.current(p => {
+                                const nuevo = p.map(o => o.id === accion.obraId ? { ...o, fotos: [...(o.fotos||[]), nuevaFoto] } : o);
+                                const obraName = nuevo.find(o => o.id === accion.obraId)?.nombre || 'la obra';
+                                const json = JSON.stringify(nuevo.map(o => ({ ...o, fotos: [], archivos: [] })));
+                                try { localStorage.setItem('bcm_obras', json); } catch {}
+                                storage.set('bcm_obras', json).catch(() => {});
+                                // Guardar fotos en key separada
+                                const fotosObra = nuevo.find(o => o.id === accion.obraId)?.fotos || [];
+                                const fkey = 'bcm_fotos_' + accion.obraId;
+                                try { localStorage.setItem(fkey, JSON.stringify(fotosObra)); } catch {}
+                                storage.set(fkey, JSON.stringify(fotosObra)).catch(() => {});
+                                texto += '\n\n✅ Foto guardada en "' + obraName + '" → Fotos.';
+                                return nuevo;
+                            });
+                        }
+                        else if (accion.tipo === 'guardar_foto_lic' && accion.licId) {
+                            const fotoId = uid();
+                            const fotoUrl = await uploadFoto(url, 'licitaciones/' + accion.licId, fotoId);
+                            const nuevaVisita = { id: fotoId, url: fotoUrl, nombre: f.name, desc: accion.descripcion || '', etapa: 'durante', fecha: new Date().toLocaleDateString('es-AR'), hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) };
+                            setLicsRef.current(p => {
+                                const nuevo = p.map(l => l.id === accion.licId ? { ...l, visitas: [...(l.visitas||[]), nuevaVisita] } : l);
+                                const licName = nuevo.find(l => l.id === accion.licId)?.nombre || 'la licitación';
+                                const json = JSON.stringify(nuevo.map(l => ({ ...l, visitas: [] })));
+                                try { localStorage.setItem('bcm_lics', json); } catch {}
+                                storage.set('bcm_lics', json).catch(() => {});
+                                const visitas = nuevo.find(l => l.id === accion.licId)?.visitas || [];
+                                const vkey = 'bcm_lic_vis_' + accion.licId;
+                                try { localStorage.setItem(vkey, JSON.stringify(visitas)); } catch {}
+                                storage.set(vkey, JSON.stringify(visitas)).catch(() => {});
+                                texto += '\n\n✅ Foto guardada en "' + licName + '" → Visitas.';
+                                return nuevo;
+                            });
+                        }
+                        else if (accion.tipo === 'agregar_personal' && accion.datos?.nombre) {
+                            const nueva = { id: uid(), nombre: accion.datos.nombre, rol: accion.datos.rol || 'Operario', empresa: 'BelfastCM', telefono: accion.datos.telefono || '', foto: url, obra_id: '', tareas: [], docs: {}, _dni: accion.datos.dni || '' };
+                            setPersonalRef.current(p => {
+                                const nuevo = [...p, nueva];
+                                const json = JSON.stringify(nuevo);
+                                try { localStorage.setItem('bcm_personal', json); } catch {}
+                                storage.set('bcm_personal', json).catch(() => {});
+                                return nuevo;
+                            });
+                            texto += '\n\n✅ ' + accion.datos.nombre + ' agregado al personal con la foto.';
+                        }
+                    } catch(err) { texto += '\n\n⚠ ' + err.message; }
+                }
+                setMsgs(p => [...p, { id: uid(), role: 'assistant', text: texto }]);
+                setLoading(false);
+                setLoadingMsg('');
+                hablarTexto(texto);
+            }, 100);
+        }
     }
 
     // Analizar DNI o documento desde foto/PDF
