@@ -123,15 +123,20 @@ const mediaStorage = {
 // La foto queda disponible INMEDIATAMENTE en local, el bucket es bonus.
 async function uploadFoto(dataUrl, carpeta, nombre) {
     if (!dataUrl) return null;
-    // Si ya es URL remota, no re-subir
     if (mediaStorage.isRemoteUrl(dataUrl)) return dataUrl;
-    // Intentar subir al bucket en background — si falla, el base64 es el fallback
+    const fotoId = nombre || uid();
+    // 1. Intentar Supabase Storage (URL pública permanente)
     try {
-        const path = `${carpeta}/${nombre || uid()}`;
-        const remoteUrl = await mediaStorage.upload(path, dataUrl);
+        const remoteUrl = await mediaStorage.upload(`${carpeta}/${fotoId}`, dataUrl);
         if (remoteUrl) return remoteUrl;
     } catch { }
-    // Fallback: devolver el base64 directamente (se guarda en localStorage)
+    // 2. Guardar en bcm_storage como fallback garantizado entre sesiones
+    try {
+        const key = 'foto_' + fotoId;
+        storage.set(key, dataUrl).catch(() => {});
+        try { localStorage.setItem(key, dataUrl); } catch { }
+    } catch { }
+    // 3. Devolver base64 (disponible en esta sesión)
     return dataUrl;
 }
 // Carga desde localStorage SINCRÓNICAMENTE (sin flash), persiste en ambos lados
@@ -3607,15 +3612,17 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
         if (/clima|lluvia|temperatura/i.test(txt)) {
             try { const r = await fetch('https://wttr.in/Buenos+Aires?format=j1'); if (r.ok) { const d = await r.json(); const c = d.current_condition?.[0]; if (c) extraInfo += `\nClima BsAs: ${c.temp_C}°C, ${c.weatherDesc?.[0]?.value}`; } } catch { }
         }
-        // Ubicación GPS — siempre incluir si está disponible
-        if (/dónde|donde|ubicaci|estoy|cerca|mapa|gps|lugar/i.test(txt) || true) {
+        // GPS — solo si el usuario pregunta por ubicación, sin bloquear
+        if (/dónde|donde|ubicaci|estoy|cerca|obra.*cerca|cuál.*obra/i.test(txt)) {
             try {
-                const pos = await new Promise((resolve, reject) => {
-                    if (!navigator.geolocation) { reject(); return; }
-                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, maximumAge: 60000 });
-                });
-                extraInfo += `\nUbicación actual: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (precisión: ${Math.round(pos.coords.accuracy)}m)`;
-            } catch { }
+                const pos = await Promise.race([
+                    new Promise((resolve, reject) => navigator.geolocation
+                        ? navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000, maximumAge: 60000 })
+                        : reject()),
+                    new Promise((_, reject) => setTimeout(reject, 3500))
+                ]);
+                if (pos?.coords) extraInfo += `\nUbicación GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)}m)`;
+            } catch { extraInfo += '\nUbicación GPS: no disponible'; }
         }
 
         const sys = 'Sos el asistente IA de BelfastCM, una app de gestión de obras de construcción en aeropuertos. IMPORTANTE: Sos parte de la app — tenés acceso directo a todos los datos y podés modificarlos.\n\n' +
@@ -6083,14 +6090,26 @@ function SelectorEmpresa({ session, onSelect, onLogout }) {
     const T2 = { navy: '#0F172A', accent: '#1D4ED8', bg: '#F8FAFC', text: '#1E293B', muted: '#94A3B8', border: '#E2E8F0', card: '#fff' };
     const email = session?.user?.email || '';
 
-    // Cargar logos guardados desde localStorage
+    const defaultLogos = { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' };
     const [logos, setLogos] = React.useState(() => {
         try {
             const saved = localStorage.getItem('bcm_selector_logos');
-            return saved ? JSON.parse(saved) : { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' };
-        } catch { return { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' }; }
+            return saved ? JSON.parse(saved) : defaultLogos;
+        } catch { return defaultLogos; }
     });
     const [editando, setEditando] = React.useState(false);
+
+    // Cargar logos desde Supabase si localStorage está vacío
+    React.useEffect(() => {
+        if (logos.belfast || logos.vv || logos.belfastNombre) return; // ya tiene datos
+        storage.get('bcm_selector_logos').then(r => {
+            if (r?.value) {
+                const d = JSON.parse(r.value);
+                setLogos(d);
+                try { localStorage.setItem('bcm_selector_logos', r.value); } catch {}
+            }
+        }).catch(() => {});
+    }, []);
 
     function guardarLogos(nuevos) {
         setLogos(nuevos);
