@@ -3051,10 +3051,22 @@ function MensajesView({ setView, currentUser, personal, obras }) {
     const myId = currentUser?.usuario || currentUser?.user || currentUser?.appUser || 'anon';
     const myName = currentUser?.nombre || currentUser?.rol || 'Usuario';
 
-    // Todos los usuarios disponibles para chat privado
+    // Todos los usuarios disponibles para chat
+    // - Con appUser: chat interno en la app
+    // - Sin appUser pero con teléfono: abre WhatsApp
     const allUsers = [
-        { id: 'sebastian', nombre: 'Sebastián (Admin)', rol: 'Administrador', tipo: 'admin' },
-        ...personal.filter(p => p.appUser && p.appUser !== myId).map(p => ({ id: p.appUser, nombre: p.nombre, rol: p.rol, tipo: 'empleado' }))
+        { id: 'sebastian', nombre: 'Sebastián (Admin)', rol: 'Administrador', tipo: 'admin', tieneApp: true },
+        ...personal
+            .filter(p => p.id !== myId && p.nombre)
+            .map(p => ({
+                id: p.appUser || ('personal_' + p.id),
+                personalId: p.id,
+                nombre: p.nombre,
+                rol: p.rol,
+                telefono: p.telefono,
+                tipo: 'empleado',
+                tieneApp: !!p.appUser,
+            }))
     ].filter(u => u.id !== myId);
 
     // Cargar mensajes y polling cada 3s
@@ -3173,17 +3185,30 @@ function MensajesView({ setView, currentUser, personal, obras }) {
                 {allUsers.map(u => {
                     const unread = getUnreadPrivado(u.id);
                     const last = getLastMsg(u.id, 'privado');
-                    return (<Card key={u.id} onClick={() => setSelChat({ tipo: 'privado', id: u.id, nombre: u.nombre })} style={{ padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                    return (<Card key={u.id} onClick={() => {
+                        if (u.tieneApp) {
+                            setSelChat({ tipo: 'privado', id: u.id, nombre: u.nombre });
+                        } else if (u.telefono) {
+                            // Sin app — abrir WhatsApp
+                            window.open(`https://wa.me/${u.telefono}`, '_blank');
+                        } else {
+                            alert(`${u.nombre} no tiene app ni teléfono registrado`);
+                        }
+                    }} style={{ padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ width: 46, height: 46, borderRadius: "50%", background: u.tipo === 'admin' ? T.navy : T.accentLight, color: u.tipo === 'admin' ? "#fff" : T.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
                             {u.nombre.split(' ').slice(0,2).map(w => w[0]||'').join('').toUpperCase()}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{u.nombre}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {u.nombre}
+                                {!u.tieneApp && u.telefono && <span style={{ fontSize: 10, background: '#DCFCE7', color: '#16A34A', borderRadius: 20, padding: '2px 7px', fontWeight: 700 }}>WhatsApp</span>}
+                                {!u.tieneApp && !u.telefono && <span style={{ fontSize: 10, background: '#FEF2F2', color: '#EF4444', borderRadius: 20, padding: '2px 7px', fontWeight: 700 }}>Sin contacto</span>}
+                            </div>
                             <div style={{ fontSize: 11, color: T.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {last ? (last.de === myId ? 'Vos: ' : '') + last.txt : u.rol}
+                                {u.tieneApp ? (last ? (last.de === myId ? 'Vos: ' : '') + last.txt : u.rol) : u.rol}
                             </div>
                         </div>
-                        {unread > 0 && <div style={{ background: "#EF4444", color: "#fff", borderRadius: 12, minWidth: 22, height: 22, fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7px" }}>{unread}</div>}
+                        {unread > 0 && u.tieneApp && <div style={{ background: "#EF4444", color: "#fff", borderRadius: 12, minWidth: 22, height: 22, fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7px" }}>{unread}</div>}
                     </Card>);
                 })}
             </>)}
