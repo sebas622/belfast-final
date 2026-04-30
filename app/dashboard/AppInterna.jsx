@@ -1813,7 +1813,21 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
                             <div style={{ background: T.bg, borderRadius: T.rsm, padding: "10px 12px" }}>
                                 <div style={{ fontSize: 10, color: T.muted, marginBottom: 5, textTransform: "uppercase" }}>Presupuesto</div>
-                                <input value={detail.monto || ''} onChange={e => upd(detail.id, { monto: e.target.value })} placeholder="$ 0" style={{ width: "100%", background: "transparent", border: "none", fontSize: 12, fontWeight: 600, color: T.text, padding: 0 }} />
+                                {(() => {
+                                    const lic = lics?.find(l => l.id === detail.lic_id);
+                                    const montoLic = lic?.monto;
+                                    const montoObra = detail.monto;
+                                    // Mostrar monto de licitación si existe, sino el de la obra
+                                    const montoMostrar = montoLic || montoObra;
+                                    return montoLic ? (
+                                        <div>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{montoLic}</div>
+                                            <div style={{ fontSize: 9, color: T.muted, marginTop: 2 }}>Desde licitación</div>
+                                        </div>
+                                    ) : (
+                                        <input value={detail.monto || ''} onChange={e => upd(detail.id, { monto: e.target.value })} placeholder="$ 0" style={{ width: "100%", background: "transparent", border: "none", fontSize: 12, fontWeight: 600, color: T.text, padding: 0 }} />
+                                    );
+                                })()}
                             </div>
                             <div style={{ background: "#ECFDF5", borderRadius: T.rsm, padding: "10px 12px" }}>
                                 <div style={{ fontSize: 10, color: T.muted, marginBottom: 5, textTransform: "uppercase" }}>💰 Gastado</div>
