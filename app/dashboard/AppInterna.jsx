@@ -283,20 +283,20 @@ function getUbics(cfg) { return (cfg?.ubicaciones?.length ? cfg.ubicaciones : DE
 function getLabelUbic(cfg) { return cfg?.labelUbicacion || "Aeropuerto"; }
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
-function toDataUrl(f, maxW = 800) {
+function toDataUrl(f, maxW = 600) {
     return new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = e => {
             if (!f.type.startsWith('image/')) { res(e.target.result); return; }
             const img = new Image();
             img.onload = () => {
-                // Siempre comprimir — aunque sea más chica que maxW
+                // Siempre comprimir agresivamente para caber en localStorage
                 const c = document.createElement('canvas');
                 const ratio = img.width > maxW ? maxW / img.width : 1;
                 c.width = Math.round(img.width * ratio);
                 c.height = Math.round(img.height * ratio);
                 c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-                res(c.toDataURL('image/jpeg', 0.7)); // 70% calidad para reducir tamaño
+                res(c.toDataURL('image/jpeg', 0.6)); // 60% calidad ~100KB por foto
             };
             img.onerror = () => res(e.target.result);
             img.src = e.target.result;
@@ -1664,13 +1664,31 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
             const updated = { ...o, ...patch };
             if (patch.fotos !== undefined) {
                 const key = `${SP}fotos_${id}`;
-                const json = JSON.stringify(patch.fotos);
-                try {
-                    localStorage.setItem(key, json);
-                } catch {
-                    // Si falla por tamaño, guardar solo las últimas 5 fotos
-                    try { localStorage.setItem(key, JSON.stringify(patch.fotos.slice(-5))); } catch { }
+                // Comprimir: guardar solo URL (no base64 completo si es muy grande)
+                const fotosParaGuardar = patch.fotos.map(f => ({
+                    id: f.id,
+                    url: f.url,
+                    nombre: f.nombre,
+                    fecha: f.fecha
+                }));
+                const json = JSON.stringify(fotosParaGuardar);
+                // Intentar guardar todo
+                let guardado = false;
+                try { localStorage.setItem(key, json); guardado = true; } catch { }
+                // Si falla, limpiar otras keys y reintentar
+                if (!guardado) {
+                    try {
+                        // Limpiar keys de chat (más pesadas) para hacer espacio
+                        localStorage.removeItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs');
+                        localStorage.setItem(key, json);
+                        guardado = true;
+                    } catch { }
                 }
+                // Último recurso: guardar solo las últimas 3 fotos
+                if (!guardado) {
+                    try { localStorage.setItem(key, JSON.stringify(fotosParaGuardar.slice(-3))); } catch { }
+                }
+                // Siempre guardar en Supabase
                 storage.set(key, json).catch(() => { });
             }
             if (patch.archivos !== undefined) {
