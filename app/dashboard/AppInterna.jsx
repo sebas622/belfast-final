@@ -1664,37 +1664,35 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
             const updated = { ...o, ...patch };
             if (patch.fotos !== undefined) {
                 const key = `${SP}fotos_${id}`;
-                // Comprimir: guardar solo URL (no base64 completo si es muy grande)
-                const fotosParaGuardar = patch.fotos.map(f => ({
-                    id: f.id,
-                    url: f.url,
-                    nombre: f.nombre,
-                    fecha: f.fecha
-                }));
+                const fotosParaGuardar = patch.fotos.map(f => ({ id: f.id, url: f.url, nombre: f.nombre, fecha: f.fecha }));
                 const json = JSON.stringify(fotosParaGuardar);
-                // Intentar guardar todo
-                let guardado = false;
-                try { localStorage.setItem(key, json); guardado = true; } catch { }
-                // Si falla, limpiar otras keys y reintentar
-                if (!guardado) {
+                // Guardar localmente
+                try { localStorage.setItem(key, json); } catch {
                     try {
-                        // Limpiar keys de chat (más pesadas) para hacer espacio
                         localStorage.removeItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs');
                         localStorage.setItem(key, json);
-                        guardado = true;
-                    } catch { }
+                    } catch {
+                        try { localStorage.setItem(key, JSON.stringify(fotosParaGuardar.slice(-3))); } catch {}
+                    }
                 }
-                // Último recurso: guardar solo las últimas 3 fotos
-                if (!guardado) {
-                    try { localStorage.setItem(key, JSON.stringify(fotosParaGuardar.slice(-3))); } catch { }
-                }
-                // Siempre guardar en Supabase
-                storage.set(key, json).catch(() => { });
+                // Al guardar en Supabase: fusionar con lo que ya hay en remoto
+                storage.get(key).then(remoto => {
+                    let fotasFinal = fotosParaGuardar;
+                    if (remoto?.value) {
+                        try {
+                            const remotas = JSON.parse(remoto.value);
+                            const idsLocales = new Set(fotosParaGuardar.map(f => f.id));
+                            const soloEnRemoto = remotas.filter(f => !idsLocales.has(f.id));
+                            fotasFinal = [...fotosParaGuardar, ...soloEnRemoto];
+                        } catch {}
+                    }
+                    storage.set(key, JSON.stringify(fotasFinal)).catch(() => {});
+                }).catch(() => { storage.set(key, json).catch(() => {}); });
             }
             if (patch.archivos !== undefined) {
                 const key = `${SP}archs_${id}`;
-                try { localStorage.setItem(key, JSON.stringify(patch.archivos)); } catch { }
-                storage.set(key, JSON.stringify(patch.archivos)).catch(() => { });
+                try { localStorage.setItem(key, JSON.stringify(patch.archivos)); } catch {}
+                storage.set(key, JSON.stringify(patch.archivos)).catch(() => {});
             }
             return updated;
         }));
@@ -5610,26 +5608,51 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                     const nv = JSON.parse(value); setCfg({ ...DEFAULT_CONFIG, ...nv });
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                // Fotos de obras
+                // Fotos de obras — FUSIONAR por ID, nunca reemplazar
                 else if (key.startsWith(SP+'fotos_')) {
                     const obraId = key.replace(SP+'fotos_', '');
-                    const fotos = JSON.parse(value);
-                    setObras(cur => cur.map(o => o.id === obraId ? { ...o, fotos } : o));
-                    try { localStorage.setItem(key, value); } catch {}
+                    const fotosRemoto = JSON.parse(value);
+                    setObras(cur => cur.map(o => {
+                        if (o.id !== obraId) return o;
+                        const fotosLocal = o.fotos || [];
+                        // Unir: mantener todas las fotos locales + agregar las remotas que no están
+                        const idsLocales = new Set(fotosLocal.map(f => f.id));
+                        const nuevasDelRemoto = fotosRemoto.filter(f => !idsLocales.has(f.id));
+                        const fusionadas = [...fotosLocal, ...nuevasDelRemoto];
+                        // Guardar la fusión
+                        const jsonFusion = JSON.stringify(fusionadas);
+                        try { localStorage.setItem(key, jsonFusion); } catch {}
+                        storage.set(key, jsonFusion).catch(() => {});
+                        return { ...o, fotos: fusionadas };
+                    }));
                 }
-                // Archivos de obras
+                // Archivos de obras — FUSIONAR por ID
                 else if (key.startsWith(SP+'archs_')) {
                     const obraId = key.replace(SP+'archs_', '');
-                    const archivos = JSON.parse(value);
-                    setObras(cur => cur.map(o => o.id === obraId ? { ...o, archivos } : o));
-                    try { localStorage.setItem(key, value); } catch {}
+                    const archivosRemoto = JSON.parse(value);
+                    setObras(cur => cur.map(o => {
+                        if (o.id !== obraId) return o;
+                        const archLocal = o.archivos || [];
+                        const idsLocales = new Set(archLocal.map(f => f.id));
+                        const nuevos = archivosRemoto.filter(f => !idsLocales.has(f.id));
+                        const fusionados = [...archLocal, ...nuevos];
+                        try { localStorage.setItem(key, JSON.stringify(fusionados)); } catch {}
+                        return { ...o, archivos: fusionados };
+                    }));
                 }
-                // Visitas de licitaciones
+                // Visitas de licitaciones — FUSIONAR por ID
                 else if (key.startsWith(SP+'lic_vis_')) {
                     const licId = key.replace(SP+'lic_vis_', '');
-                    const visitas = JSON.parse(value);
-                    setLics(cur => cur.map(l => l.id === licId ? { ...l, visitas } : l));
-                    try { localStorage.setItem(key, value); } catch {}
+                    const visitasRemoto = JSON.parse(value);
+                    setLics(cur => cur.map(l => {
+                        if (l.id !== licId) return l;
+                        const visitasLocal = l.visitas || [];
+                        const idsLocales = new Set(visitasLocal.map(v => v.id));
+                        const nuevas = visitasRemoto.filter(v => !idsLocales.has(v.id));
+                        const fusionadas = [...visitasLocal, ...nuevas];
+                        try { localStorage.setItem(key, JSON.stringify(fusionadas)); } catch {}
+                        return { ...l, visitas: fusionadas };
+                    }));
                 }
                 else if (key === SP+'planes_semanales') {
                     const nv = JSON.parse(value);
