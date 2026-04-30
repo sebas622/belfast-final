@@ -511,7 +511,7 @@ function MontoInput({ value, onChange, placeholder }) {
         setDisplay(fmt);
         onChange(fmt);
     }
-    return <input value={display} onChange={handleChange} placeholder={placeholder || '0 $'} style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "11px 14px", fontSize: 14, color: T.text }} />;
+    return <input value={display} onChange={handleChange} placeholder={placeholder || '0 $'} inputMode="numeric" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "11px 14px", fontSize: 16, color: T.text }} />;
 }
 
 function LoginModal({ titulo, onSuccess, onClose }) {
@@ -1511,7 +1511,27 @@ function TabGastos({ detail, upd, apiKey }) {
         setShowNew(false);
     }
 
-    function eliminar(id) { upd(detail.id, { gastos: gastos.filter(g => g.id !== id) }); }
+    const [editandoId, setEditandoId] = useState(null);
+
+    function eliminar(id) { if (window.confirm('¿Eliminar este gasto?')) upd(detail.id, { gastos: gastos.filter(g => g.id !== id) }); }
+
+    function editarGasto(g) {
+        setForm({ desc: g.desc, tipo: g.tipo, monto: g.monto, fecha: g.fecha, quien: g.quien || '', comprobante: g.comprobante || null });
+        setEditandoId(g.id);
+        setShowNew(true);
+    }
+
+    function guardar() {
+        if (!form.desc.trim() || !form.monto) return;
+        if (editandoId) {
+            upd(detail.id, { gastos: gastos.map(g => g.id === editandoId ? { ...g, ...form } : g) });
+            setEditandoId(null);
+        } else {
+            upd(detail.id, { gastos: [...gastos, { id: uid(), ...form }] });
+        }
+        setForm({ desc: '', tipo: 'viatico', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
+        setShowNew(false);
+    }
 
     // Exportar a Excel (CSV descargable)
     function exportarExcel() {
@@ -1604,13 +1624,14 @@ function TabGastos({ detail, upd, apiKey }) {
                                 </a>
                             )
                         )}
+                        <button onClick={() => editarGasto(g)} style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, color: T.accent, cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>✏️</button>
                         <button onClick={() => eliminar(g.id)} style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "6px 10px", fontSize: 11, color: "#EF4444", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>✕</button>
                     </div>
                 </div>);
             })
         )}
 
-        {showNew && (<Sheet title="Cargar gasto" onClose={() => setShowNew(false)}>
+        {showNew && (<Sheet title={editandoId ? "Editar gasto" : "Cargar gasto"} onClose={() => { setShowNew(false); setEditandoId(null); setForm({ desc: '', tipo: 'viatico', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null }); }}>
             <Field label="Descripción">
                 <TInput value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} placeholder="Ej: Estacionamiento, cemento, etc." />
             </Field>
@@ -1644,7 +1665,7 @@ function TabGastos({ detail, upd, apiKey }) {
                     </button>
                 )}
             </Field>
-            <PBtn full onClick={agregar} disabled={!form.desc.trim() || !form.monto}>Guardar gasto</PBtn>
+            <PBtn full onClick={guardar} disabled={!form.desc.trim() || !form.monto}>{editandoId ? 'Guardar cambios' : 'Guardar gasto'}</PBtn>
         </Sheet>)}
     </div>);
 }
