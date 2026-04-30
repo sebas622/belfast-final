@@ -5488,10 +5488,14 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         if (!loaded) return;
         if (!lics.length) return; // NUNCA guardar vacío — pisaría datos reales
         markLocalEdit('lics');
+        // Marcar inmediatamente para proteger del sync entrante
+        try { (window.__lastSave = window.__lastSave||{}).__lics = Date.now(); } catch {}
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
-        storage.set(SP+'lics', json).catch(() => { });
+        // Guardar en localStorage primero (síncrono, instantáneo)
         try { localStorage.setItem(SP+'lics', json); } catch { }
+        // Luego en Supabase (async)
+        storage.set(SP+'lics', json).catch(() => { });
         // Guardar visitas de cada lic en su propia key
         lics.forEach(l => {
             if (!l.visitas?.length) return;
@@ -5613,13 +5617,16 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         const MEDIA_PREFIXES = [SP+'fotos_', SP+'archs_', SP+'lic_vis_'];
         // Timestamp de la última vez que YO guardé algo (para no pisar mi propio cambio)
         const myLastSave = { lics: 0, obras: 0, personal: 0, cfg: 0 };
-        const PROTECT_MS = 3000; // 3s protección post-guardado propio
+        const PROTECT_MS = 15000; // 15s protección post-guardado propio
 
         // Función central: aplicar datos remotos a la UI
         async function applyRemoteKey(key, value) {
             const now = Date.now();
             try {
                 if (key === SP+'lics' && now - myLastSave.lics > PROTECT_MS) {
+                    // Verificar que el local no fue actualizado recientemente
+                    const localStr = storage.getLocal(SP+'lics')?.value;
+                    if (localStr === value) return; // ya está actualizado
                     const licsRemota = JSON.parse(value);
                     setLics(cur => {
                         // Fusionar por ID: mantener visitas locales y agregar lics nuevas del remoto
