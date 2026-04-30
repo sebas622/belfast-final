@@ -4980,7 +4980,7 @@ function RecuperarFotos({ obras, setObras, lics, setLics, personal, setPersonal 
 
 // ── MAS (Más opciones + Configuración) ───────────────────────────────
 
-function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics, empresa, onCambiarEmpresa }) {
+function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics, empresa, onCambiarEmpresa, personal, setPersonal }) {
     const [showCfg, setShowCfg] = useState(false);
     const [cfgSection, setCfgSection] = useState('cuenta');
 
@@ -5966,7 +5966,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                 {view === 'personal' && <Personal personal={personal} setPersonal={setPersonal} obras={obras} cfg={cfg} />}
                 {view === 'cargar' && <CargarView obras={obras} setObras={setObras} cargarState={cargarState} setCargarState={setCargarState} apiKey={apiKey} />}
                 {view === 'chat' && <Chat lics={lics} setLics={setLics} obras={obras} setObras={setObras} personal={personal} setPersonal={setPersonal} planes={planes} setPlanes={setPlanes} alerts={alerts} cfg={cfg} apiKey={apiKey} setView={setView} SP={SP} />}
-                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} empresa={empresa} onCambiarEmpresa={onCambiarEmpresa} />}
+                {view === 'mas' && <Mas setView={setView} setUser={setUser} user={user} cfg={cfg} setCfg={setCfg} apiKey={apiKey} setApiKey={setApiKey} obras={obras} setObras={setObras} lics={lics} setLics={setLics} empresa={empresa} onCambiarEmpresa={onCambiarEmpresa} personal={personal} setPersonal={setPersonal} />}
                 {view === 'presupuesto_materiales' && <PresupuestoView tipo="materiales" setView={setView} />}
                 {view === 'presupuesto_subcontratos' && <PresupuestoView tipo="subcontratos" setView={setView} />}
                 {view === 'seguimiento' && <Seguimiento alerts={alerts} setAlerts={setAlerts} setView={setView} />}
