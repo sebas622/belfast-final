@@ -127,19 +127,13 @@ async function uploadFoto(dataUrl, carpeta, nombre) {
     if (!dataUrl) return null;
     if (mediaStorage.isRemoteUrl(dataUrl)) return dataUrl;
     const fotoId = nombre || uid();
-    // 1. Supabase Storage (bucket bcm-media)
+    // 1. Intentar Supabase Storage bucket (URL pública — ideal)
     try {
         const remoteUrl = await mediaStorage.upload(`${carpeta}/${fotoId}`, dataUrl);
-        if (remoteUrl) return remoteUrl;
+        if (remoteUrl) return remoteUrl; // URL pública permanente
     } catch { }
-    // 2. Guardar en tabla bcm_storage como clave única
-    try {
-        const key = 'foto_' + fotoId;
-        await storage.set(key, dataUrl);
-        try { localStorage.setItem(key, dataUrl); } catch { }
-        return 'supakey:' + key;
-    } catch { }
-    // 3. base64 directo (solo disponible en esta sesión)
+    // 2. Devolver base64 directamente — se guarda junto con la obra en Supabase
+    // Esto garantiza que todos los usuarios vean la foto via sync
     return dataUrl;
 }
 
@@ -1684,29 +1678,43 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
             const updated = { ...o, ...patch };
             if (patch.fotos !== undefined) {
                 const key = `${SP}fotos_${id}`;
-                const fotosParaGuardar = patch.fotos.map(f => ({ id: f.id, url: f.url, nombre: f.nombre, fecha: f.fecha }));
-                const json = JSON.stringify(fotosParaGuardar);
-                // Guardar localmente
-                try { localStorage.setItem(key, json); } catch {
+                // Guardar metadata de fotos (sin base64) para el sync entre usuarios
+                const metaFotos = patch.fotos.map(f => ({
+                    id: f.id,
+                    url: f.url,
+                    nombre: f.nombre,
+                    fecha: f.fecha
+                }));
+                const json = JSON.stringify(metaFotos);
+                // localStorage: guardar CON base64 para este dispositivo
+                const jsonConBase64 = JSON.stringify(patch.fotos);
+                try { localStorage.setItem(key, jsonConBase64); } catch {
                     try {
-                        localStorage.removeItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_msgs');
-                        localStorage.setItem(key, json);
+                        localStorage.removeItem(SP+'chat_msgs');
+                        localStorage.setItem(key, jsonConBase64);
                     } catch {
-                        try { localStorage.setItem(key, JSON.stringify(fotosParaGuardar.slice(-3))); } catch {}
+                        try { localStorage.setItem(key, JSON.stringify(patch.fotos.slice(-3))); } catch {}
                     }
                 }
-                // Al guardar en Supabase: fusionar con lo que ya hay en remoto
+                // Supabase: fusionar metadata con lo que ya hay remoto
                 storage.get(key).then(remoto => {
-                    let fotasFinal = fotosParaGuardar;
+                    let final = metaFotos;
                     if (remoto?.value) {
                         try {
                             const remotas = JSON.parse(remoto.value);
-                            const idsLocales = new Set(fotosParaGuardar.map(f => f.id));
-                            const soloEnRemoto = remotas.filter(f => !idsLocales.has(f.id));
-                            fotasFinal = [...fotosParaGuardar, ...soloEnRemoto];
+                            const idsLocales = new Set(metaFotos.map(f => f.id));
+                            const soloRemoto = remotas.filter(f => !idsLocales.has(f.id));
+                            final = [...metaFotos, ...soloRemoto];
                         } catch {}
                     }
-                    storage.set(key, JSON.stringify(fotasFinal)).catch(() => {});
+                    storage.set(key, JSON.stringify(final)).catch(() => {});
+                    // Guardar cada foto nueva individualmente para que otros puedan descargarla
+                    patch.fotos.forEach(f => {
+                        if (f.url && f.url.startsWith('data:')) {
+                            storage.set(`fotodata_${f.id}`, f.url).catch(() => {});
+                            try { localStorage.setItem(`fotodata_${f.id}`, f.url); } catch {}
+                        }
+                    });
                 }).catch(() => { storage.set(key, json).catch(() => {}); });
             }
             if (patch.archivos !== undefined) {
@@ -5871,23 +5879,36 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                     const nv = JSON.parse(value); setCfg({ ...DEFAULT_CONFIG, ...nv });
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                // Fotos de obras — FUSIONAR por ID, nunca reemplazar
+                // Fotos de obras — FUSIONAR por ID y resolver base64 de Supabase
                 else if (key.startsWith(SP+'fotos_')) {
                     const obraId = key.replace(SP+'fotos_', '');
                     const fotosRemoto = JSON.parse(value);
-                    setObras(cur => cur.map(o => {
-                        if (o.id !== obraId) return o;
-                        const fotosLocal = o.fotos || [];
-                        // Unir: mantener todas las fotos locales + agregar las remotas que no están
-                        const idsLocales = new Set(fotosLocal.map(f => f.id));
-                        const nuevasDelRemoto = fotosRemoto.filter(f => !idsLocales.has(f.id));
-                        const fusionadas = [...fotosLocal, ...nuevasDelRemoto];
-                        // Guardar la fusión
-                        const jsonFusion = JSON.stringify(fusionadas);
-                        try { localStorage.setItem(key, jsonFusion); } catch {}
-                        storage.set(key, jsonFusion).catch(() => {});
-                        return { ...o, fotos: fusionadas };
-                    }));
+                    // Resolver fotos que necesitan cargar base64 desde Supabase
+                    Promise.all(fotosRemoto.map(async f => {
+                        if (f.url && (f.url.startsWith('data:') || mediaStorage.isRemoteUrl(f.url))) return f;
+                        // URL vacía o inválida — intentar cargar desde fotodata_xxx
+                        try {
+                            const local = localStorage.getItem(`fotodata_${f.id}`);
+                            if (local) return { ...f, url: local };
+                            const r = await storage.get(`fotodata_${f.id}`);
+                            if (r?.value) {
+                                try { localStorage.setItem(`fotodata_${f.id}`, r.value); } catch {}
+                                return { ...f, url: r.value };
+                            }
+                        } catch {}
+                        return f;
+                    })).then(fotosResueltas => {
+                        setObras(cur => cur.map(o => {
+                            if (o.id !== obraId) return o;
+                            const fotosLocal = o.fotos || [];
+                            const idsLocales = new Set(fotosLocal.map(f => f.id));
+                            const nuevas = fotosResueltas.filter(f => !idsLocales.has(f.id));
+                            if (!nuevas.length) return o;
+                            const fusionadas = [...fotosLocal, ...nuevas];
+                            try { localStorage.setItem(key, JSON.stringify(fusionadas)); } catch {}
+                            return { ...o, fotos: fusionadas };
+                        }));
+                    });
                 }
                 // Archivos de obras — FUSIONAR por ID
                 else if (key.startsWith(SP+'archs_')) {
