@@ -4565,6 +4565,18 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
             <button onClick={() => setShowAttachMenu(v => !v)} title="Adjuntar" style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M18.97 3.659a2.25 2.25 0 00-3.182 0l-10.94 10.94a3.75 3.75 0 105.304 5.303l7.693-7.693a.75.75 0 011.06 1.06l-7.693 7.693a5.25 5.25 0 11-7.424-7.424l10.939-10.94a3.75 3.75 0 115.303 5.303L9.097 18.835l-.008.008-.007.007-.002.002-.003.002A2.25 2.25 0 015.91 15.66l7.81-7.81a.75.75 0 011.061 1.06l-7.81 7.81a.75.75 0 001.054 1.068L18.97 6.84a2.25 2.25 0 000-3.182z" /></svg>
             </button>
+            {/* Botón GPS — verde si activo, gris si sin permiso */}
+            <button onClick={() => {
+                if (!navigator.geolocation) { alert('Tu dispositivo no soporta GPS'); return; }
+                navigator.geolocation.getCurrentPosition(
+                    pos => { setGpsPos({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) }); },
+                    err => { alert('No se pudo obtener ubicación. Verificá los permisos en Configuración → Safari/Chrome → Ubicación'); },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            }} title={gpsPos ? `GPS activo: ${gpsPos.lat.toFixed(4)}, ${gpsPos.lng.toFixed(4)}` : 'Activar GPS'}
+            style={{ background: gpsPos ? '#ECFDF5' : T.bg, border: `1px solid ${gpsPos ? '#10B981' : T.border}`, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: gpsPos ? '#10B981' : T.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-2.013 3.5-4.751 3.5-8.057 0-4.99-3.584-9-8-9s-8 4.01-8 9c0 3.306 1.556 6.044 3.5 8.057a19.58 19.58 0 002.683 2.282 16.975 16.975 0 001.144.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
+            </button>
             <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { /* Enter solo baja línea — enviar con botón */ }} placeholder={listening ? 'Escuchando…' : 'Escribí o usá el micrófono…'} rows={2} style={{ flex: 1, background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 16, padding: "10px 14px", fontSize: 15, color: T.text, minWidth: 0, resize: "none", lineHeight: 1.5, fontFamily: "inherit" }} />
             <button onClick={listening ? stopListening : startListening} title="Hablar" style={{ background: listening ? "#EF4444" : T.bg, border: '1px solid ' + listening ? "#EF4444" : T.border, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: listening ? "#fff" : T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" /><path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" /></svg>
