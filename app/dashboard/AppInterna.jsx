@@ -5573,7 +5573,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         const MEDIA_PREFIXES = [SP+'fotos_', SP+'archs_', SP+'lic_vis_'];
         // Timestamp de la última vez que YO guardé algo (para no pisar mi propio cambio)
         const myLastSave = { lics: 0, obras: 0, personal: 0, cfg: 0 };
-        const PROTECT_MS = 8000; // 8s protección post-guardado propio
+        const PROTECT_MS = 3000; // 3s protección post-guardado propio
 
         // Función central: aplicar datos remotos a la UI
         async function applyRemoteKey(key, value) {
@@ -5639,21 +5639,31 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
             } catch { }
         }
 
-        // Función de sync completo (polling de respaldo)
+        // Función de sync completo — polling cada 5s
         async function syncAll() {
             try {
-                // Solo 5 requests por sync (no sync de fotos por obra que genera N requests)
-                const [rLics, rObras, rPers, rCfg, rPlanes] = await Promise.all([
-                    storage.get(SP+'lics'), storage.get(SP+'obras'),
-                    storage.get(SP+'personal'), storage.get(SP+'cfg'),
-                    storage.get(SP+'planes_semanales'),
+                const [rLics, rObras, rPers] = await Promise.all([
+                    storage.get(SP+'lics'),
+                    storage.get(SP+'obras'),
+                    storage.get(SP+'personal'),
                 ]);
                 if (rLics?.value) { const loc = storage.getLocal(SP+'lics'); if (loc?.value !== rLics.value) await applyRemoteKey(SP+'lics', rLics.value); }
                 if (rObras?.value) { const loc = storage.getLocal(SP+'obras'); if (loc?.value !== rObras.value) await applyRemoteKey(SP+'obras', rObras.value); }
                 if (rPers?.value) { const loc = storage.getLocal(SP+'personal'); if (loc?.value !== rPers.value) await applyRemoteKey(SP+'personal', rPers.value); }
-                if (rCfg?.value) { const loc = storage.getLocal(SP+'cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey(SP+'cfg', rCfg.value); }
-                if (rPlanes?.value) { const loc = storage.getLocal(SP+'planes_semanales'); if (loc?.value !== rPlanes.value) { setPlanes(JSON.parse(rPlanes.value)); try { localStorage.setItem(SP+'planes_semanales', rPlanes.value); } catch {} } }
-                // NO sincronizar fotos/archivos por obra — demasiadas requests al Supabase gratuito
+
+                // Sync fotos de obras — verificar cada obra activa
+                const obrasActuales = JSON.parse(storage.getLocal(SP+'obras')?.value || '[]');
+                for (const o of obrasActuales.slice(0, 10)) { // max 10 obras por ciclo
+                    try {
+                        const rFotos = await storage.get(SP+'fotos_'+o.id);
+                        if (rFotos?.value) {
+                            const loc = storage.getLocal(SP+'fotos_'+o.id);
+                            if (loc?.value !== rFotos.value) {
+                                await applyRemoteKey(SP+'fotos_'+o.id, rFotos.value);
+                            }
+                        }
+                    } catch { }
+                }
             } catch { }
         }
 
@@ -5715,12 +5725,13 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
             }
         }
 
-        // SYNC DESACTIVADO — borraba datos al volver al foco con tablas vacías
-        // connectRealtime();
-        // syncAll();
-        const iv = null;
-        const onFocus = () => {};
-        // NO escuchar focus ni online para no pisar localStorage con Supabase vacío
+        // SYNC ACTIVADO — polling cada 5s + Realtime WebSocket
+        connectRealtime();
+        syncAll();
+        const iv = setInterval(syncAll, 5000);
+        const onFocus = () => syncAll();
+        window.addEventListener('focus', onFocus);
+        window.addEventListener('online', () => { syncAll(); connectRealtime(); });
 
         // Interceptar el storage.set original para marcar mis propios cambios
         const origSet = storage.set.bind(storage);
