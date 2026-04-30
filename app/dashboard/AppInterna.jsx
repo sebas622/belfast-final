@@ -5579,29 +5579,64 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
             try {
                 if (key === SP+'lics' && now - myLastSave.lics > PROTECT_MS) {
                     const licsRemota = JSON.parse(value);
-                    setLics(cur => licsRemota.map(l => {
-                        const local = cur.find(x => x.id === l.id);
-                        return { ...l, visitas: local?.visitas?.length ? local.visitas : l.visitas || [] };
-                    }));
+                    setLics(cur => {
+                        // Fusionar por ID: mantener visitas locales y agregar lics nuevas del remoto
+                        const merged = licsRemota.map(l => {
+                            const local = cur.find(x => x.id === l.id);
+                            return { ...l, visitas: local?.visitas?.length ? local.visitas : l.visitas || [] };
+                        });
+                        // Agregar lics locales que no están en remoto (recién creadas)
+                        const idsRemoto = new Set(licsRemota.map(l => l.id));
+                        const soloLocales = cur.filter(l => !idsRemoto.has(l.id));
+                        return [...merged, ...soloLocales];
+                    });
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 else if (key === SP+'obras' && now - myLastSave.obras > PROTECT_MS) {
                     const obrasRemota = JSON.parse(value);
-                    setObras(cur => obrasRemota.map(o => {
-                        const local = cur.find(x => x.id === o.id);
-                        return {
-                            ...o,
-                            fotos:    local?.fotos?.length    ? local.fotos    : o.fotos    || [],
-                            archivos: local?.archivos?.length ? local.archivos : o.archivos || [],
-                            informes: (local?.informes?.length||0) >= (o.informes?.length||0) ? (local?.informes||[]) : (o.informes||[]),
-                            obs:      (local?.obs?.length||0)      >= (o.obs?.length||0)      ? (local?.obs||[])      : (o.obs||[]),
-                            gastos:   (local?.gastos?.length||0)   >= (o.gastos?.length||0)   ? (local?.gastos||[])   : (o.gastos||[]),
-                        };
-                    }));
+                    setObras(cur => {
+                        const merged = obrasRemota.map(o => {
+                            const local = cur.find(x => x.id === o.id);
+                            if (!local) return { ...o, fotos: [], archivos: [] };
+                            // Fusionar arrays por ID — nunca perder datos de ningún usuario
+                            const mergeById = (a, b) => {
+                                const ids = new Set((a||[]).map(x => x.id));
+                                return [...(a||[]), ...(b||[]).filter(x => !ids.has(x.id))];
+                            };
+                            return {
+                                ...o,
+                                // fotos y archivos se sincronizan por keys separadas
+                                fotos: local.fotos || [],
+                                archivos: local.archivos || [],
+                                // obs, informes, gastos: fusionar por ID
+                                obs: mergeById(local.obs, o.obs),
+                                informes: mergeById(local.informes, o.informes),
+                                gastos: mergeById(local.gastos, o.gastos),
+                                // datos básicos: usar el más reciente (el que viene del server)
+                                avance: o.avance,
+                                estado: o.estado,
+                                nombre: o.nombre,
+                                sector: o.sector,
+                                cierre: o.cierre,
+                                inicio: o.inicio,
+                                monto: o.monto,
+                            };
+                        });
+                        // Agregar obras locales que no están en remoto (recién creadas)
+                        const idsRemoto = new Set(obrasRemota.map(o => o.id));
+                        const soloLocales = cur.filter(o => !idsRemoto.has(o.id));
+                        return [...merged, ...soloLocales];
+                    });
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 else if (key === SP+'personal' && now - myLastSave.personal > PROTECT_MS) {
-                    const nv = JSON.parse(value); setPersonal(nv);
+                    const remoto = JSON.parse(value);
+                    setPersonal(cur => {
+                        // Fusionar: actualizar existentes + agregar nuevos
+                        const idsRemoto = new Set(remoto.map(p => p.id));
+                        const soloLocales = cur.filter(p => !idsRemoto.has(p.id));
+                        return [...remoto, ...soloLocales];
+                    });
                     try { localStorage.setItem(key, value); } catch {}
                 }
                 else if (key === SP+'cfg' && now - myLastSave.cfg > PROTECT_MS) {
