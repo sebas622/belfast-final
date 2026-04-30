@@ -3456,6 +3456,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [listening, setListening] = useState(false);
+    const [gpsPos, setGpsPos] = useState(null); // ubicación GPS en tiempo real
     const [userName, setUserName] = useState(() => {
         try { return localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user') || ''; } catch { return ''; }
     });
@@ -3463,6 +3464,24 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
         try { return !!localStorage.getItem((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'chat_user'); } catch { return false; }
     });
     const [chatLoaded, setChatLoaded] = useState(false);
+
+    // Obtener GPS al abrir el chat y mantenerlo actualizado
+    useEffect(() => {
+        if (!navigator.geolocation) return;
+        // Obtener posición inmediatamente
+        navigator.geolocation.getCurrentPosition(
+            pos => setGpsPos({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) }),
+            () => {}, // silencioso si falla
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+        );
+        // Actualizar cada 30 segundos
+        const watcher = navigator.geolocation.watchPosition(
+            pos => setGpsPos({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) }),
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 30000 }
+        );
+        return () => navigator.geolocation.clearWatch(watcher);
+    }, []);
     const [attach, setAttach] = useState(null);
     const [showSaveDialog, setShowSaveDialog] = useState(null);
     const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -3612,8 +3631,10 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
         if (/clima|lluvia|temperatura/i.test(txt)) {
             try { const r = await fetch('https://wttr.in/Buenos+Aires?format=j1'); if (r.ok) { const d = await r.json(); const c = d.current_condition?.[0]; if (c) extraInfo += `\nClima BsAs: ${c.temp_C}°C, ${c.weatherDesc?.[0]?.value}`; } } catch { }
         }
-        // GPS — solo si el usuario pregunta por ubicación, sin bloquear
-        if (/dónde|donde|ubicaci|estoy|cerca|obra.*cerca|cuál.*obra/i.test(txt)) {
+        // GPS — siempre incluir si está disponible, o pedirlo si preguntan por ubicación
+        if (gpsPos) {
+            extraInfo += `\nUbicación GPS actual: lat ${gpsPos.lat.toFixed(5)}, lng ${gpsPos.lng.toFixed(5)} (±${gpsPos.acc}m) — podés usar esto para calcular distancias a obras`;
+        } else if (/dónde|donde|ubicaci|estoy|cerca|obra.*cerca|cuál.*obra/i.test(txt)) {
             try {
                 const pos = await Promise.race([
                     new Promise((resolve, reject) => navigator.geolocation
@@ -3621,8 +3642,11 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
                         : reject()),
                     new Promise((_, reject) => setTimeout(reject, 3500))
                 ]);
-                if (pos?.coords) extraInfo += `\nUbicación GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)}m)`;
-            } catch { extraInfo += '\nUbicación GPS: no disponible'; }
+                if (pos?.coords) {
+                    extraInfo += `\nUbicación GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)}m)`;
+                    setGpsPos({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) });
+                }
+            } catch { extraInfo += '\nUbicación GPS: permiso denegado o no disponible'; }
         }
 
         const sys = 'Sos el asistente IA de BelfastCM, una app de gestión de obras de construcción en aeropuertos. IMPORTANTE: Sos parte de la app — tenés acceso directo a todos los datos y podés modificarlos.\n\n' +
