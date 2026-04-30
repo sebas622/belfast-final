@@ -4859,75 +4859,100 @@ function RecuperarFotos({ obras, setObras, lics, setLics, personal, setPersonal 
     const [log, setLog] = useState([]);
     function addLog(msg) { setLog(p => [...p, msg]); }
 
-    async function limpiarVVYRestaurarBelfast() {
+    async function recuperarTodo() {
         setEstado('cargando'); setLog([]);
-        addLog('🧹 Limpiando datos mezclados de VV...');
-        
-        // 1. Borrar keys vv_ del localStorage (datos que se mezclaron)
-        const keysVV = Object.keys(localStorage).filter(k => k.startsWith('vv_'));
-        keysVV.forEach(k => { try { localStorage.removeItem(k); } catch {} });
-        addLog(`🗑 Eliminadas ${keysVV.length} keys de VV del localStorage`);
+        const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
+        addLog('🔍 Buscando todos los datos en Supabase...');
 
-        // 2. Recuperar datos Belfast desde Supabase (bcm_)
-        addLog('📥 Recuperando datos Belfast desde Supabase...');
         try {
-            const rLics = await storage.get('bcm_lics');
-            if (rLics?.value) {
-                const d = JSON.parse(rLics.value);
-                if (d?.length) {
-                    const conVisitas = d.map(l => ({ ...l, visitas: l.visitas || [] }));
-                    setLics(conVisitas);
-                    try { localStorage.setItem('bcm_lics', rLics.value); } catch {}
-                    addLog('✅ ' + d.length + ' licitaciones de Belfast restauradas');
-                }
-            } else { addLog('⚠ No se encontraron licitaciones en Supabase'); }
-
-            const rObras = await storage.get('bcm_obras');
+            // 1. Restaurar obras
+            const rObras = await storage.get(SP+'obras');
             if (rObras?.value) {
-                const d = JSON.parse(rObras.value);
-                if (d?.length) {
-                    setObras(d.map(o => ({ ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[] })));
-                    try { localStorage.setItem('bcm_obras', rObras.value); } catch {}
-                    addLog('✅ ' + d.length + ' obras de Belfast restauradas');
-                }
+                const obrasBase = JSON.parse(rObras.value);
+                addLog(`📦 ${obrasBase.length} obras encontradas`);
+
+                // 2. Para cada obra, buscar sus fotos en Supabase y fusionar
+                const obrasConFotos = await Promise.all(obrasBase.map(async o => {
+                    try {
+                        const rFotos = await storage.get(SP+'fotos_'+o.id);
+                        if (rFotos?.value) {
+                            const fotosRemoto = JSON.parse(rFotos.value);
+                            // Fusionar con fotos locales si hay
+                            const localStr = localStorage.getItem(SP+'fotos_'+o.id);
+                            const fotosLocal = localStr ? JSON.parse(localStr) : [];
+                            const idsLocales = new Set(fotosLocal.map(f => f.id));
+                            const nuevas = fotosRemoto.filter(f => !idsLocales.has(f.id));
+                            const fusionadas = [...fotosLocal, ...nuevas];
+                            if (fusionadas.length) {
+                                addLog(`📸 Obra "${o.nombre}": ${fusionadas.length} fotos (${fotosLocal.length} locales + ${nuevas.length} remotas)`);
+                                try { localStorage.setItem(SP+'fotos_'+o.id, JSON.stringify(fusionadas)); } catch {}
+                                return { ...o, fotos: fusionadas, archivos: o.archivos||[], gastos: o.gastos||[], obs: o.obs||[] };
+                            }
+                        }
+                    } catch {}
+                    return { ...o, fotos: o.fotos||[], archivos: o.archivos||[], gastos: o.gastos||[], obs: o.obs||[] };
+                }));
+
+                setObras(obrasConFotos);
+                try { localStorage.setItem(SP+'obras', rObras.value); } catch {}
+                addLog(`✅ Obras restauradas con fotos fusionadas`);
+            } else {
+                addLog('⚠ No se encontraron obras en Supabase');
             }
 
-            const rPers = await storage.get('bcm_personal');
+            // 3. Restaurar licitaciones con visitas
+            const rLics = await storage.get(SP+'lics');
+            if (rLics?.value) {
+                const licsBase = JSON.parse(rLics.value);
+                const licsConVisitas = await Promise.all(licsBase.map(async l => {
+                    try {
+                        const rv = await storage.get(SP+'lic_vis_'+l.id);
+                        if (rv?.value) {
+                            const visitasRemoto = JSON.parse(rv.value);
+                            const localStr = localStorage.getItem(SP+'lic_vis_'+l.id);
+                            const visitasLocal = localStr ? JSON.parse(localStr) : [];
+                            const idsLocales = new Set(visitasLocal.map(v => v.id));
+                            const nuevas = visitasRemoto.filter(v => !idsLocales.has(v.id));
+                            const fusionadas = [...visitasLocal, ...nuevas];
+                            if (fusionadas.length) {
+                                addLog(`📸 Licitación "${l.nombre}": ${fusionadas.length} fotos`);
+                                try { localStorage.setItem(SP+'lic_vis_'+l.id, JSON.stringify(fusionadas)); } catch {}
+                                return { ...l, visitas: fusionadas };
+                            }
+                        }
+                    } catch {}
+                    return { ...l, visitas: l.visitas || [] };
+                }));
+                setLics(licsConVisitas);
+                try { localStorage.setItem(SP+'lics', rLics.value); } catch {}
+                addLog(`✅ ${licsBase.length} licitaciones restauradas`);
+            }
+
+            // 4. Restaurar personal
+            const rPers = await storage.get(SP+'personal');
             if (rPers?.value) {
                 const d = JSON.parse(rPers.value);
-                if (d?.length) {
-                    setPersonal(d);
-                    try { localStorage.setItem('bcm_personal', rPers.value); } catch {}
-                    addLog('✅ ' + d.length + ' personas de Belfast restauradas');
-                }
+                setPersonal(d);
+                try { localStorage.setItem(SP+'personal', rPers.value); } catch {}
+                addLog(`✅ ${d.length} personas restauradas`);
             }
-
-            // 3. Limpiar VV en Supabase también (dejar vacío)
-            addLog('🧹 Limpiando VV en Supabase...');
-            await storage.set('vv_lics', JSON.stringify([])).catch(() => {});
-            await storage.set('vv_obras', JSON.stringify([])).catch(() => {});
-            await storage.set('vv_personal', JSON.stringify([])).catch(() => {});
-            addLog('✅ VV limpiada — ahora está vacía');
 
         } catch(e) { addLog('❌ Error: ' + e.message); }
 
-        addLog('🏁 Listo. Cerrá configuración para ver los datos restaurados.');
+        addLog('🏁 Recuperación completa. Cerrá configuración para ver los datos.');
         setEstado('done');
     }
 
     return (<div>
-        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: '14px', marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#B91C1C', marginBottom: 6 }}>🚨 Recuperar y separar datos</div>
-            <div style={{ fontSize: 12, color: '#7F1D1D', lineHeight: 1.7 }}>
-                Este botón:<br/>
-                1. Limpia los datos mezclados de VV<br/>
-                2. Restaura Belfast desde Supabase (licitaciones, obras, personal)<br/>
-                3. Deja VV vacía y separada
+        <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: '14px', marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#1E40AF', marginBottom: 6 }}>🔄 Recuperar datos y fotos</div>
+            <div style={{ fontSize: 12, color: '#1E3A8A', lineHeight: 1.7 }}>
+                Busca en Supabase todas las fotos de todos los usuarios y las fusiona. Usá esto si perdiste fotos.
             </div>
         </div>
-        <button onClick={limpiarVVYRestaurarBelfast} disabled={estado === 'cargando'}
-            style={{ width: '100%', background: estado === 'cargando' ? '#94A3B8' : '#DC2626', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 800, color: '#fff', cursor: estado === 'cargando' ? 'not-allowed' : 'pointer', marginBottom: 14 }}>
-            {estado === 'cargando' ? '⏳ Procesando...' : '🔄 Restaurar Belfast y limpiar VV'}
+        <button onClick={recuperarTodo} disabled={estado === 'cargando'}
+            style={{ width: '100%', background: estado === 'cargando' ? '#94A3B8' : '#1D4ED8', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 800, color: '#fff', cursor: estado === 'cargando' ? 'not-allowed' : 'pointer', marginBottom: 14 }}>
+            {estado === 'cargando' ? '⏳ Recuperando...' : '🔄 Recuperar todas las fotos y datos'}
         </button>
         {log.length > 0 && (
             <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 10, padding: '12px 14px' }}>
@@ -4938,6 +4963,7 @@ function RecuperarFotos({ obras, setObras, lics, setLics, personal, setPersonal 
 }
 
 // ── MAS (Más opciones + Configuración) ───────────────────────────────
+
 function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics, empresa, onCambiarEmpresa }) {
     const [showCfg, setShowCfg] = useState(false);
     const [cfgSection, setCfgSection] = useState('cuenta');
