@@ -1924,7 +1924,51 @@ function Personal({ personal, setPersonal, obras, cfg }) {
     </div>);
 
     return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
-        <AppHeader title={t(cfg, 'pers_titulo')} sub={`${personal.length} trabajadores`} right={<PlusBtn onClick={() => setShowNew(true)} />} />
+    async function importarDesdeAgenda() {
+        // Contact Picker API — disponible en Android Chrome y algunos browsers
+        if (!('contacts' in navigator && 'ContactsManager' in window)) {
+            alert('Tu dispositivo no soporta importar contactos directamente.\n\nEn Android: funciona en Chrome.\nEn iPhone: no está disponible aún en iOS Safari.');
+            return;
+        }
+        try {
+            const props = ['name', 'tel', 'email'];
+            const opts = { multiple: true };
+            const contactos = await navigator.contacts.select(props, opts);
+            if (!contactos.length) return;
+            const nuevos = contactos.map(c => ({
+                id: uid(),
+                nombre: c.name?.[0] || 'Sin nombre',
+                rol: 'Operario',
+                empresa: '',
+                telefono: (c.tel?.[0] || '').replace(/\D/g, ''),
+                email: c.email?.[0] || '',
+                foto: '',
+                obra_id: '',
+                tareas: [],
+                docs: {}
+            }));
+            // Filtrar duplicados por nombre
+            const nombresExistentes = new Set(personal.map(p => p.nombre.toLowerCase()));
+            const sinDuplicados = nuevos.filter(n => !nombresExistentes.has(n.nombre.toLowerCase()));
+            if (!sinDuplicados.length) {
+                alert('Todos los contactos seleccionados ya están en el personal.');
+                return;
+            }
+            setPersonal(p => [...p, ...sinDuplicados]);
+            alert(`✅ ${sinDuplicados.length} contacto${sinDuplicados.length > 1 ? 's' : ''} importado${sinDuplicados.length > 1 ? 's' : ''} correctamente.`);
+        } catch (e) {
+            if (e.name !== 'AbortError') alert('No se pudo acceder a los contactos: ' + e.message);
+        }
+    }
+
+        <AppHeader title={t(cfg, 'pers_titulo')} sub={`${personal.length} trabajadores`} right={
+            <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={importarDesdeAgenda} style={{ background: '#ECFDF5', border: '1px solid #86EFAC', borderRadius: 10, padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 14 }}>📱</span> Agenda
+                </button>
+                <PlusBtn onClick={() => setShowNew(true)} />
+            </div>
+        } />
         <div style={{ padding: "14px 18px" }}>
             {personal.length === 0 && <div style={{ textAlign: "center", padding: "48px 0", color: T.muted, fontSize: 14 }}>{t(cfg, 'pers_sin_personal')}</div>}
             {personal.map(p => {
