@@ -119,25 +119,41 @@ const mediaStorage = {
     isRemoteUrl: (url) => url && (url.startsWith('http://') || url.startsWith('https://')),
 };
 
-// Wrapper que guarda una foto como base64 en localStorage Y intenta subir al bucket.
-// La foto queda disponible INMEDIATAMENTE en local, el bucket es bonus.
+// ── UPLOAD DE FOTOS ─────────────────────────────────────────────────
+// 1) Supabase Storage bucket → URL pública permanente (ideal)
+// 2) Tabla bcm_storage → base64 en BD (fallback garantizado)  
+// 3) base64 en memoria → solo sesión actual (último recurso)
 async function uploadFoto(dataUrl, carpeta, nombre) {
     if (!dataUrl) return null;
     if (mediaStorage.isRemoteUrl(dataUrl)) return dataUrl;
     const fotoId = nombre || uid();
-    // 1. Intentar Supabase Storage (URL pública permanente)
+    // 1. Supabase Storage (bucket bcm-media)
     try {
         const remoteUrl = await mediaStorage.upload(`${carpeta}/${fotoId}`, dataUrl);
         if (remoteUrl) return remoteUrl;
     } catch { }
-    // 2. Guardar en bcm_storage como fallback garantizado entre sesiones
+    // 2. Guardar en tabla bcm_storage como clave única
     try {
         const key = 'foto_' + fotoId;
-        storage.set(key, dataUrl).catch(() => {});
+        await storage.set(key, dataUrl);
         try { localStorage.setItem(key, dataUrl); } catch { }
+        return 'supakey:' + key;
     } catch { }
-    // 3. Devolver base64 (disponible en esta sesión)
+    // 3. base64 directo (solo disponible en esta sesión)
     return dataUrl;
+}
+
+// Resolver URL de foto — supakey:xxx carga desde Supabase/localStorage
+async function resolverUrlFoto(url) {
+    if (!url || !url.startsWith('supakey:')) return url;
+    const key = url.replace('supakey:', '');
+    try {
+        const local = localStorage.getItem(key);
+        if (local) return local;
+        const r = await storage.get(key);
+        if (r?.value) { try { localStorage.setItem(key, r.value); } catch {} return r.value; }
+    } catch {}
+    return null;
 }
 // Carga desde localStorage SINCRÓNICAMENTE (sin flash), persiste en ambos lados
 function useStoredState(key, defaultValue) {
@@ -5665,7 +5681,8 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                     });
                     try { localStorage.setItem(key, value); } catch {}
                 }
-                else if (key === SP+'cfg' && now - myLastSave.cfg > PROTECT_MS) {
+                else if (key === SP+'cfg') {
+                    // Config siempre se sincroniza — sin protección
                     const nv = JSON.parse(value); setCfg({ ...DEFAULT_CONFIG, ...nv });
                     try { localStorage.setItem(key, value); } catch {}
                 }
@@ -5726,18 +5743,20 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         // Función de sync completo — polling cada 5s
         async function syncAll() {
             try {
-                const [rLics, rObras, rPers] = await Promise.all([
+                const [rLics, rObras, rPers, rCfg] = await Promise.all([
                     storage.get(SP+'lics'),
                     storage.get(SP+'obras'),
                     storage.get(SP+'personal'),
+                    storage.get(SP+'cfg'),
                 ]);
                 if (rLics?.value) { const loc = storage.getLocal(SP+'lics'); if (loc?.value !== rLics.value) await applyRemoteKey(SP+'lics', rLics.value); }
                 if (rObras?.value) { const loc = storage.getLocal(SP+'obras'); if (loc?.value !== rObras.value) await applyRemoteKey(SP+'obras', rObras.value); }
                 if (rPers?.value) { const loc = storage.getLocal(SP+'personal'); if (loc?.value !== rPers.value) await applyRemoteKey(SP+'personal', rPers.value); }
+                if (rCfg?.value) { const loc = storage.getLocal(SP+'cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey(SP+'cfg', rCfg.value); }
 
                 // Sync fotos de obras — verificar cada obra activa
                 const obrasActuales = JSON.parse(storage.getLocal(SP+'obras')?.value || '[]');
-                for (const o of obrasActuales.slice(0, 10)) { // max 10 obras por ciclo
+                for (const o of obrasActuales.slice(0, 10)) {
                     try {
                         const rFotos = await storage.get(SP+'fotos_'+o.id);
                         if (rFotos?.value) {
