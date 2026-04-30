@@ -1794,9 +1794,21 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                                 <div style={{ fontSize: 10, color: T.muted, marginBottom: 5, textTransform: "uppercase" }}>Presupuesto</div>
                                 <input value={detail.monto || ''} onChange={e => upd(detail.id, { monto: e.target.value })} placeholder="$ 0" style={{ width: "100%", background: "transparent", border: "none", fontSize: 12, fontWeight: 600, color: T.text, padding: 0 }} />
                             </div>
-                            <div style={{ background: detail.pagado > 0 ? "#ECFDF5" : T.bg, borderRadius: T.rsm, padding: "10px 12px" }}>
-                                <div style={{ fontSize: 10, color: T.muted, marginBottom: 5, textTransform: "uppercase" }}>💰 Pagado</div>
-                                <input value={detail.pagado || ''} onChange={e => { const v = e.target.value.replace(/[^0-9.]/g, ''); upd(detail.id, { pagado: v ? parseFloat(v) : 0 }); }} placeholder="$ 0" style={{ width: "100%", background: "transparent", border: "none", fontSize: 12, fontWeight: 600, color: "#10B981", padding: 0 }} />
+                            <div style={{ background: "#ECFDF5", borderRadius: T.rsm, padding: "10px 12px" }}>
+                                <div style={{ fontSize: 10, color: T.muted, marginBottom: 5, textTransform: "uppercase" }}>💰 Gastado</div>
+                                {(() => {
+                                    const totalGastos = (detail.gastos || []).reduce((s, g) => s + parseMontoNum(g.monto), 0);
+                                    const presup = parseMontoNum(detail.monto || 0);
+                                    const pct = presup > 0 ? Math.round(totalGastos / presup * 100) : 0;
+                                    return (<div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: pct > 90 ? "#EF4444" : "#10B981" }}>
+                                            ${totalGastos.toLocaleString('es-AR')}
+                                        </div>
+                                        {presup > 0 && <div style={{ fontSize: 9, color: pct > 90 ? "#EF4444" : T.muted, marginTop: 2 }}>
+                                            {pct}% del presupuesto
+                                        </div>}
+                                    </div>);
+                                })()}
                             </div>
                         </div>
                         <Lbl>{t(cfg, 'obras_estado')}</Lbl>
@@ -2733,7 +2745,8 @@ function ResumenView({ lics, obras, personal, alerts, setView }) {
                     const ec = OBRA_ESTADOS.find(e => e.id === o.estado) || OBRA_ESTADOS[0];
                     const lic = lics.find(l => l.id === o.lic_id);
                     const presupTotal = parseMontoNum(lic?.monto || o.monto);
-                    const pagado = parseMontoNum(o.pagado || 0);
+                    // Pagado = suma de todos los gastos cargados
+                    const pagado = (o.gastos || []).reduce((s, g) => s + parseMontoNum(g.monto), 0);
                     const pct = presupTotal > 0 ? Math.min(100, Math.round(pagado / presupTotal * 100)) : o.avance;
                     return (<div key={o.id} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
