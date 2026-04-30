@@ -429,7 +429,8 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Montserrat:wght@400;600;700;800&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg,#F1F5F9);overscroll-behavior:none;}
-  input,textarea,select,button{font-family:var(--font,'Plus Jakarta Sans'),sans-serif;}
+  input,textarea,select,button{font-family:var(--font,'Plus Jakarta Sans'),sans-serif;font-size:16px;}
+  input,textarea,select{font-size:16px !important;}
   input:focus,textarea:focus,select:focus{outline:none;}textarea{resize:none;}button{cursor:pointer;}::-webkit-scrollbar{display:none;}
   @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -3606,6 +3607,16 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
         if (/clima|lluvia|temperatura/i.test(txt)) {
             try { const r = await fetch('https://wttr.in/Buenos+Aires?format=j1'); if (r.ok) { const d = await r.json(); const c = d.current_condition?.[0]; if (c) extraInfo += `\nClima BsAs: ${c.temp_C}°C, ${c.weatherDesc?.[0]?.value}`; } } catch { }
         }
+        // Ubicación GPS — siempre incluir si está disponible
+        if (/dónde|donde|ubicaci|estoy|cerca|mapa|gps|lugar/i.test(txt) || true) {
+            try {
+                const pos = await new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) { reject(); return; }
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, maximumAge: 60000 });
+                });
+                extraInfo += `\nUbicación actual: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (precisión: ${Math.round(pos.coords.accuracy)}m)`;
+            } catch { }
+        }
 
         const sys = 'Sos el asistente IA de BelfastCM, una app de gestión de obras de construcción en aeropuertos. IMPORTANTE: Sos parte de la app — tenés acceso directo a todos los datos y podés modificarlos.\n\n' +
             '=== DATOS ACTUALES DE LA APP ===\n' +
@@ -4523,7 +4534,7 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
             <button onClick={() => setShowAttachMenu(v => !v)} title="Adjuntar" style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M18.97 3.659a2.25 2.25 0 00-3.182 0l-10.94 10.94a3.75 3.75 0 105.304 5.303l7.693-7.693a.75.75 0 011.06 1.06l-7.693 7.693a5.25 5.25 0 11-7.424-7.424l10.939-10.94a3.75 3.75 0 115.303 5.303L9.097 18.835l-.008.008-.007.007-.002.002-.003.002A2.25 2.25 0 015.91 15.66l7.81-7.81a.75.75 0 011.061 1.06l-7.81 7.81a.75.75 0 001.054 1.068L18.97 6.84a2.25 2.25 0 000-3.182z" /></svg>
             </button>
-            <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }} placeholder={listening ? 'Escuchando…' : 'Escribí o usá el micrófono…'} rows={2} style={{ flex: 1, background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 16, padding: "10px 14px", fontSize: 15, color: T.text, minWidth: 0, resize: "none", lineHeight: 1.5, fontFamily: "inherit" }} />
+            <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { /* Enter solo baja línea — enviar con botón */ }} placeholder={listening ? 'Escuchando…' : 'Escribí o usá el micrófono…'} rows={2} style={{ flex: 1, background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 16, padding: "10px 14px", fontSize: 15, color: T.text, minWidth: 0, resize: "none", lineHeight: 1.5, fontFamily: "inherit" }} />
             <button onClick={listening ? stopListening : startListening} title="Hablar" style={{ background: listening ? "#EF4444" : T.bg, border: '1px solid ' + listening ? "#EF4444" : T.border, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", flexShrink: 0, color: listening ? "#fff" : T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" /><path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" /></svg>
             </button>
