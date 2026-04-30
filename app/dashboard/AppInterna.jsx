@@ -264,7 +264,7 @@ const DEFAULT_COLORS = { accent: "#1D4ED8", al: "#EFF6FF", bg: "#F1F5F9", card: 
 const DEFAULT_UBICACIONES = [{ id: "aep", code: "AEP", name: "Aeroparque Jorge Newbery" }, { id: "eze", code: "EZE", name: "Aerop. Int'l Ministro Pistarini" }];
 
 const DEFAULT_TEXTOS = {
-    nav_ia: "IA", nav_inicio: "Inicio", nav_licitaciones: "Licitaciones", nav_obras: "Obras", nav_personal: "Personal", nav_cargar: "Cargar", nav_mas: "Más",
+    nav_ia: "IA", nav_inicio: "Inicio", nav_licitaciones: "Licitaciones", nav_obras: "Obras", nav_personal: "Personal", nav_mensajes: "Mensajes", nav_cargar: "Cargar", nav_mas: "Más",
     dash_titulo: "Panel operativo", dash_subtitulo: "BelfastCM × AA2000",
     dash_licitaciones: "Licitaciones", dash_obras_activas: "Obras activas", dash_alertas: "Alertas", dash_personal: "Personal",
     dash_obras_curso: "Obras en curso", dash_ver_todas: "Ver todas →", dash_acciones: "Acciones rápidas",
@@ -569,18 +569,22 @@ const NAV_DEFS = [
     { id: "dashboard", tk: "nav_inicio", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M11.47 3.841a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.061l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 101.061 1.061l8.69-8.69z" /><path d="M12 5.432l8.159 8.159.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198l.091-.086L12 5.432z" /></svg> },
     { id: "obras", tk: "nav_obras", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M4.5 2.25a.75.75 0 000 1.5v16.5h-.75a.75.75 0 000 1.5h16.5a.75.75 0 000-1.5h-.75V3.75a.75.75 0 000-1.5h-15zM9 6a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H9zm-.75 3.75A.75.75 0 019 9h1.5a.75.75 0 010 1.5H9a.75.75 0 01-.75-.75zM9 12a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H9zm3.75-5.25A.75.75 0 0113.5 6H15a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zM13.5 9a.75.75 0 000 1.5H15A.75.75 0 0015 9h-1.5zm-.75 3.75a.75.75 0 01.75-.75H15a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zM9 19.5v-2.25a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75V19.5H9z" /></svg> },
     { id: "personal", tk: "nav_personal", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg> },
+    { id: "mensajes", tk: "nav_mensajes", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97z" /></svg> },
     { id: "cargar", tk: "nav_cargar", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" /><path fillRule="evenodd" clipRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3H6a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0zm12-1.5a.75.75 0 100-1.5.75.75 0 000 1.5z" /></svg> },
     { id: "mas", tk: "nav_mas", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M4.5 12a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm6 0a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm6 0a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z" /></svg> },
 ];
 
-function BottomNav({ view, setView, alerts, cfg }) {
+function BottomNav({ view, setView, alerts, cfg, unreadMsgs = 0 }) {
     return (<nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: T.card, borderTop: `1px solid ${T.border}`, display: "flex", padding: "6px 0 max(8px,env(safe-area-inset-bottom))", zIndex: 100, boxShadow: "0 -2px 16px rgba(0,0,0,.06)" }}>
         {NAV_DEFS.map(n => {
-            const active = view === n.id; const badge = n.id === "dashboard" && alerts.length > 0; const label = t(cfg, n.tk); return (
+            const active = view === n.id;
+            const badge = (n.id === "dashboard" && alerts.length > 0) || (n.id === "mensajes" && unreadMsgs > 0);
+            const badgeNum = n.id === "mensajes" ? unreadMsgs : alerts.length;
+            const label = t(cfg, n.tk); return (
                 <button key={n.id} onClick={() => setView(n.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, background: "none", border: "none", color: n.id === "cargar" ? "#fff" : active ? "var(--accent,#1D4ED8)" : T.muted, padding: "4px 0", position: "relative" }}>
                     {n.id === "cargar" ? <div style={{ width: 46, height: 46, borderRadius: "50%", background: "var(--accent,#1D4ED8)", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -16, boxShadow: "0 4px 14px rgba(0,0,0,.25)", border: `3px solid ${T.card}` }}>{n.icon}</div> : n.icon}
                     <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, color: n.id === "cargar" ? "var(--accent,#1D4ED8)" : undefined }}>{label}</span>
-                    {badge && <div style={{ position: "absolute", top: 4, right: "calc(50% - 12px)", width: 7, height: 7, borderRadius: "50%", background: "#EF4444", border: `1.5px solid ${T.card}` }} />}
+                    {badge && <div style={{ position: "absolute", top: 2, right: "calc(50% - 14px)", background: "#EF4444", color: "#fff", borderRadius: 20, minWidth: badgeNum > 0 ? 16 : 8, height: badgeNum > 0 ? 16 : 8, fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", border: `1.5px solid ${T.card}`, padding: badgeNum > 0 ? "0 4px" : 0 }}>{badgeNum > 0 ? badgeNum : ''}</div>}
                 </button>
             );
         })}
@@ -3036,87 +3040,170 @@ Todos los precios en PESOS ARGENTINOS ($). Indicá siempre la fuente.`;
 }
 
 // ── MENSAJES · CONTACTOS · WHATSAPP ─────────────────────────────────
-function MensajesView({ setView, currentUser, personal }) {
+function MensajesView({ setView, currentUser, personal, obras }) {
+    const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
     const [mensajes, setMensajes] = useState([]);
-    const [selUser, setSelUser] = useState(null);
+    const [tab, setTab] = useState('privados'); // 'privados' | 'obras'
+    const [selChat, setSelChat] = useState(null); // { tipo: 'user'|'obra', id, nombre }
     const [txt, setTxt] = useState('');
-    const [loaded, setLoaded] = useState(false);
     const scrollRef = useRef(null);
 
-    const allUsers = [
-        ...ADMIN_CREDS.map(c => ({ id: c.user, nombre: c.rol, rol: c.rol, tipo: 'admin' })),
-        ...personal.filter(p => p.appUser).map(p => ({ id: p.appUser, nombre: p.nombre, rol: p.rol, tipo: 'empleado' }))
-    ].filter(u => u.id !== (currentUser?.user || currentUser?.appUser));
+    const myId = currentUser?.usuario || currentUser?.user || currentUser?.appUser || 'anon';
+    const myName = currentUser?.nombre || currentUser?.rol || 'Usuario';
 
+    // Todos los usuarios disponibles para chat privado
+    const allUsers = [
+        { id: 'sebastian', nombre: 'Sebastián (Admin)', rol: 'Administrador', tipo: 'admin' },
+        ...personal.filter(p => p.appUser && p.appUser !== myId).map(p => ({ id: p.appUser, nombre: p.nombre, rol: p.rol, tipo: 'empleado' }))
+    ].filter(u => u.id !== myId);
+
+    // Cargar mensajes y polling cada 3s
     async function loadMensajes() {
         try {
-            const r = await storage.get((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes');
+            const r = await storage.get(SP+'mensajes');
             if (r?.value) setMensajes(JSON.parse(r.value));
-        } catch { }
-        setLoaded(true);
+        } catch {}
     }
     useEffect(() => { loadMensajes(); const iv = setInterval(loadMensajes, 3000); return () => clearInterval(iv); }, []);
-    useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [mensajes, selUser]);
+    useEffect(() => { setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50); }, [mensajes, selChat]);
 
-    const myId = currentUser?.user || currentUser?.appUser || 'anon';
-    const myName = currentUser?.rol || currentUser?.nombre || 'Usuario';
+    // Mensajes no leídos totales
+    const totalUnread = mensajes.filter(m => m.para === myId && !m.leido).length +
+        mensajes.filter(m => m.tipo === 'obra' && !m.leidoPor?.includes(myId)).length;
 
     async function enviar() {
-        if (!txt.trim() || !selUser) return;
-        const nuevo = { id: uid(), de: myId, deName: myName, para: selUser.id, paraName: selUser.nombre, txt: txt.trim(), fecha: new Date().toISOString(), leido: false };
+        if (!txt.trim() || !selChat) return;
+        const nuevo = {
+            id: uid(),
+            tipo: selChat.tipo, // 'privado' | 'obra'
+            de: myId, deName: myName,
+            para: selChat.tipo === 'privado' ? selChat.id : null,
+            obraId: selChat.tipo === 'obra' ? selChat.id : null,
+            obraNombre: selChat.tipo === 'obra' ? selChat.nombre : null,
+            txt: txt.trim(),
+            fecha: new Date().toISOString(),
+            leido: false,
+            leidoPor: [myId], // para mensajes de obra
+        };
         const actualizados = [...mensajes, nuevo];
-        setMensajes(actualizados); setTxt('');
-        try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
-    }
-
-    async function marcarLeidos() {
-        if (!selUser) return;
-        const actualizados = mensajes.map(m => (m.para === myId && m.de === selUser.id && !m.leido) ? { ...m, leido: true } : m);
         setMensajes(actualizados);
-        try { await storage.set((localStorage.getItem('bcm_auth_empresa')==='vv'?'vv_':'bcm_')+'mensajes', JSON.stringify(actualizados)); } catch { }
+        setTxt('');
+        try { await storage.set(SP+'mensajes', JSON.stringify(actualizados)); } catch {}
     }
-    useEffect(() => { if (selUser) marcarLeidos(); }, [selUser]);
 
-    if (selUser) {
-        const conv = mensajes.filter(m => (m.de === myId && m.para === selUser.id) || (m.de === selUser.id && m.para === myId)).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    async function marcarLeidos(chat) {
+        if (!chat) return;
+        let cambio = false;
+        const actualizados = mensajes.map(m => {
+            if (chat.tipo === 'privado' && m.de === chat.id && m.para === myId && !m.leido) {
+                cambio = true; return { ...m, leido: true };
+            }
+            if (chat.tipo === 'obra' && m.obraId === chat.id && !m.leidoPor?.includes(myId)) {
+                cambio = true; return { ...m, leidoPor: [...(m.leidoPor||[]), myId] };
+            }
+            return m;
+        });
+        if (cambio) { setMensajes(actualizados); try { await storage.set(SP+'mensajes', JSON.stringify(actualizados)); } catch {} }
+    }
+    useEffect(() => { if (selChat) marcarLeidos(selChat); }, [selChat, mensajes.length]);
+
+    function getUnreadPrivado(userId) {
+        return mensajes.filter(m => m.tipo === 'privado' && m.de === userId && m.para === myId && !m.leido).length;
+    }
+    function getUnreadObra(obraId) {
+        return mensajes.filter(m => m.tipo === 'obra' && m.obraId === obraId && !m.leidoPor?.includes(myId)).length;
+    }
+    function getLastMsg(chatId, tipo) {
+        return mensajes.filter(m => tipo === 'privado'
+            ? ((m.de === myId && m.para === chatId) || (m.de === chatId && m.para === myId))
+            : m.obraId === chatId
+        ).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
+    }
+
+    // Vista de conversación
+    if (selChat) {
+        const conv = mensajes.filter(m => selChat.tipo === 'privado'
+            ? ((m.de === myId && m.para === selChat.id) || (m.de === selChat.id && m.para === myId))
+            : m.obraId === selChat.id
+        ).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
         return (<div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <AppHeader title={selUser.nombre} sub={selUser.rol} back onBack={() => setSelUser(null)} />
-            <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column", gap: 6, paddingBottom: 80 }}>
-                {conv.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: T.muted, fontSize: 13 }}>Envía el primer mensaje</div> :
-                    conv.map(m => {
-                        const mine = m.de === myId;
-                        return (<div key={m.id} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: "76%", background: mine ? T.accent : T.card, color: mine ? "#fff" : T.text, borderRadius: 14, padding: "8px 12px", fontSize: 13, lineHeight: 1.45, border: mine ? "none" : `1px solid ${T.border}`, boxShadow: mine ? "0 1px 2px rgba(0,0,0,.08)" : "none" }}>
+            <AppHeader title={selChat.nombre} sub={selChat.tipo === 'obra' ? 'Chat de obra — visible para todos' : 'Chat privado'} back onBack={() => setSelChat(null)} />
+            <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column", gap: 8, paddingBottom: 80 }}>
+                {conv.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: T.muted, fontSize: 13 }}>
+                    {selChat.tipo === 'obra' ? '💬 Empezá la conversación sobre esta obra' : 'Enviá el primer mensaje'}
+                </div>}
+                {conv.map(m => {
+                    const mine = m.de === myId;
+                    return (<div key={m.id} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: "82%" }}>
+                        {!mine && selChat.tipo === 'obra' && (
+                            <div style={{ fontSize: 10, color: T.muted, marginBottom: 3, marginLeft: 4, fontWeight: 700 }}>{m.deName}</div>
+                        )}
+                        <div style={{ background: mine ? T.accent : T.card, color: mine ? "#fff" : T.text, borderRadius: mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px", padding: "10px 14px", fontSize: 14, lineHeight: 1.5, border: mine ? "none" : `1px solid ${T.border}` }}>
                             {m.txt}
-                            <div style={{ fontSize: 9, color: mine ? "rgba(255,255,255,.7)" : T.muted, marginTop: 3, textAlign: mine ? 'right' : 'left' }}>{new Date(m.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</div>
-                        </div>);
-                    })}
+                        </div>
+                        <div style={{ fontSize: 10, color: T.muted, marginTop: 3, textAlign: mine ? 'right' : 'left', marginLeft: mine ? 0 : 4, marginRight: mine ? 4 : 0 }}>
+                            {new Date(m.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                            {mine && selChat.tipo === 'privado' && <span style={{ marginLeft: 4 }}>{m.leido ? ' ✓✓' : ' ✓'}</span>}
+                        </div>
+                    </div>);
+                })}
             </div>
-            <div style={{ padding: "10px 14px max(16px,env(safe-area-inset-bottom))", background: T.card, borderTop: `1px solid ${T.border}`, display: "flex", gap: 8, position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480 }}>
-                <input value={txt} onChange={e => setTxt(e.target.value)} onKeyDown={e => e.key === 'Enter' && enviar()} placeholder="Escribí un mensaje..." style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 20, padding: "9px 14px", fontSize: 13, color: T.text }} />
-                <button onClick={enviar} disabled={!txt.trim()} style={{ background: txt.trim() ? T.accent : T.border, border: "none", borderRadius: "50%", width: 38, height: 38, fontSize: 15, color: "#fff", cursor: txt.trim() ? "pointer" : "not-allowed", flexShrink: 0 }}>→</button>
+            <div style={{ padding: "10px 14px", background: T.card, borderTop: `1px solid ${T.border}`, display: "flex", gap: 8, position: "fixed", bottom: 72, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 99 }}>
+                <textarea value={txt} onChange={e => setTxt(e.target.value)} placeholder="Escribí un mensaje..." rows={1} style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 20, padding: "10px 14px", fontSize: 14, color: T.text, resize: "none", lineHeight: 1.4, fontFamily: "inherit" }} />
+                <button onClick={enviar} disabled={!txt.trim()} style={{ background: txt.trim() ? T.accent : T.border, border: "none", borderRadius: "50%", width: 42, height: 42, fontSize: 18, color: "#fff", cursor: txt.trim() ? "pointer" : "not-allowed", flexShrink: 0, alignSelf: "flex-end" }}>➤</button>
             </div>
         </div>);
     }
-    return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
-        <AppHeader title="Mensajes" back onBack={() => setView("mas")} sub={`${allUsers.length} contactos`} />
-        <div style={{ padding: "14px 18px" }}>
-            {allUsers.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: T.muted, fontSize: 13 }}>No hay otros usuarios con acceso</div> :
-                allUsers.map(u => {
-                    const unread = mensajes.filter(m => m.de === u.id && m.para === myId && !m.leido).length;
-                    const last = mensajes.filter(m => (m.de === u.id && m.para === myId) || (m.de === myId && m.para === u.id)).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
-                    return (<Card key={u.id} onClick={() => setSelUser(u)} style={{ padding: "12px 14px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: u.tipo === 'admin' ? T.navy : T.accentLight, color: u.tipo === 'admin' ? "#fff" : T.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
-                            {u.nombre.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase()}
+
+    // Lista de chats
+    return (<div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <AppHeader title="Mensajes" back onBack={() => setView("mas")}
+            right={totalUnread > 0 ? <div style={{ background: "#EF4444", color: "#fff", borderRadius: 20, minWidth: 24, height: 24, fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 8px" }}>{totalUnread}</div> : null}
+        />
+        {/* Tabs */}
+        <div style={{ display: "flex", background: T.bg, borderBottom: `1px solid ${T.border}` }}>
+            {[['privados', '💬 Privados'], ['obras', '🏗 Por obra']].map(([id, label]) => (
+                <button key={id} onClick={() => setTab(id)} style={{ flex: 1, padding: "12px", border: "none", background: "none", fontSize: 13, fontWeight: tab === id ? 700 : 500, color: tab === id ? T.accent : T.muted, borderBottom: `2px solid ${tab === id ? T.accent : 'transparent'}`, cursor: "pointer" }}>{label}</button>
+            ))}
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "14px 18px", paddingBottom: 80 }}>
+            {tab === 'privados' && (<>
+                {allUsers.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: T.muted, fontSize: 13 }}>No hay otros usuarios registrados</div>}
+                {allUsers.map(u => {
+                    const unread = getUnreadPrivado(u.id);
+                    const last = getLastMsg(u.id, 'privado');
+                    return (<Card key={u.id} onClick={() => setSelChat({ tipo: 'privado', id: u.id, nombre: u.nombre })} style={{ padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 46, height: 46, borderRadius: "50%", background: u.tipo === 'admin' ? T.navy : T.accentLight, color: u.tipo === 'admin' ? "#fff" : T.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
+                            {u.nombre.split(' ').slice(0,2).map(w => w[0]||'').join('').toUpperCase()}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{u.nombre}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{u.nombre}</div>
                             <div style={{ fontSize: 11, color: T.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {last ? (last.de === myId ? 'Vos: ' : '') + last.txt : u.rol}
                             </div>
                         </div>
-                        {unread > 0 && <div style={{ background: T.accent, color: "#fff", borderRadius: 12, minWidth: 22, height: 22, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7px" }}>{unread}</div>}
+                        {unread > 0 && <div style={{ background: "#EF4444", color: "#fff", borderRadius: 12, minWidth: 22, height: 22, fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7px" }}>{unread}</div>}
                     </Card>);
                 })}
+            </>)}
+            {tab === 'obras' && (<>
+                {obras.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: T.muted, fontSize: 13 }}>No hay obras</div>}
+                {obras.map(o => {
+                    const unread = getUnreadObra(o.id);
+                    const last = getLastMsg(o.id, 'obra');
+                    return (<Card key={o.id} onClick={() => setSelChat({ tipo: 'obra', id: o.id, nombre: o.nombre })} style={{ padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 46, height: 46, borderRadius: 12, background: T.accentLight, color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏗</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{o.nombre}</div>
+                            <div style={{ fontSize: 11, color: T.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {last ? last.deName + ': ' + last.txt : 'Sin mensajes aún'}
+                            </div>
+                        </div>
+                        {unread > 0 && <div style={{ background: "#EF4444", color: "#fff", borderRadius: 12, minWidth: 22, height: 22, fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7px" }}>{unread}</div>}
+                    </Card>);
+                })}
+            </>)}
         </div>
     </div>);
 }
@@ -5390,6 +5477,28 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     const [personal, setPersonal] = useState(() => getLocalJSON(SP + 'personal', []));
     const [planes, setPlanes] = useState(() => getLocalJSON(SP + 'planes_semanales', []));
     const [alerts, setAlerts] = useState([]);
+    const [unreadMsgs, setUnreadMsgs] = useState(0);
+
+    // Contar mensajes no leídos para el badge del nav
+    useEffect(() => {
+        const myId = user?.usuario || user?.user || user?.appUser || 'anon';
+        async function checkUnread() {
+            try {
+                const r = await storage.get(SP+'mensajes');
+                if (r?.value) {
+                    const msgs = JSON.parse(r.value);
+                    const n = msgs.filter(m =>
+                        (m.tipo === 'privado' && m.para === myId && !m.leido) ||
+                        (m.tipo === 'obra' && !m.leidoPor?.includes(myId) && m.de !== myId)
+                    ).length;
+                    setUnreadMsgs(n);
+                }
+            } catch {}
+        }
+        checkUnread();
+        const iv = setInterval(checkUnread, 5000);
+        return () => clearInterval(iv);
+    }, [user]);
 
     const [cfg, setCfg] = useState(() => {
         const saved = getLocalJSON(SP + 'cfg', {});
@@ -5983,7 +6092,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                 {view === 'resumen' && <ResumenView lics={lics} obras={obras} personal={personal} alerts={alerts} setView={setView} />}
                 {view === 'cotizacion' && <CotizacionView setView={setView} apiKey={apiKey} cfg={cfg} />}
                 {view === 'materiales_zona' && <MaterialesZonaView setView={setView} apiKey={apiKey} />}
-                {view === 'mensajes' && <MensajesView setView={setView} currentUser={user} personal={personal} />}
+                {view === 'mensajes' && <MensajesView setView={setView} currentUser={user} personal={personal} obras={obras} />}
                 {view === 'contactos' && <ContactosView setView={setView} />}
                 {view === 'proveedores' && <ProveedoresView setView={setView} />}
                 {view === 'info_externa' && <InfoExternaView setView={setView} cfg={cfg} />}
@@ -5991,7 +6100,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                 {view === 'informes_ia' && <InformesIA obras={obras} setObras={setObras} setView={setView} apiKey={apiKey} />}
                 {view === 'alertas_wa' && <AlertasWA cfg={cfg} personal={personal} lics={lics} obras={obras} alerts={alerts} setView={setView} />}
             </div>
-            {showNav && <BottomNav view={view} setView={setView} alerts={alerts} cfg={cfg} />}
+            {showNav && <BottomNav view={view} setView={setView} alerts={alerts} cfg={cfg} unreadMsgs={unreadMsgs} />}
             {/* Indicador de conexión en tiempo real — aparece brevemente cuando hay cambios */}
             {showNav && !realtimeOk && loaded && false && (
                 <div style={{ position: "fixed", bottom: 56, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, zIndex: 99, pointerEvents: "none" }}>
