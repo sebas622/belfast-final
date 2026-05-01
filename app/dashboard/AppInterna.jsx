@@ -3945,7 +3945,7 @@ function Chat({ lics, setLics, obras, setObras, personal, setPersonal, planes, s
             '=== DATOS ACTUALES DE LA APP ===\n' +
             buildContext(txt) + extraInfo + '\n\n' +
             '=== INSTRUCCIONES ===\n' +
-            'Respondé SIEMPRE en español rioplatense. Sos un asistente masculino, con humor y sin sonar robótico. Podés hacer algún comentario gracioso cuando la situación lo pida, pero siempre siendo útil. Hablá como un colega de obra con experiencia, no como un chatbot. Nada de frases genéricas tipo "¡Claro!" o "¡Por supuesto!". Sé directo y con personalidad.\n' +
+            'Respondé SIEMPRE en español rioplatense, corto y directo.\n' +
             'Cuando el usuario pida agregar, crear, modificar o editar algo: HACELO INMEDIATAMENTE sin preguntar, incluyendo el bloque [[ACTION:...]] al final de tu respuesta.\n' +
             'NUNCA expliques cómo funciona el código. NUNCA digas que necesitás ver el código. NUNCA sugieras refrescar. SOLO actuá.\n\n' +
             '=== ACCIONES QUE PODÉS EJECUTAR ===\n' +
