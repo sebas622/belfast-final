@@ -430,7 +430,7 @@ function buildThemeCSS(cfg) {
     const rv = RADIUS_OPTS.find(r => r.id === cfg.radiusId)?.r || 14;
     return `:root{--bg:${c.bg};--card:${c.card};--border:${c.border};--text:${c.text};--sub:${c.sub || '#475569'};--muted:${c.muted || '#94A3B8'};--accent:${c.accent};--al:${c.al || hexLight(c.accent)};--navy:${c.navy};--r:${rv}px;--rsm:${Math.max(4, rv - 4)}px;--font:${fv};}`;
 }
-function parseMontoNum(m) { if (!m) return 0; return parseFloat(String(m).replace(/[^0-9.]/g, '')) || 0; }
+function parseMontoNum(m) { if (!m) return 0; return parseFloat(String(m).replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '')) || 0; }
 function formatMonto(val) {
     const nums = String(val).replace(/[^\d]/g, '');
     if (!nums) return '';
@@ -1845,17 +1845,23 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                                 })()}
                             </div>
                             <div style={{ background: "#ECFDF5", borderRadius: T.rsm, padding: "10px 12px" }}>
-                                <div style={{ fontSize: 10, color: T.muted, marginBottom: 5, textTransform: "uppercase" }}>💰 Gastado</div>
+                                <div style={{ fontSize: 10, color: T.muted, marginBottom: 5, textTransform: "uppercase" }}>💰 Saldo</div>
                                 {(() => {
                                     const totalGastos = (detail.gastos || []).reduce((s, g) => s + parseMontoNum(g.monto), 0);
-                                    const presup = parseMontoNum(detail.monto || 0);
-                                    const pct = presup > 0 ? Math.round(totalGastos / presup * 100) : 0;
+                                    const lic = lics?.find(l => l.id === detail.lic_id);
+                                    const presup = parseMontoNum(lic?.monto || detail.monto || 0);
+                                    const saldo = presup - totalGastos;
+                                    const enRojo = saldo < 0;
+                                    const fmt = n => '$' + Math.abs(n).toLocaleString('es-AR', { maximumFractionDigits: 0 });
                                     return (<div>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: pct > 90 ? "#EF4444" : "#10B981" }}>
-                                            ${totalGastos.toLocaleString('es-AR')}
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: enRojo ? "#EF4444" : "#10B981" }}>
+                                            {enRojo ? '-' : ''}{fmt(saldo)}
                                         </div>
-                                        {presup > 0 && <div style={{ fontSize: 9, color: pct > 90 ? "#EF4444" : T.muted, marginTop: 2 }}>
-                                            {pct}% del presupuesto
+                                        {presup > 0 && <div style={{ fontSize: 9, color: T.muted, marginTop: 2 }}>
+                                            {fmt(presup)} − {fmt(totalGastos)}
+                                        </div>}
+                                        {presup === 0 && <div style={{ fontSize: 9, color: T.muted, marginTop: 2 }}>
+                                            Gastos: {fmt(totalGastos)}
                                         </div>}
                                     </div>);
                                 })()}
