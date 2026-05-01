@@ -7,6 +7,20 @@ export default function Layout({ children }) {
         <meta name="theme-color" content="#0F172A" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          // Registrar service worker que elimina caché viejo
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+              reg.addEventListener('updatefound', () => {
+                reg.installing?.addEventListener('statechange', e => {
+                  if (e.target.state === 'installed' && navigator.serviceWorker.controller) {
+                    window.location.reload();
+                  }
+                });
+              });
+            });
+          }
+        `}} />
       </head>
       <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif', background: '#F8FAFC' }}>
         {children}
