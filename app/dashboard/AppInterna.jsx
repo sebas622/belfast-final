@@ -430,7 +430,7 @@ function buildThemeCSS(cfg) {
     const rv = RADIUS_OPTS.find(r => r.id === cfg.radiusId)?.r || 14;
     return `:root{--bg:${c.bg};--card:${c.card};--border:${c.border};--text:${c.text};--sub:${c.sub || '#475569'};--muted:${c.muted || '#94A3B8'};--accent:${c.accent};--al:${c.al || hexLight(c.accent)};--navy:${c.navy};--r:${rv}px;--rsm:${Math.max(4, rv - 4)}px;--font:${fv};}`;
 }
-function parseMontoNum(m) { if (!m) return 0; return parseFloat(String(m).replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '')) || 0; }
+function parseMontoNum(m) { if (!m) return 0; return parseInt(String(m).replace(/\./g, '').replace(/[^0-9]/g, '')) || 0; }
 function formatMonto(val) {
     const nums = String(val).replace(/[^\d]/g, '');
     if (!nums) return '';
@@ -503,28 +503,42 @@ function PlusBtn({ onClick }) { return <button onClick={onClick} style={{ backgr
 function AppHeader({ title, sub, right, back, onBack }) { return (<div style={{ background: T.card, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{back && <button onClick={onBack} style={{ background: T.bg, border: "none", borderRadius: 10, width: 32, height: 32, fontSize: 16, color: T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>}<div style={{ flex: 1 }}><div style={{ fontSize: 17, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{title}</div>{sub && <div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>{sub}</div>}</div>{right}</div></div>); }
 
 function MontoInput({ value, onChange, placeholder }) {
-    const [display, setDisplay] = useState(value || '');
-    useEffect(() => { setDisplay(value || ''); }, [value]);
+    // Extraer solo el número puro desde cualquier formato
+    function toNum(v) { return parseInt(String(v || '').replace(/\./g, '').replace(/[^0-9]/g, '')) || 0; }
+    // Formatear con puntos de millar: 1500000 → "1.500.000"
+    function fmt(n) { return n > 0 ? n.toLocaleString('es-AR', { maximumFractionDigits: 0 }) : ''; }
+
+    const [display, setDisplay] = useState(() => fmt(toNum(value)));
+    const [editing, setEditing] = useState(false);
+
+    useEffect(() => { if (!editing) setDisplay(fmt(toNum(value))); }, [value]);
+
+    function handleFocus() {
+        // Al entrar: mostrar solo el número sin puntos para editar fácil
+        setEditing(true);
+        const n = toNum(display);
+        setDisplay(n > 0 ? String(n) : '');
+    }
     function handleChange(e) {
-        // Solo permitir números, puntos y comas — sin reformatear en tiempo real
-        const raw = e.target.value.replace(/[^0-9.,]/g, '');
+        const raw = e.target.value.replace(/[^0-9]/g, '');
         setDisplay(raw);
-        onChange(raw);
+        const n = parseInt(raw) || 0;
+        onChange(n > 0 ? fmt(n) : '');
     }
     function handleBlur() {
-        // Al salir del campo, formatear si hay valor
-        if (display) {
-            const fmt = formatMonto(parseMonto(display));
-            setDisplay(fmt);
-            onChange(fmt);
-        }
+        setEditing(false);
+        const n = toNum(display);
+        const formatted = fmt(n);
+        setDisplay(formatted);
+        onChange(formatted);
     }
     return <input
         value={display}
         onChange={handleChange}
+        onFocus={handleFocus}
         onBlur={handleBlur}
-        placeholder={placeholder || '$ 0'}
-        inputMode="decimal"
+        placeholder={placeholder || '0'}
+        inputMode="numeric"
         style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "11px 14px", fontSize: 16, color: T.text }}
     />;
 }
