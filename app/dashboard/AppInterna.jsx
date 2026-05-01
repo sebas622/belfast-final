@@ -2251,7 +2251,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
                     <Field label="Usuario"><TInput value={form.appUser || ''} onChange={e => setForm(p => ({ ...p, appUser: e.target.value.toLowerCase().trim() }))} placeholder="usuario" /></Field>
                     <Field label="Contraseña"><TInput value={form.appPass || ''} onChange={e => setForm(p => ({ ...p, appPass: e.target.value }))} placeholder="••••••" /></Field>
                 </FieldRow>
-                <Field label="Panel"><Sel value={form.nivel || 'empleado'} onChange={e => setForm(p => ({ ...p, nivel: e.target.value }))}><option value="empleado">👷 Empleado</option><option value="directivo">👔 Directivo</option></Sel></Field>
+                <Field label="Panel"><Sel value={form.nivel || 'empleado'} onChange={e => setForm(p => ({ ...p, nivel: e.target.value }))}><option value="empleado">👷 Empleado</option><option value="directivo">👔 Directivo</option><option value="cliente">👤 Cliente</option></Sel></Field>
             </div>
             <PBtn full onClick={add} disabled={!form.nombre.trim()}>{t(cfg, 'pers_agregar')}</PBtn>
         </Sheet>)}
@@ -5498,7 +5498,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                     🔄 Borrar caché y actualizar ahora
                 </button>
             </div>)}
-            {cfgSection === 'usuarios' && user?.nivel === 'superadmin' && (<GestionUsuarios />)}
+            {cfgSection === 'usuarios' && user?.nivel === 'superadmin' && (<GestionUsuarios obras={obras} />)}
 
             <PBtn full onClick={() => setShowCfg(false)} style={{ marginTop: 14 }}>✓ Guardar y cerrar</PBtn>
         </Sheet>)}
@@ -6263,6 +6263,14 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         </div>
     );
 
+    // Si es cliente, mostrar solo su obra
+    if (user?.nivel === 'cliente') {
+        return (<>
+            <style>{css}</style>
+            <ClienteView user={user} obras={obras} onLogout={() => { try { localStorage.removeItem('bcm_auth_user'); localStorage.removeItem('bcm_auth_empresa'); } catch {} window.location.reload(); }} />
+        </>);
+    }
+
     const showNav = !['login'].includes(view);
     const isEmpleado = !isDirectivo(user);
 
@@ -6323,7 +6331,83 @@ function AppInterna({ supaSession, empresa, onCambiarEmpresa }) {
 
 // ── LOGIN ─────────────────────────────────────────────────────────
 // ── GESTIÓN DE USUARIOS (solo super admin) ───────────────────────────
-function GestionUsuarios() {
+// ── VISTA CLIENTE ─────────────────────────────────────────────────────
+// Usuario con nivel 'cliente' solo ve su obra: fotos e informes
+function ClienteView({ user, obras, onLogout }) {
+    const obraCliente = obras.find(o => o.id === user.obra_id) || obras[0];
+    const [tabC, setTabC] = useState('fotos');
+
+    if (!obraCliente) return (
+        <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 24 }}>
+            <div style={{ fontSize: 48 }}>🏗</div>
+            <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>No hay obras asignadas aún</div>
+            <div style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center' }}>El administrador te asignará tu obra pronto</div>
+            <button onClick={onLogout} style={{ marginTop: 16, background: 'transparent', border: '1px solid #475569', borderRadius: 10, padding: '10px 20px', color: '#94A3B8', fontSize: 13, cursor: 'pointer' }}>Cerrar sesión</button>
+        </div>
+    );
+
+    const fotos = obraCliente.fotos || [];
+    const informes = obraCliente.informes || [];
+
+    return (
+        <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: T.bg, fontFamily: 'system-ui, sans-serif' }}>
+            {/* Header */}
+            <div style={{ background: T.navy, padding: '20px 20px 16px', color: '#fff' }}>
+                <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tu obra</div>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>{obraCliente.nombre}</div>
+                <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>{obraCliente.sector || obraCliente.direccion || ''}</div>
+                {/* Barra de avance */}
+                <div style={{ marginTop: 14, background: '#1E293B', borderRadius: 8, height: 8 }}>
+                    <div style={{ height: 8, borderRadius: 8, background: '#34D399', width: `${obraCliente.avance || 0}%`, transition: 'width 0.5s' }} />
+                </div>
+                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 6 }}>Avance: {obraCliente.avance || 0}%</div>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', background: T.card, borderBottom: `1px solid ${T.border}` }}>
+                {[['fotos', '📸 Fotos'], ['informes', '📋 Informes']].map(([id, label]) => (
+                    <button key={id} onClick={() => setTabC(id)} style={{ flex: 1, padding: '14px', border: 'none', background: 'none', fontSize: 13, fontWeight: tabC === id ? 700 : 500, color: tabC === id ? T.accent : T.muted, borderBottom: `2px solid ${tabC === id ? T.accent : 'transparent'}`, cursor: 'pointer' }}>{label}</button>
+                ))}
+            </div>
+
+            {/* Fotos */}
+            {tabC === 'fotos' && (
+                <div style={{ padding: 16 }}>
+                    {fotos.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📸 Las fotos de tu obra aparecerán acá</div>}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        {fotos.map(f => (
+                            <div key={f.id} style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '1', background: T.border }}>
+                                <img src={f.url} alt={f.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
+                            </div>
+                        ))}
+                    </div>
+                    {fotos.length > 0 && <div style={{ fontSize: 11, color: T.muted, textAlign: 'center', marginTop: 12 }}>{fotos.length} foto{fotos.length !== 1 ? 's' : ''}</div>}
+                </div>
+            )}
+
+            {/* Informes */}
+            {tabC === 'informes' && (
+                <div style={{ padding: 16 }}>
+                    {informes.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📋 Los informes de tu obra aparecerán acá</div>}
+                    {informes.map(inf => (
+                        <div key={inf.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 4 }}>{inf.titulo || 'Informe'}</div>
+                            <div style={{ fontSize: 12, color: T.sub, lineHeight: 1.6 }}>{inf.texto}</div>
+                            <div style={{ fontSize: 10, color: T.muted, marginTop: 8 }}>{inf.fecha}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Footer */}
+            <div style={{ padding: 20, textAlign: 'center' }}>
+                <button onClick={onLogout} style={{ background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 20px', color: T.muted, fontSize: 13, cursor: 'pointer' }}>Cerrar sesión</button>
+            </div>
+        </div>
+    );
+}
+
+function GestionUsuarios({ obras = [] }) {
     const [usuarios, setUsuarios] = React.useState([]);
     const [cargando, setCargando] = React.useState(true);
 
@@ -6333,6 +6417,12 @@ function GestionUsuarios() {
 
     async function cambiarEmpresa(id, empresa) {
         const nuevos = usuarios.map(u => u.id === id ? { ...u, empresa } : u);
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+    }
+
+    async function cambiarNivel(id, nivel) {
+        const nuevos = usuarios.map(u => u.id === id ? { ...u, nivel } : u);
         setUsuarios(nuevos);
         await guardarUsuarios(nuevos);
     }
@@ -6372,7 +6462,18 @@ function GestionUsuarios() {
                         <button onClick={() => eliminarUsuario(u.id, u.nombre)} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 7, padding: '5px 8px', fontSize: 10, fontWeight: 700, color: '#EF4444', cursor: 'pointer' }}>✕</button>
                     </div>
                 </div>
-                <div>
+                <div style={{ marginTop: 8 }}>
+                    <Lbl>Nivel</Lbl>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
+                        {[['empleado', '👷 Empleado'], ['directivo', '👔 Directivo'], ['cliente', '👤 Cliente']].map(([val, lbl]) => (
+                            <button key={val} onClick={() => cambiarNivel(u.id, val)}
+                                style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${(u.nivel||'empleado') === val ? T.accent : T.border}`, background: (u.nivel||'empleado') === val ? T.accentLight : T.card, color: (u.nivel||'empleado') === val ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                                {lbl}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div style={{ marginTop: 8 }}>
                     <Lbl>Empresa / acceso</Lbl>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
                         {[['belfast', '🔵 Belfast'], ['vv', '🟢 V+V'], ['ambas', '⚡ Ambas']].map(([val, lbl]) => (
@@ -6382,6 +6483,20 @@ function GestionUsuarios() {
                             </button>
                         ))}
                     </div>
+                    {/* Selector de obra para clientes */}
+                    {u.nivel === 'cliente' && obras.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                            <Lbl>Obra asignada</Lbl>
+                            <select value={u.obra_id || ''} onChange={async e => {
+                                const nuevos = usuarios.map(x => x.id === u.id ? { ...x, obra_id: e.target.value } : x);
+                                setUsuarios(nuevos);
+                                await guardarUsuarios(nuevos);
+                            }} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, color: T.text, background: T.bg }}>
+                                <option value="">— Sin asignar —</option>
+                                {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                            </select>
+                        </div>
+                    )}
                 </div>
             </div>
         ))}
