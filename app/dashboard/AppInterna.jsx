@@ -503,15 +503,30 @@ function PlusBtn({ onClick }) { return <button onClick={onClick} style={{ backgr
 function AppHeader({ title, sub, right, back, onBack }) { return (<div style={{ background: T.card, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{back && <button onClick={onBack} style={{ background: T.bg, border: "none", borderRadius: 10, width: 32, height: 32, fontSize: 16, color: T.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>}<div style={{ flex: 1 }}><div style={{ fontSize: 17, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{title}</div>{sub && <div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>{sub}</div>}</div>{right}</div></div>); }
 
 function MontoInput({ value, onChange, placeholder }) {
-    const [display, setDisplay] = useState(value ? formatMonto(parseMonto(value)) : value || '');
-    useEffect(() => { setDisplay(value ? formatMonto(parseMonto(value)) : value || ''); }, [value]);
+    const [display, setDisplay] = useState(value || '');
+    useEffect(() => { setDisplay(value || ''); }, [value]);
     function handleChange(e) {
-        const raw = parseMonto(e.target.value);
-        const fmt = raw ? formatMonto(raw) : '';
-        setDisplay(fmt);
-        onChange(fmt);
+        // Solo permitir números, puntos y comas — sin reformatear en tiempo real
+        const raw = e.target.value.replace(/[^0-9.,]/g, '');
+        setDisplay(raw);
+        onChange(raw);
     }
-    return <input value={display} onChange={handleChange} placeholder={placeholder || '0 $'} inputMode="numeric" style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "11px 14px", fontSize: 16, color: T.text }} />;
+    function handleBlur() {
+        // Al salir del campo, formatear si hay valor
+        if (display) {
+            const fmt = formatMonto(parseMonto(display));
+            setDisplay(fmt);
+            onChange(fmt);
+        }
+    }
+    return <input
+        value={display}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        placeholder={placeholder || '$ 0'}
+        inputMode="decimal"
+        style={{ width: "100%", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: "11px 14px", fontSize: 16, color: T.text }}
+    />;
 }
 
 function LoginModal({ titulo, onSuccess, onClose }) {
