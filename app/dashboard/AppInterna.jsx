@@ -5327,7 +5327,7 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
         </div>
         {showCfg && (<Sheet title="Configuración" onClose={() => setShowCfg(false)}>
             <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto" }}>
-                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '📸 Fotos' }, ...(user?.nivel === 'superadmin' ? [{ id: 'usuarios', l: '👥 Usuarios' }] : [])].map(s => (
+                {[{ id: 'cuenta', l: 'Cuenta' }, { id: 'tema', l: 'Tema' }, { id: 'font', l: 'Fuente' }, { id: 'forma', l: 'Forma' }, { id: 'logos', l: 'Logos' }, { id: 'ubic', l: 'Ubicaciones' }, { id: 'api', l: 'API Key' }, { id: 'whatsapp', l: 'WhatsApp' }, { id: 'textos', l: 'Textos' }, { id: 'fotos', l: '📸 Fotos' }, { id: 'actualizar', l: '🔄 Actualizar' }, ...(user?.nivel === 'superadmin' ? [{ id: 'usuarios', l: '👥 Usuarios' }] : [])].map(s => (
                     <button key={s.id} onClick={() => setCfgSection(s.id)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: '1.5px solid ' + cfgSection === s.id ? T.accent : T.border, background: cfgSection === s.id ? T.accentLight : T.card, color: cfgSection === s.id ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s.l}</button>
                 ))}
             </div>
@@ -5475,6 +5475,29 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
             </div>)}
 
             {cfgSection === 'fotos' && (<RecuperarFotos obras={obras} setObras={setObras} lics={lics} setLics={setLics} personal={personal} setPersonal={setPersonal} />)}
+            {cfgSection === 'actualizar' && (<div>
+                <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#1E40AF', marginBottom: 6 }}>🔄 Actualizar aplicación</div>
+                    <div style={{ fontSize: 12, color: '#1E3A8A', lineHeight: 1.7 }}>Fuerza la descarga de la última versión de la app. Usá esto si ves que los cambios no aparecen.</div>
+                </div>
+                <button onClick={() => {
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.getRegistrations().then(regs => {
+                            Promise.all(regs.map(r => r.unregister())).then(() => {
+                                caches.keys().then(keys => {
+                                    Promise.all(keys.map(k => caches.delete(k))).then(() => {
+                                        window.location.reload(true);
+                                    });
+                                });
+                            });
+                        });
+                    } else {
+                        window.location.reload(true);
+                    }
+                }} style={{ width: '100%', background: '#1D4ED8', border: 'none', borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 800, color: '#fff', cursor: 'pointer' }}>
+                    🔄 Borrar caché y actualizar ahora
+                </button>
+            </div>)}
             {cfgSection === 'usuarios' && user?.nivel === 'superadmin' && (<GestionUsuarios />)}
 
             <PBtn full onClick={() => setShowCfg(false)} style={{ marginTop: 14 }}>✓ Guardar y cerrar</PBtn>
