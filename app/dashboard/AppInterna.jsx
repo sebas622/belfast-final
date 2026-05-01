@@ -1978,7 +1978,6 @@ function Personal({ personal, setPersonal, obras, cfg }) {
         {showCam && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,.45)", padding: "4px 0", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8, fontWeight: 600 }}>📷</span></div>}
     </div>);
 
-    return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
     async function importarDesdeAgenda() {
         // Contact Picker API — disponible en Android Chrome y algunos browsers
         if (!('contacts' in navigator && 'ContactsManager' in window)) {
@@ -2016,6 +2015,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
         }
     }
 
+    return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
         <AppHeader title={t(cfg, 'pers_titulo')} sub={`${personal.length} trabajadores`} right={
             <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={importarDesdeAgenda} style={{ background: '#ECFDF5', border: '1px solid #86EFAC', borderRadius: 10, padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
