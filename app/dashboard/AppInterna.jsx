@@ -6339,9 +6339,13 @@ function ClienteView({ user, obras, onLogout }) {
 
     if (!obraCliente) return (
         <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 24 }}>
-            <div style={{ fontSize: 48 }}>🏗</div>
-            <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>No hay obras asignadas aún</div>
-            <div style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center' }}>El administrador te asignará tu obra pronto</div>
+            <svg width="52" height="52" viewBox="0 0 278 212" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinejoin="miter">
+                <polygon points="8,84 98,84 126,54 36,54" /><path d="M8,84 L8,200 L98,200 L98,174 L52,174 L52,132 L98,132 L98,117 L57,117 L57,88 L98,88 L98,84 Z" />
+                <polygon points="100,54 100,200 190,200 190,54" /><rect x="112" y="66" width="66" height="42" />
+                <polygon points="192,76 192,200 270,200 270,130 246,96 246,76" /><rect x="204" y="136" width="42" height="42" />
+            </svg>
+            <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>No hay proyectos asignados aún</div>
+            <div style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center' }}>El equipo de Belfast te asignará tu proyecto pronto</div>
             <button onClick={onLogout} style={{ marginTop: 16, background: 'transparent', border: '1px solid #475569', borderRadius: 10, padding: '10px 20px', color: '#94A3B8', fontSize: 13, cursor: 'pointer' }}>Cerrar sesión</button>
         </div>
     );
@@ -6351,12 +6355,22 @@ function ClienteView({ user, obras, onLogout }) {
 
     return (
         <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: T.bg, fontFamily: 'system-ui, sans-serif' }}>
-            {/* Header */}
+            {/* Header con logo Belfast */}
             <div style={{ background: T.navy, padding: '20px 20px 16px', color: '#fff' }}>
-                <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tu obra</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                    <svg width="32" height="32" viewBox="0 0 278 212" fill="none" stroke="#fff" strokeWidth="6" strokeLinejoin="miter">
+                        <polygon points="8,84 98,84 126,54 36,54" /><path d="M8,84 L8,200 L98,200 L98,174 L52,174 L52,132 L98,132 L98,117 L57,117 L57,88 L98,88 L98,84 Z" />
+                        <polygon points="100,54 100,200 190,200 190,54" /><rect x="112" y="66" width="66" height="42" />
+                        <polygon points="192,76 192,200 270,200 270,130 246,96 246,76" /><rect x="204" y="136" width="42" height="42" />
+                    </svg>
+                    <div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>BelfastCM</div>
+                        <div style={{ fontSize: 10, color: '#94A3B8' }}>Construction Management</div>
+                    </div>
+                </div>
+                <div style={{ fontSize: 10, color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tu proyecto</div>
                 <div style={{ fontSize: 20, fontWeight: 800 }}>{obraCliente.nombre}</div>
                 <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>{obraCliente.sector || obraCliente.direccion || ''}</div>
-                {/* Barra de avance */}
                 <div style={{ marginTop: 14, background: '#1E293B', borderRadius: 8, height: 8 }}>
                     <div style={{ height: 8, borderRadius: 8, background: '#34D399', width: `${obraCliente.avance || 0}%`, transition: 'width 0.5s' }} />
                 </div>
@@ -6373,7 +6387,7 @@ function ClienteView({ user, obras, onLogout }) {
             {/* Fotos */}
             {tabC === 'fotos' && (
                 <div style={{ padding: 16 }}>
-                    {fotos.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📸 Las fotos de tu obra aparecerán acá</div>}
+                    {fotos.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📸 Las fotos de tu proyecto aparecerán acá</div>}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         {fotos.map(f => (
                             <div key={f.id} style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '1', background: T.border }}>
@@ -6388,7 +6402,7 @@ function ClienteView({ user, obras, onLogout }) {
             {/* Informes */}
             {tabC === 'informes' && (
                 <div style={{ padding: 16 }}>
-                    {informes.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📋 Los informes de tu obra aparecerán acá</div>}
+                    {informes.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📋 Los informes de tu proyecto aparecerán acá</div>}
                     {informes.map(inf => (
                         <div key={inf.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
                             <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 4 }}>{inf.titulo || 'Informe'}</div>
