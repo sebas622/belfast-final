@@ -6333,6 +6333,17 @@ function AppInterna({ supaSession, empresa, onCambiarEmpresa }) {
 // ── GESTIÓN DE USUARIOS (solo super admin) ───────────────────────────
 // ── VISTA CLIENTE ─────────────────────────────────────────────────────
 
+const IC = {
+    msg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+    doc: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+    def: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    sub: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
+    send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    ok: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    plus: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    x: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+};
+
 function MsgArchivo({ m, colorBg, colorText, align }) {
     const [dataUrl, setDataUrl] = React.useState(m.archivo || null);
     const [cargando, setCargando] = React.useState(!m.archivo && !!m.archivoKey);
@@ -6380,68 +6391,6 @@ function MsgArchivo({ m, colorBg, colorText, align }) {
     );
 }
 
-function UbicacionesEditor({ cfg, updCfg, T }) {
-    const init = cfg.ubicaciones?.length ? cfg.ubicaciones : DEFAULT_UBICACIONES;
-    const [ubics, setUbics] = useState(init);
-
-    // Sincronizar si cfg.ubicaciones cambia desde afuera
-    useEffect(() => {
-        const ext = cfg.ubicaciones?.length ? cfg.ubicaciones : DEFAULT_UBICACIONES;
-        setUbics(ext);
-    }, [JSON.stringify(cfg.ubicaciones)]);
-
-    function guardar(nuevas) {
-        setUbics(nuevas);
-        updCfg({ ubicaciones: nuevas });
-    }
-    function agregar() {
-        guardar([...ubics, { id: uid(), code: 'NUEVO', name: 'Nueva ubicación' }]);
-    }
-    function borrar(id) {
-        const nuevas = ubics.filter(u => u.id !== id);
-        guardar(nuevas.length > 0 ? nuevas : [{ id: uid(), code: 'NUEVA', name: 'Nueva ubicación' }]);
-    }
-    function cambiar(id, campo, valor) {
-        setUbics(p => p.map(u => u.id === id ? { ...u, [campo]: valor } : u));
-    }
-    function guardarCampo(id) {
-        updCfg({ ubicaciones: ubics });
-    }
-
-    return (<div>
-        <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 4, textTransform: 'uppercase' }}>Etiqueta del campo</div>
-            <input defaultValue={cfg.labelUbicacion || 'Ubicación'} onBlur={e => updCfg({ labelUbicacion: e.target.value })}
-                style={{ width: '100%', background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 8, padding: '8px 12px', fontSize: 14, color: T.text, boxSizing: 'border-box' }} />
-        </div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 8, textTransform: 'uppercase' }}>Ubicaciones</div>
-        {ubics.map(u => (
-            <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 36px', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-                <input
-                    value={u.code}
-                    onChange={e => cambiar(u.id, 'code', e.target.value.toUpperCase())}
-                    onBlur={() => guardarCampo(u.id)}
-                    placeholder="Cód"
-                    style={{ background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 8, padding: '8px 10px', fontSize: 14, fontWeight: 700, color: T.text, textTransform: 'uppercase', textAlign: 'center' }}
-                />
-                <input
-                    value={u.name}
-                    onChange={e => cambiar(u.id, 'name', e.target.value)}
-                    onBlur={() => guardarCampo(u.id)}
-                    placeholder="Nombre"
-                    style={{ background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 8, padding: '8px 10px', fontSize: 14, color: T.text }}
-                />
-                <button onClick={() => borrar(u.id)}
-                    style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px', fontSize: 14, color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-            </div>
-        ))}
-        <button onClick={agregar}
-            style={{ width: '100%', marginTop: 4, background: T.bg, border: '1.5px dashed ' + T.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, color: T.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <span style={{ fontSize: 18 }}>+</span> Agregar ubicación
-        </button>
-    </div>);
-}
-
 
 function ClienteView({ user: userProp, obras, onLogout }) {
     const [user, setUser] = useState(userProp);
@@ -6461,7 +6410,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                     if (fresco) setUser(fresco);
                 }
                 // Recargar obras
-                const jsonO = await storage.get('bcm_obras');
+                const jsonO = await storage.get('bop_obras');
                 if (jsonO?.value) {
                     const parsed = JSON.parse(jsonO.value);
                     const obrasData = (parsed && parsed._ts) ? parsed.data : parsed;
@@ -6497,7 +6446,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                     { event: '*', schema: 'public', table: 'bcm_storage' },
                     (payload) => {
                         const k = payload.new?.key || '';
-                        if (k === 'bcm_obras' || k === 'bcm_usuarios' || k.startsWith('bop_fotos_')) {
+                        if (k === 'bop_obras' || k === 'bcm_usuarios' || k.startsWith('bop_fotos_')) {
                             recargar();
                         }
                     }
@@ -6870,6 +6819,38 @@ function ClienteView({ user: userProp, obras, onLogout }) {
         </div>
     );
 }
+
+function ClienteNovedades({ obraCliente, fotos }) {
+    const items = [
+        ...(obraCliente.informes||[]).map(i=>({...i, tipo:'informe'})),
+        ...(obraCliente.obs||[]).map(o=>({id:o.id,titulo:o.txt,fecha:o.fecha,tipo:'obs'})),
+        ...(fotos||[]).slice(0,5).map(f=>({id:f.id,titulo:'Fotos nuevas cargadas',fecha:f.fecha,tipo:'foto',url:f.url})),
+    ].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).slice(0,20);
+    if (!items.length) return <div style={{ textAlign:'center', padding:'50px 0', color:T.muted, fontSize:14 }}>Las novedades aparecerán acá</div>;
+    return (<div>
+        {items.map((item,i)=>(
+            <div key={item.id||i} style={{ display:'flex', gap:12, marginBottom:14 }}>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                    <div style={{ width:34, height:34, borderRadius:'50%', background:T.accentLight, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:T.accent }}>
+                        {item.tipo==='informe' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        : item.tipo==='foto' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                    </div>
+                    {i<items.length-1 && <div style={{ width:2, flex:1, background:T.border, marginTop:4 }} />}
+                </div>
+                <div style={{ flex:1, paddingBottom:14 }}>
+                    {item.url && <img src={item.url} style={{ width:'100%', borderRadius:10, marginBottom:6, maxHeight:120, objectFit:'cover' }} />}
+                    <div style={{ fontSize:13, fontWeight:600, color:T.text }}>{item.titulo}</div>
+                    {item.texto && <div style={{ fontSize:12, color:T.sub, marginTop:3, lineHeight:1.5 }}>{item.texto.slice(0,120)}</div>}
+                    <div style={{ fontSize:10, color:T.muted, marginTop:3 }}>{item.fecha}</div>
+                </div>
+            </div>
+        ))}
+    </div>);
+}
+
+
+// SVG íconos profesionales estilo Apple
 
 function ClienteIA({ obraCliente, user, renders = [], fotos = [] }) {
     const nombre = user.nombre?.split(' ')[0] || 'cliente';
@@ -7437,399 +7418,137 @@ function ClienteMensajes({ obraCliente, user }) {
     </div>);
 }
 
-function ClienteNovedades({ obraCliente, fotos }) {
-    const items = [
-        ...(obraCliente.informes||[]).map(i=>({...i, tipo:'informe'})),
-        ...(obraCliente.obs||[]).map(o=>({id:o.id,titulo:o.txt,fecha:o.fecha,tipo:'obs'})),
-        ...(fotos||[]).slice(0,5).map(f=>({id:f.id,titulo:'Fotos nuevas cargadas',fecha:f.fecha,tipo:'foto',url:f.url})),
-    ].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).slice(0,20);
-    if (!items.length) return <div style={{ textAlign:'center', padding:'50px 0', color:T.muted, fontSize:14 }}>Las novedades aparecerán acá</div>;
+function ClienteFaltantes({ obraCliente, tipo }) {
+    const key = tipo === 'doc' ? 'faltantes_doc' : 'faltantes_def';
+    const [items, setItems] = useState(obraCliente[key] || []);
+    const [nuevo, setNuevo] = useState('');
+    const [nota, setNota] = useState('');
+    const [showNew, setShowNew] = useState(false);
+
+    const color = tipo === 'doc' ? { bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C', sub: '#7F1D1D' }
+        : { bg: '#FFFBEB', border: '#FDE68A', text: '#92400E', sub: '#78350F' };
+
+    async function guardar(nuevos) {
+        setItems(nuevos);
+        for (const prefix of ['bop_', 'bcm_']) {
+            try {
+                const r = await storage.get(prefix + 'obras');
+                if (r?.value) {
+                    const obras = JSON.parse(r.value);
+                    const updated = obras.map(o => o.id === obraCliente.id ? { ...o, [key]: nuevos } : o);
+                    await storage.set(prefix + 'obras', JSON.stringify(updated));
+                }
+            } catch {}
+        }
+    }
+
+    async function agregar() {
+        if (!nuevo.trim()) return;
+        await guardar([...items, { id: uid(), titulo: nuevo.trim(), nota: nota.trim(), fecha: new Date().toLocaleDateString('es-AR') }]);
+        setNuevo(''); setNota(''); setShowNew(false);
+    }
+
     return (<div>
-        {items.map((item,i)=>(
-            <div key={item.id||i} style={{ display:'flex', gap:12, marginBottom:14 }}>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
-                    <div style={{ width:34, height:34, borderRadius:'50%', background:T.accentLight, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:T.accent }}>
-                        {item.tipo==='informe' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        : item.tipo==='foto' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
-                    </div>
-                    {i<items.length-1 && <div style={{ width:2, flex:1, background:T.border, marginTop:4 }} />}
+        <div style={{ fontSize: 12, color: T.muted, marginBottom: 12 }}>
+            {tipo === 'doc' ? 'Documentos pendientes de entrega' : 'Definiciones pendientes del cliente'}
+        </div>
+        <button onClick={() => setShowNew(v => !v)} style={{ width: '100%', background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 600, color: color.text, cursor: 'pointer', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            {IC.plus} Agregar
+        </button>
+        {showNew && (<div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+            <TInput value={nuevo} onChange={e => setNuevo(e.target.value)} placeholder={tipo === 'doc' ? 'Ej: Plano de electricidad' : 'Ej: Color de piso living'} />
+            <TInput value={nota} onChange={e => setNota(e.target.value)} placeholder="Nota adicional (opcional)" style={{ marginTop: 8 }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button onClick={() => setShowNew(false)} style={{ flex: 1, padding: 10, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={agregar} disabled={!nuevo.trim()} style={{ flex: 2, padding: 10, background: T.accent, border: 'none', borderRadius: T.rsm, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Guardar</button>
+            </div>
+        </div>)}
+        {items.length === 0 && !showNew && <div style={{ textAlign: 'center', padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <div style={{ color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: '#ECFDF5' }}>{IC.ok}</div>
+            <div style={{ color: T.muted, fontSize: 13 }}>Sin pendientes</div>
+        </div>}
+        {items.map(f => (
+            <div key={f.id} style={{ background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ color: color.text, marginTop: 2, flexShrink: 0 }}>{tipo === 'doc' ? IC.doc : IC.def}</div>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: color.text }}>{f.titulo}</div>
+                    {f.nota && <div style={{ fontSize: 11, color: color.sub, marginTop: 3 }}>{f.nota}</div>}
+                    <div style={{ fontSize: 10, color: T.muted, marginTop: 4 }}>{f.fecha}</div>
                 </div>
-                <div style={{ flex:1, paddingBottom:14 }}>
-                    {item.url && <img src={item.url} style={{ width:'100%', borderRadius:10, marginBottom:6, maxHeight:120, objectFit:'cover' }} />}
-                    <div style={{ fontSize:13, fontWeight:600, color:T.text }}>{item.titulo}</div>
-                    {item.texto && <div style={{ fontSize:12, color:T.sub, marginTop:3, lineHeight:1.5 }}>{item.texto.slice(0,120)}</div>}
-                    <div style={{ fontSize:10, color:T.muted, marginTop:3 }}>{item.fecha}</div>
-                </div>
+                <button onClick={() => guardar(items.filter(i => i.id !== f.id))} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 4 }}>{IC.x}</button>
             </div>
         ))}
     </div>);
 }
 
+// Cliente puede agregar subcontratos — se guardan en Supabase y aparecen en app general
+function ClienteSubcontratos({ obraCliente }) {
+    const [subs, setSubs] = useState(obraCliente.subcontratos || []);
+    const [showNew, setShowNew] = useState(false);
+    const [form, setForm] = useState({ nombre: '', empresa: '', contacto: '', estado: 'activo' });
+    const TIPOS = ['Interiorismo','Carpintería','Paisajismo','Electricidad','Plomería','Pintura','Vidriería','Herrería','Yesería','Climatización','Seguridad','Domótica'];
 
-// SVG íconos profesionales estilo Apple
-const IC = {
-    msg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-    doc: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
-    def: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    sub: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
-    send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
-    ok: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
-    plus: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-    x: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-};
-
-
-function LoginScreen({ onLogin }) {
-    const T2 = { navy: '#0F172A', accent: '#1D4ED8', bg: '#F8FAFC', text: '#1E293B', muted: '#94A3B8', border: '#E2E8F0', card: '#fff' };
-    const [modo, setModo] = React.useState('login'); // 'login' | 'registro'
-    const [usuario, setUsuario] = React.useState('');
-    const [pass, setPass] = React.useState('');
-    const [passConfirm, setPassConfirm] = React.useState('');
-    const [nombre, setNombre] = React.useState('');
-    const [loading, setLoading] = React.useState(false);
-    const [error, setError] = React.useState('');
-    const [showPass, setShowPass] = React.useState(false);
-
-    async function login() {
-        if (!usuario.trim() || !pass.trim()) { setError('Completá usuario y contraseña'); return; }
-        setLoading(true); setError('');
-        // Verificar super admin
-        if (usuario.trim().toLowerCase() === SUPER_ADMIN.usuario && pass === SUPER_ADMIN.pass) {
-            onLogin({ id: 'superadmin', usuario: SUPER_ADMIN.usuario, nombre: SUPER_ADMIN.nombre, empresa: SUPER_ADMIN.empresa, nivel: 'superadmin' });
-            return;
+    async function guardar(nuevos) {
+        setSubs(nuevos);
+        // Guardar en Supabase — aparece en app general
+        for (const prefix of ['bop_', 'bcm_']) {
+            try {
+                const r = await storage.get(prefix + 'obras');
+                if (r?.value) {
+                    const obras = JSON.parse(r.value);
+                    const updated = obras.map(o => o.id === obraCliente.id ? { ...o, subcontratos: nuevos } : o);
+                    await storage.set(prefix + 'obras', JSON.stringify(updated));
+                }
+            } catch {}
         }
-        // Verificar usuarios registrados
-        const usuarios = await cargarUsuarios();
-        const u = usuarios.find(x => x.usuario.toLowerCase() === usuario.trim().toLowerCase() && x.passHash === hashPass(pass));
-        if (u) { onLogin(u); }
-        else { setError('Usuario o contraseña incorrectos'); }
-        setLoading(false);
     }
 
-    async function registrar() {
-        if (!usuario.trim() || !pass.trim() || !nombre.trim()) { setError('Completá todos los campos'); return; }
-        if (pass !== passConfirm) { setError('Las contraseñas no coinciden'); return; }
-        if (pass.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return; }
-        setLoading(true); setError('');
-        const usuarios = await cargarUsuarios();
-        if (usuarios.length >= MAX_USUARIOS) { setError('Límite de usuarios alcanzado. Contactá al administrador.'); setLoading(false); return; }
-        if (usuarios.find(x => x.usuario.toLowerCase() === usuario.trim().toLowerCase())) { setError('Ese usuario ya existe'); setLoading(false); return; }
-        // Nuevo usuario — empresa 'belfast' por defecto (el admin puede cambiarla)
-        const nuevo = { id: uid(), usuario: usuario.trim().toLowerCase(), passHash: hashPass(pass), nombre: nombre.trim(), empresa: 'belfast', nivel: 'empleado', creado: new Date().toLocaleDateString('es-AR') };
-        await guardarUsuarios([...usuarios, nuevo]);
-        onLogin(nuevo);
-        setLoading(false);
+    async function agregar() {
+        if (!form.nombre.trim()) return;
+        const nuevo = { id: uid(), ...form };
+        await guardar([...subs, nuevo]);
+        setForm({ nombre: '', empresa: '', contacto: '', estado: 'activo' });
+        setShowNew(false);
     }
 
-    return (
-        <div style={{ minHeight: '100vh', background: T2.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-            <div style={{ width: '100%', maxWidth: 380, background: T2.card, borderRadius: 20, padding: '36px 28px', boxShadow: '0 30px 60px rgba(0,0,0,.4)' }}>
-                <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                    <svg width="52" height="52" viewBox="0 0 278 212" fill="none" stroke="#111" strokeWidth="5.5" strokeLinejoin="miter" style={{ marginBottom: 10 }}>
-                        <polygon points="8,84 98,84 126,54 36,54" />
-                        <path d="M8,84 L8,200 L98,200 L98,174 L52,174 L52,132 L98,132 L98,117 L57,117 L57,88 L98,88 L98,84 Z" />
-                        <polygon points="100,54 100,200 190,200 190,54" />
-                        <rect x="112" y="66" width="66" height="42" />
-                        <polygon points="192,76 192,200 270,200 270,130 246,96 246,76" />
-                        <rect x="204" y="136" width="42" height="42" />
-                    </svg>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T2.text }}>BelfastCM</div>
-                    <div style={{ fontSize: 12, color: T2.muted, marginTop: 3 }}>Construction Management</div>
-                </div>
+    async function eliminar(id) {
+        await guardar(subs.filter(s => s.id !== id));
+    }
 
-                {/* Tabs login/registro */}
-                <div style={{ display: 'flex', background: T2.bg, borderRadius: 10, padding: 3, marginBottom: 20 }}>
-                    {[['login','Ingresar'],['registro','Registrarse']].map(([m,l]) => (
-                        <button key={m} onClick={() => { setModo(m); setError(''); }} style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: modo === m ? T2.card : 'transparent', color: modo === m ? T2.accent : T2.muted, fontSize: 13, fontWeight: modo === m ? 700 : 500, cursor: 'pointer', boxShadow: modo === m ? '0 1px 3px rgba(0,0,0,.1)' : 'none' }}>{l}</button>
-                    ))}
-                </div>
+    return (<div>
+        <button onClick={() => setShowNew(v => !v)} style={{ width: '100%', background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, color: T.accent, cursor: 'pointer', marginBottom: 14 }}>
+            + Agregar subcontrato
+        </button>
 
-                {/* Campos */}
-                {modo === 'registro' && (
-                    <div style={{ marginBottom: 14 }}>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre completo</label>
-                        <input value={nombre} onChange={e => { setNombre(e.target.value); setError(''); }} placeholder="Ej: Juan García" onKeyDown={e => e.key === 'Enter' && registrar()}
-                            style={{ width: '100%', padding: '12px 14px', fontSize: 14, border: '1.5px solid ' + T2.border, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
-                )}
-                <div style={{ marginBottom: 14 }}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Usuario</label>
-                    <input value={usuario} onChange={e => { setUsuario(e.target.value); setError(''); }} placeholder="tu_usuario" autoCapitalize="none" autoCorrect="off" onKeyDown={e => e.key === 'Enter' && (modo === 'login' ? login() : registrar())}
-                        style={{ width: '100%', padding: '12px 14px', fontSize: 14, border: '1.5px solid ' + T2.border, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div style={{ marginBottom: modo === 'registro' ? 14 : 22, position: 'relative' }}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contraseña</label>
-                    <input type={showPass ? 'text' : 'password'} value={pass} onChange={e => { setPass(e.target.value); setError(''); }} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && (modo === 'login' ? login() : registrar())}
-                        style={{ width: '100%', padding: '12px 44px 12px 14px', fontSize: 14, border: '1.5px solid ' + T2.border, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
-                    <button onClick={() => setShowPass(v => !v)} type="button" style={{ position: 'absolute', right: 12, top: 34, background: 'none', border: 'none', cursor: 'pointer', color: T2.muted, padding: 4 }}>
-                        {showPass ? '🙈' : '👁'}
-                    </button>
-                </div>
-                {modo === 'registro' && (
-                    <div style={{ marginBottom: 22 }}>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirmar contraseña</label>
-                        <input type={showPass ? 'text' : 'password'} value={passConfirm} onChange={e => { setPassConfirm(e.target.value); setError(''); }} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && registrar()}
-                            style={{ width: '100%', padding: '12px 14px', fontSize: 14, border: `1.5px solid ${passConfirm && pass !== passConfirm ? '#FECACA' : T2.border}`, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
-                )}
-
-                {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#DC2626', marginBottom: 16, textAlign: 'center', fontWeight: 600 }}>{error}</div>}
-
-                <button onClick={modo === 'login' ? login : registrar} disabled={loading}
-                    style={{ width: '100%', padding: 14, background: loading ? T2.muted : T2.accent, color: '#fff', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
-                    {loading ? 'Procesando...' : modo === 'login' ? 'Ingresar' : 'Crear cuenta'}
-                </button>
-
-                {modo === 'registro' && (
-                    <div style={{ marginTop: 14, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#92400E', textAlign: 'center', lineHeight: 1.5 }}>
-                        ⚠ Al registrarte accedés a <b>BelfastCM</b> por defecto.<br/>
-                        El administrador puede cambiar tu empresa y permisos.
-                    </div>
-                )}
+        {showNew && (<div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {TIPOS.map(t => (<button key={t} onClick={() => setForm(p => ({ ...p, nombre: t }))}
+                    style={{ padding: '6px 10px', borderRadius: 20, border: `1.5px solid ${form.nombre === t ? T.accent : T.border}`, background: form.nombre === t ? T.accentLight : T.card, color: form.nombre === t ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{t}</button>))}
             </div>
-        </div>
-    );
-}
-
-// ── EMPRESAS DISPONIBLES ─────────────────────────────────────────────
-const EMPRESAS = [
-    {
-        id: 'belfast',
-        nombre: 'BelfastCM',
-        subtitulo: 'Construction Management · AA2000',
-        color: '#1D4ED8',
-        bg: '#EFF6FF',
-        icon: (
-            <svg width="48" height="48" viewBox="0 0 278 212" fill="none" stroke="currentColor" strokeWidth="6" strokeLinejoin="miter">
-                <polygon points="8,84 98,84 126,54 36,54" />
-                <path d="M8,84 L8,200 L98,200 L98,174 L52,174 L52,132 L98,132 L98,117 L57,117 L57,88 L98,88 L98,84 Z" />
-                <polygon points="100,54 100,200 190,200 190,54" />
-                <rect x="112" y="66" width="66" height="42" />
-                <polygon points="192,76 192,200 270,200 270,130 246,96 246,76" />
-                <rect x="204" y="136" width="42" height="42" />
-            </svg>
-        )
-    },
-    {
-        id: 'vv',
-        nombre: 'V+V Construcciones',
-        subtitulo: 'Proyectos y obras privadas',
-        color: '#16A34A',
-        bg: '#DCFCE7',
-        icon: (
-            <svg width="48" height="48" viewBox="0 0 278 212" fill="none" stroke="currentColor" strokeWidth="6" strokeLinejoin="miter">
-                <polygon points="8,84 98,84 126,54 36,54" />
-                <path d="M8,84 L8,200 L98,200 L98,174 L52,174 L52,132 L98,132 L98,117 L57,117 L57,88 L98,88 L98,84 Z" />
-                <line x1="98" y1="84" x2="126" y2="54" />
-                <rect x="120" y="6" width="150" height="194" />
-                <rect x="138" y="22" width="114" height="72" />
-                <rect x="179" y="128" width="21" height="72" />
-            </svg>
-        )
-    }
-];
-
-// ── SELECTOR DE EMPRESA ──────────────────────────────────────────────
-function SelectorEmpresa({ session, onSelect, onLogout }) {
-    const T2 = { navy: '#0F172A', accent: '#1D4ED8', bg: '#F8FAFC', text: '#1E293B', muted: '#94A3B8', border: '#E2E8F0', card: '#fff' };
-    const email = session?.user?.email || '';
-
-    const defaultLogos = { belfast: '', vv: '', belfastNombre: '', vvNombre: '', belfastSub: '', vvSub: '' };
-    const [logos, setLogos] = React.useState(() => {
-        try {
-            const saved = localStorage.getItem('bcm_selector_logos');
-            return saved ? JSON.parse(saved) : defaultLogos;
-        } catch { return defaultLogos; }
-    });
-    const [editando, setEditando] = React.useState(false);
-
-    // Cargar logos desde Supabase si localStorage está vacío
-    React.useEffect(() => {
-        if (logos.belfast || logos.vv || logos.belfastNombre) return; // ya tiene datos
-        storage.get('bcm_selector_logos').then(r => {
-            if (r?.value) {
-                const d = JSON.parse(r.value);
-                setLogos(d);
-                try { localStorage.setItem('bcm_selector_logos', r.value); } catch {}
-            }
-        }).catch(() => {});
-    }, []);
-
-    function guardarLogos(nuevos) {
-        setLogos(nuevos);
-        try { localStorage.setItem('bcm_selector_logos', JSON.stringify(nuevos)); } catch {}
-        storage.set('bcm_selector_logos', JSON.stringify(nuevos)).catch(() => {});
-    }
-
-    async function handleLogoUpload(key, file) {
-        const reader = new FileReader();
-        reader.onload = e => guardarLogos({ ...logos, [key]: e.target.result });
-        reader.readAsDataURL(file);
-    }
-
-    const empresasConLogos = EMPRESAS.map(emp => ({
-        ...emp,
-        logoCustom: emp.id === 'belfast' ? logos.belfast : logos.vv,
-        nombre: emp.id === 'belfast' ? (logos.belfastNombre || emp.nombre) : (logos.vvNombre || emp.nombre),
-        subtitulo: emp.id === 'belfast' ? (logos.belfastSub || emp.subtitulo) : (logos.vvSub || emp.subtitulo),
-    }));
-
-    return (
-        <div style={{ minHeight: '100vh', background: T2.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-            <div style={{ width: '100%', maxWidth: 400 }}>
-                {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', marginBottom: 6 }}>Bienvenido</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{email}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)' }}>Seleccioná a qué empresa querés ingresar</div>
-                </div>
-
-                {/* Cards de empresa */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-                    {empresasConLogos.map(emp => (
-                        <button key={emp.id} onClick={() => onSelect(emp.id)}
-                            style={{ background: T2.card, border: `2px solid ${T2.border}`, borderRadius: 18, padding: '20px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 18, textAlign: 'left', transition: 'all .15s', boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = emp.color; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = T2.border; e.currentTarget.style.transform = 'none'; }}>
-                            <div style={{ width: 64, height: 64, borderRadius: 16, background: emp.bg, color: emp.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                                {emp.logoCustom
-                                    ? <img src={emp.logoCustom} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }} />
-                                    : emp.icon}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 17, fontWeight: 800, color: T2.text, marginBottom: 3 }}>{emp.nombre}</div>
-                                <div style={{ fontSize: 12, color: T2.muted }}>{emp.subtitulo}</div>
-                            </div>
-                            <div style={{ color: emp.color, fontSize: 22, fontWeight: 300 }}>→</div>
-                        </button>
-                    ))}
-                </div>
-
-                {/* Botones inferiores */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <button onClick={() => setEditando(v => !v)} style={{ background: 'none', border: '1px solid rgba(255,255,255,.2)', borderRadius: 8, color: 'rgba(255,255,255,.5)', fontSize: 11, cursor: 'pointer', padding: '6px 12px' }}>
-                        ✏️ Personalizar logos
-                    </button>
-                    <button onClick={onLogout} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.4)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
-                        Cerrar sesión
-                    </button>
-                </div>
-
-                {/* Panel de edición de logos */}
-                {editando && (
-                    <div style={{ background: 'rgba(255,255,255,.05)', borderRadius: 16, padding: '20px', marginTop: 16, border: '1px solid rgba(255,255,255,.1)' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 16 }}>Personalizar pantalla de empresas</div>
-                        {EMPRESAS.map(emp => (
-                            <div key={emp.id} style={{ marginBottom: 20 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                                    {emp.nombre}
-                                </div>
-                                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
-                                    <div style={{ width: 52, height: 52, borderRadius: 12, background: emp.bg, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        {(emp.id === 'belfast' ? logos.belfast : logos.vv)
-                                            ? <img src={emp.id === 'belfast' ? logos.belfast : logos.vv} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
-                                            : <div style={{ color: emp.color }}>{emp.icon}</div>}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <input
-                                            type="file" accept="image/*"
-                                            onChange={e => e.target.files[0] && handleLogoUpload(emp.id, e.target.files[0])}
-                                            style={{ display: 'none' }}
-                                            id={`logo-upload-${emp.id}`}
-                                        />
-                                        <label htmlFor={`logo-upload-${emp.id}`} style={{ display: 'block', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#fff', cursor: 'pointer', textAlign: 'center', marginBottom: 6 }}>
-                                            📷 Subir logo
-                                        </label>
-                                        {(emp.id === 'belfast' ? logos.belfast : logos.vv) && (
-                                            <button onClick={() => guardarLogos({ ...logos, [emp.id]: '' })} style={{ width: '100%', background: 'rgba(239,68,68,.2)', border: '1px solid rgba(239,68,68,.4)', borderRadius: 8, padding: '6px', fontSize: 11, color: '#FCA5A5', cursor: 'pointer' }}>
-                                                ✕ Quitar logo
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                                <input
-                                    value={emp.id === 'belfast' ? (logos.belfastNombre || '') : (logos.vvNombre || '')}
-                                    onChange={e => guardarLogos({ ...logos, [emp.id === 'belfast' ? 'belfastNombre' : 'vvNombre']: e.target.value })}
-                                    placeholder={`Nombre (${emp.nombre})`}
-                                    style={{ width: '100%', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#fff', marginBottom: 6, boxSizing: 'border-box' }}
-                                />
-                                <input
-                                    value={emp.id === 'belfast' ? (logos.belfastSub || '') : (logos.vvSub || '')}
-                                    onChange={e => guardarLogos({ ...logos, [emp.id === 'belfast' ? 'belfastSub' : 'vvSub']: e.target.value })}
-                                    placeholder={`Subtítulo (${emp.subtitulo})`}
-                                    style={{ width: '100%', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'rgba(255,255,255,.7)', boxSizing: 'border-box' }}
-                                />
-                            </div>
-                        ))}
-                        <button onClick={() => setEditando(false)} style={{ width: '100%', background: '#1D4ED8', border: 'none', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', marginTop: 4 }}>
-                            ✓ Listo
-                        </button>
-                    </div>
-                )}
+            <TInput value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="O escribí una especialidad..." />
+            <TInput value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="Empresa / Profesional" style={{ marginTop: 8 }} />
+            <TInput value={form.contacto} onChange={e => setForm(p => ({ ...p, contacto: e.target.value }))} placeholder="Teléfono / Contacto" style={{ marginTop: 8 }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button onClick={() => setShowNew(false)} style={{ flex: 1, padding: 10, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={agregar} disabled={!form.nombre.trim()} style={{ flex: 2, padding: 10, background: T.accent, border: 'none', borderRadius: T.rsm, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Guardar</button>
             </div>
-        </div>
-    );
+        </div>)}
+
+        {subs.length === 0 && !showNew && <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted }} style={{display:"flex",alignItems:"center",gap:8}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 12l-8.5 8.5a2.12 2.12 0 01-3-3L12 9"/><path d="M17.64 15L22 10.64"/></svg> Sin subcontratos asignados</div>}
+        {subs.map(s => (
+            <div key={s.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', marginBottom: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: T.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>🔨</div>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{s.nombre}</div>
+                    {s.empresa && <div style={{ fontSize: 12, color: T.sub }}>{s.empresa}</div>}
+                    {s.contacto && <div style={{ fontSize: 11, color: T.muted }}>{s.contacto}</div>}
+                </div>
+                <button onClick={() => eliminar(s.id)} style={{ background: 'none', border: 'none', color: T.muted, fontSize: 16, cursor: 'pointer' }}>✕</button>
+            </div>
+        ))}
+    </div>);
 }
 
-// ── WRAPPER PRINCIPAL ─────────────────────────────────────────────
-export default function App() {
-    const [authUser, setAuthUser] = useState(() => {
-        try { const s = localStorage.getItem('bcm_auth_user'); return s ? JSON.parse(s) : null; } catch { return null; }
-    });
-    const [empresa, setEmpresa] = useState(() => {
-        try { return localStorage.getItem('bcm_auth_empresa') || null; } catch { return null; }
-    });
-    const [cargando, setCargando] = useState(false);
-
-    function handleLogin(user) {
-        // Guardar sesión en localStorage
-        try { localStorage.setItem('bcm_auth_user', JSON.stringify(user)); } catch {}
-        setAuthUser(user);
-        // Si tiene acceso a una sola empresa, entrar directo
-        if (user.empresa !== 'ambas') {
-            try { localStorage.setItem('bcm_auth_empresa', user.empresa); } catch {}
-            setEmpresa(user.empresa);
-        }
-    }
-
-    function handleLogout() {
-        try { localStorage.removeItem('bcm_auth_user'); localStorage.removeItem('bcm_auth_empresa'); } catch {}
-        setAuthUser(null);
-        setEmpresa(null);
-    }
-
-    function handleSelectEmpresa(emp) {
-        try { localStorage.setItem('bcm_auth_empresa', emp); } catch {}
-        setEmpresa(emp);
-    }
-
-    function handleCambiarEmpresa() {
-        if (authUser?.empresa === 'ambas') {
-            try { localStorage.removeItem('bcm_auth_empresa'); } catch {}
-            setEmpresa(null);
-        }
-    }
-
-    if (!authUser) return <LoginScreen onLogin={handleLogin} />;
-
-    if (!empresa) return (
-        <SelectorEmpresa
-            session={{ user: { email: authUser.usuario } }}
-            onSelect={handleSelectEmpresa}
-            onLogout={handleLogout}
-        />
-    );
-
-    return (
-        <AppInterna
-            supaSession={{ user: { id: authUser.id, email: authUser.usuario } }}
-            empresa={empresa}
-            authUser={authUser}
-            onCambiarEmpresa={handleCambiarEmpresa}
-        />
-    );
-}
 function GestionUsuarios({ obras = [] }) {
     const [usuarios, setUsuarios] = React.useState([]);
     const [cargando, setCargando] = React.useState(true);
@@ -8156,12 +7875,22 @@ const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'belfa
 const MAX_USUARIOS = 8;
 
 // Hash simple (no criptográfico pero suficiente para uso interno)
+function hashPass(pass) {
+    let h = 0;
+    for (let i = 0; i < pass.length; i++) { h = Math.imul(31, h) + pass.charCodeAt(i) | 0; }
+    return 'h' + Math.abs(h).toString(36);
+}
+
+async function cargarUsuarios() {
+    try {
+        const r = await storage.get('bcm_usuarios');
+        if (r?.value) return JSON.parse(r.value);
+    } catch {}
+    return [];
+}
 
 async function guardarUsuarios(usuarios) {
     const json = JSON.stringify(usuarios);
     try { localStorage.setItem('bcm_usuarios', json); } catch {}
     await storage.set('bcm_usuarios', json).catch(() => {});
 }
-
-
-
