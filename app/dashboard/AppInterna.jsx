@@ -1702,6 +1702,662 @@ function TabGastos({ detail, upd, apiKey }) {
     </div>);
 }
 
+
+
+
+
+
+function TabRenders({ detail, upd }) {
+    const fileRef = useRef(null);
+    const renders = detail.renders || [];
+
+    async function handleRender(e) {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        const nuevos = await Promise.all(files.map(async f => {
+            const url = await toDataUrl(f, 1200);
+            return { id: uid(), url, nombre: f.name, fecha: new Date().toLocaleDateString('es-AR') };
+        }));
+        const nuevosRenders = [...renders, ...nuevos];
+        upd(detail.id, { renders: nuevosRenders });
+        // Guardar en key separada para que el cliente los cargue fácil
+        const rendersMeta = nuevosRenders.map(r => ({ id: r.id, url: r.url, nombre: r.nombre }));
+        storage.set('bop_renders_' + detail.id, JSON.stringify(rendersMeta)).catch(() => {});
+        try { localStorage.setItem('bop_renders_' + detail.id, JSON.stringify(rendersMeta)); } catch {}
+        e.target.value = '';
+    }
+
+    function eliminar(id) {
+        const nuevosRenders = renders.filter(r => r.id !== id);
+        upd(detail.id, { renders: nuevosRenders });
+        const rendersMeta = nuevosRenders.map(r => ({ id: r.id, url: r.url, nombre: r.nombre }));
+        storage.set('bop_renders_' + detail.id, JSON.stringify(rendersMeta)).catch(() => {});
+        try { localStorage.setItem('bop_renders_' + detail.id, JSON.stringify(rendersMeta)); } catch {}
+    }
+
+    return (<div>
+        <div style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: T.accent }}>
+            Los renders se muestran al cliente en su panel como galería y como fondo de su pantalla principal.
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleRender} style={{ display: 'none' }} />
+        <PBtn full onClick={() => fileRef.current?.click()} style={{ marginBottom: 14 }}>
+            + Subir renders del proyecto
+        </PBtn>
+        {renders.length === 0 && <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted, fontSize: 13 }}>Sin renders cargados</div>}
+        {renders.map(r => (
+            <div key={r.id} style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 10, position: 'relative' }}>
+                <img src={r.url} alt={r.nombre} style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: 200 }} onError={e => e.target.style.display='none'} />
+                <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                    <button onClick={() => eliminar(r.id)} style={{ background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#fff', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                </div>
+                <div style={{ padding: '8px 12px', background: T.card, fontSize: 11, color: T.muted }}>
+                    {r.nombre} · {r.fecha}
+                </div>
+            </div>
+        ))}
+    </div>);
+}
+
+function TabCronograma({ detail, upd }) {
+    const [showNew, setShowNew] = useState(false);
+    const [form, setForm] = useState({ nombre: '', inicio: '', fin: '', estado: 'pendiente' });
+    const etapas = detail.cronograma || [];
+    const ESTADOS_ETAPA = [['pendiente','⏳ Pendiente'],['en_curso','⚡ En curso'],['completado','✓ Completado']];
+
+    function agregar() {
+        if (!form.nombre.trim()) return;
+        upd(detail.id, { cronograma: [...etapas, { id: uid(), ...form }] });
+        setForm({ nombre: '', inicio: '', fin: '', estado: 'pendiente' }); setShowNew(false);
+    }
+    function cambiarEstado(id, estado) { upd(detail.id, { cronograma: etapas.map(e => e.id === id ? { ...e, estado } : e) }); }
+    function eliminar(id) { upd(detail.id, { cronograma: etapas.filter(e => e.id !== id) }); }
+
+    return (<div>
+        {!showNew && <PBtn full onClick={() => setShowNew(true)} style={{ marginBottom: 14 }}>+ Agregar etapa</PBtn>}
+        {showNew && (<div style={{ background: T.bg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+            <TInput value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Instalación eléctrica" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                <div><Lbl>Inicio estimado</Lbl><input type="date" value={form.inicio} onChange={e => setForm(p => ({ ...p, inicio: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: T.rsm, border: `1px solid ${T.border}`, fontSize: 13 }} /></div>
+                <div><Lbl>Fin estimado</Lbl><input type="date" value={form.fin} onChange={e => setForm(p => ({ ...p, fin: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: T.rsm, border: `1px solid ${T.border}`, fontSize: 13 }} /></div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                {ESTADOS_ETAPA.map(([v,l]) => (<button key={v} onClick={() => setForm(p => ({ ...p, estado: v }))} style={{ flex: 1, padding: '8px 4px', borderRadius: T.rsm, border: `1.5px solid ${form.estado === v ? T.accent : T.border}`, background: form.estado === v ? T.accentLight : T.card, color: form.estado === v ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{l}</button>))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button onClick={() => setShowNew(false)} style={{ flex: 1, padding: 10, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                <PBtn onClick={agregar} disabled={!form.nombre.trim()} style={{ flex: 2 }}>Guardar</PBtn>
+            </div>
+        </div>)}
+        {etapas.length === 0 && !showNew && <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted }}>Sin etapas cargadas</div>}
+        {etapas.map((e, i) => (
+            <div key={e.id} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: e.estado === 'completado' ? '#ECFDF5' : e.estado === 'en_curso' ? T.accentLight : T.bg, border: `2px solid ${e.estado === 'completado' ? '#10B981' : e.estado === 'en_curso' ? T.accent : T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: e.estado === 'completado' ? '#10B981' : e.estado === 'en_curso' ? T.accent : T.muted, flexShrink: 0 }}>{e.estado === 'completado' ? '✓' : i+1}</div>
+                    {i < etapas.length - 1 && <div style={{ width: 2, height: 16, background: T.border }} />}
+                </div>
+                <div style={{ flex: 1, background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{e.nombre}</div>
+                        <button onClick={() => eliminar(e.id)} style={{ background: 'none', border: 'none', color: T.muted, fontSize: 14, cursor: 'pointer' }}>✕</button>
+                    </div>
+                    {(e.inicio || e.fin) && <div style={{ fontSize: 10, color: T.muted, margin: '3px 0' }}>{e.inicio} → {e.fin}</div>}
+                    <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                        {ESTADOS_ETAPA.map(([v,l]) => (<button key={v} onClick={() => cambiarEstado(e.id, v)} style={{ padding: '4px 8px', borderRadius: 20, border: `1px solid ${e.estado === v ? T.accent : T.border}`, background: e.estado === v ? T.accentLight : 'transparent', color: e.estado === v ? T.accent : T.muted, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>{l}</button>))}
+                    </div>
+                </div>
+            </div>
+        ))}
+    </div>);
+}
+
+function TabActas({ detail, upd }) {
+    const [showNew, setShowNew] = useState(false);
+    const [form, setForm] = useState({ titulo: '', texto: '', fecha: new Date().toLocaleDateString('es-AR') });
+    const actas = detail.actas || [];
+
+    function agregar() {
+        if (!form.titulo.trim() || !form.texto.trim()) return;
+        upd(detail.id, { actas: [...actas, { id: uid(), ...form }] });
+        setForm({ titulo: '', texto: '', fecha: new Date().toLocaleDateString('es-AR') }); setShowNew(false);
+    }
+    function eliminar(id) { upd(detail.id, { actas: actas.filter(a => a.id !== id) }); }
+
+    return (<div>
+        {!showNew && <PBtn full onClick={() => setShowNew(true)} style={{ marginBottom: 14 }}>+ Nueva acta de reunión</PBtn>}
+        {showNew && (<div style={{ background: T.bg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+            <TInput value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))} placeholder="Título del acta" />
+            <TInput value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))} placeholder="Fecha" style={{ marginTop: 8 }} />
+            <textarea value={form.texto} onChange={e => setForm(p => ({ ...p, texto: e.target.value }))} placeholder="Descripción, acuerdos, pendientes..." rows={5} style={{ width: '100%', marginTop: 8, padding: '11px 14px', borderRadius: T.rsm, border: `1.5px solid ${T.border}`, fontSize: 14, color: T.text, background: T.bg, resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button onClick={() => setShowNew(false)} style={{ flex: 1, padding: 10, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                <PBtn onClick={agregar} disabled={!form.titulo.trim()} style={{ flex: 2 }}>Guardar</PBtn>
+            </div>
+        </div>)}
+        {actas.length === 0 && !showNew && <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted }}>Sin actas cargadas</div>}
+        {actas.slice().reverse().map(a => (
+            <div key={a.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{a.titulo}</div>
+                    <button onClick={() => eliminar(a.id)} style={{ background: 'none', border: 'none', color: T.muted, fontSize: 14, cursor: 'pointer' }}>✕</button>
+                </div>
+                <div style={{ fontSize: 10, color: T.muted, margin: '4px 0 8px' }}>{a.fecha}</div>
+                <div style={{ fontSize: 12, color: T.sub, lineHeight: 1.6, whiteSpace: 'pre-line' }}>{a.texto}</div>
+            </div>
+        ))}
+    </div>);
+}
+
+function TabChecklist({ detail, upd }) {
+    const [nuevo, setNuevo] = useState('');
+    const checklist = detail.checklist || [];
+    const ITEMS_DEFAULT = ['Pintura terminada','Griferías instaladas','Luminarias funcionando','Cerraduras y llaves entregadas','Limpieza final','Documentación entregada'];
+
+    function agregar(titulo) {
+        if (!titulo.trim()) return;
+        upd(detail.id, { checklist: [...checklist, { id: uid(), titulo: titulo.trim(), ok: false }] });
+        setNuevo('');
+    }
+    function toggle(id) { upd(detail.id, { checklist: checklist.map(c => c.id === id ? { ...c, ok: !c.ok } : c) }); }
+    function eliminar(id) { upd(detail.id, { checklist: checklist.filter(c => c.id !== id) }); }
+
+    const completados = checklist.filter(c => c.ok).length;
+
+    return (<div>
+        {checklist.length > 0 && <div style={{ background: T.accentLight, borderRadius: 10, padding: '10px 14px', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.accent }}>Progreso de entrega</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: T.accent }}>{completados}/{checklist.length}</div>
+        </div>}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <TInput value={nuevo} onChange={e => setNuevo(e.target.value)} placeholder="Nuevo item..." />
+            <PBtn onClick={() => agregar(nuevo)} disabled={!nuevo.trim()} style={{ padding: '11px 16px', flexShrink: 0 }}>+</PBtn>
+        </div>
+        {checklist.length === 0 && (<div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>Items sugeridos:</div>
+            {ITEMS_DEFAULT.map(item => (<button key={item} onClick={() => agregar(item)} style={{ display: 'block', width: '100%', textAlign: 'left', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 6, fontSize: 13, color: T.text, cursor: 'pointer' }}>+ {item}</button>))}
+        </div>)}
+        {checklist.map(item => (
+            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.card, border: `1px solid ${item.ok ? '#86EFAC' : T.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                <button onClick={() => toggle(item.id)} style={{ width: 24, height: 24, borderRadius: 6, border: `2px solid ${item.ok ? '#10B981' : T.border}`, background: item.ok ? '#ECFDF5' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 14, color: '#10B981' }}>{item.ok ? '✓' : ''}</button>
+                <div style={{ flex: 1, fontSize: 13, color: T.text, textDecoration: item.ok ? 'line-through' : 'none', opacity: item.ok ? 0.5 : 1 }}>{item.titulo}</div>
+                <button onClick={() => eliminar(item.id)} style={{ background: 'none', border: 'none', color: T.muted, fontSize: 14, cursor: 'pointer' }}>✕</button>
+            </div>
+        ))}
+    </div>);
+}
+
+function MsgArchivo({ m, colorBg, colorText, align }) {
+    const [dataUrl, setDataUrl] = React.useState(m.archivo || null);
+    const [cargando, setCargando] = React.useState(!m.archivo && !!m.archivoKey);
+
+    React.useEffect(() => {
+        if (dataUrl || !m.archivoKey) return;
+        const local = localStorage.getItem(m.archivoKey);
+        if (local) { setDataUrl(local); setCargando(false); return; }
+        storage.get(m.archivoKey).then(r => {
+            if (r?.value) {
+                try { localStorage.setItem(m.archivoKey, r.value); } catch {}
+                setDataUrl(r.value);
+            }
+            setCargando(false);
+        }).catch(() => setCargando(false));
+    }, [m.archivoKey]);
+
+    function abrir() {
+        if (!dataUrl) return;
+        try {
+            // Convertir data URL a blob y abrir — funciona en iOS Safari
+            const arr = dataUrl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8 = new Uint8Array(n);
+            while (n--) u8[n] = bstr.charCodeAt(n);
+            const blob = new Blob([u8], { type: mime });
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
+        } catch {
+            window.open(dataUrl, '_blank');
+        }
+    }
+
+    if (!m.archivo && !m.archivoKey) return null;
+    return (
+        <div onClick={abrir} style={{ background: colorBg, color: colorText, borderRadius: align === 'right' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', padding: '10px 14px', fontSize: 13, border: `1px solid rgba(0,0,0,.1)`, display:'flex', alignItems:'center', gap:8, cursor: dataUrl ? 'pointer' : 'default', opacity: cargando ? 0.6 : 1 }}>
+            <span style={{ fontSize: 24 }}>{cargando ? '⏳' : '📎'}</span>
+            <div>
+                <div style={{ fontWeight:700, fontSize:12 }}>{m.archivoNombre||m.texto}</div>
+                <div style={{ fontSize:10, opacity:.7 }}>{cargando ? 'Cargando...' : 'Tocar para abrir · ' + (m.archivoExt||'')}</div>
+            </div>
+        </div>
+    );
+}
+
+function TabMensajesCliente({ detail, upd }) {
+    const [texto, setTexto] = useState('');
+    const [msgs, setMsgs] = useState(detail.mensajes_cliente || []);
+    const scrollRef = useRef(null);
+    const fotoRef = useRef(null);
+    const archRef = useRef(null);
+
+    useEffect(() => {
+        async function cargar() {
+            for (const prefix of ['bop_', 'bcm_']) {
+                try {
+                    const r = await storage.get(prefix + 'obras');
+                    if (r?.value) {
+                        const obras = JSON.parse(r.value);
+                        const obra = obras.find(o => o.id === detail.id);
+                        if (obra?.mensajes_cliente?.length) { setMsgs(obra.mensajes_cliente); return; }
+                    }
+                } catch {}
+            }
+        }
+        cargar();
+        const iv = setInterval(cargar, 5000);
+        return () => clearInterval(iv);
+    }, [detail.id]);
+
+    useEffect(() => {
+        setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50);
+    }, [msgs]);
+
+    function guardar(nuevos) {
+        setMsgs(nuevos);
+        upd(detail.id, { mensajes_cliente: nuevos });
+    }
+
+    function enviar() {
+        if (!texto.trim()) return;
+        const nuevo = { id: uid(), de: 'Belfast', texto: texto.trim(), fecha: new Date().toLocaleDateString('es-AR'), esCliente: false };
+        guardar([...msgs, nuevo]);
+        setTexto('');
+        notificarMensaje('Belfast CM', 'Nuevo mensaje en tu proyecto: ' + texto.trim().slice(0, 60), 'cliente_' + detail.id).catch(() => {});
+    }
+
+    async function enviarArchivo(e) {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        let current = [...msgs];
+        for (const f of files) {
+            const isImg = f.type.startsWith('image/');
+            const dataUrl = await toDataUrl(f, isImg ? 800 : null);
+            const msgId = uid();
+            if (!isImg) {
+                // Guardar archivo en key separada para no inflar el JSON de obras
+                await storage.set('bop_msgarch_' + msgId, dataUrl).catch(() => {});
+                try { localStorage.setItem('bop_msgarch_' + msgId, dataUrl); } catch {}
+            }
+            current = [...current, {
+                id: msgId, de: 'Belfast',
+                texto: isImg ? '📷 ' + f.name : '📎 ' + f.name,
+                imagen: isImg ? dataUrl : null,
+                archivo: !isImg ? null : null, // no inline, usar archivoKey
+                archivoKey: !isImg ? 'bop_msgarch_' + msgId : null,
+                archivoNombre: f.name,
+                archivoExt: f.name.split('.').pop().toUpperCase(),
+                fecha: new Date().toLocaleDateString('es-AR'),
+                esCliente: false
+            }];
+        }
+        guardar(current);
+        e.target.value = '';
+    }
+
+    return (<div style={{ display: 'flex', flexDirection: 'column' }}>
+        <input ref={fotoRef} type="file" accept="image/*" multiple onChange={enviarArchivo} style={{ display: 'none' }} />
+        <input ref={archRef} type="file" multiple onChange={enviarArchivo} style={{ display: 'none' }} />
+        <div style={{ fontSize: 12, color: T.muted, marginBottom: 10 }}>Chat con el cliente — se actualiza cada 5s</div>
+        <div ref={scrollRef} style={{ maxHeight: 380, overflowY: 'auto', marginBottom: 12 }}>
+            {msgs.length === 0 && <div style={{ textAlign: 'center', padding: '30px 0', color: T.muted, fontSize: 13 }}>Sin mensajes aún</div>}
+            {msgs.map(m => (
+                <div key={m.id} style={{ display: 'flex', justifyContent: m.esCliente ? 'flex-start' : 'flex-end', marginBottom: 10, alignItems: 'flex-end', gap: 6 }}>
+                    <div style={{ maxWidth: '78%' }}>
+                        <div style={{ fontSize: 10, color: T.muted, marginBottom: 3, textAlign: m.esCliente ? 'left' : 'right' }}>{m.esCliente ? m.de : 'Belfast'}</div>
+                        {m.imagen ? (
+                            <img src={m.imagen} onClick={() => window.open(m.imagen)} style={{ width: '100%', borderRadius: 12, display: 'block', cursor: 'pointer' }} />
+                        ) : (m.archivo || m.archivoKey) ? (
+                            <MsgArchivo m={m} colorBg={m.esCliente ? T.bg : T.accentLight} colorText={T.text} align={m.esCliente ? 'left' : 'right'} />
+                        ) : (
+                            <div style={{ background: m.esCliente ? T.bg : T.accentLight, color: T.text, borderRadius: m.esCliente ? '16px 16px 16px 4px' : '16px 16px 4px 16px', padding: '10px 14px', fontSize: 13, lineHeight: 1.5, border: `1px solid ${T.border}` }}>{m.texto}</div>
+                        )}
+                        <div style={{ fontSize: 10, color: T.muted, marginTop: 3, textAlign: m.esCliente ? 'left' : 'right' }}>{m.fecha}</div>
+                    </div>
+                    {!m.esCliente && (
+                        <button onClick={() => guardar(msgs.filter(x => x.id !== m.id))}
+                            style={{ background: 'none', border: 'none', color: T.muted, fontSize: 14, cursor: 'pointer', padding: '4px', opacity: 0.5, flexShrink: 0 }}>✕</button>
+                    )}
+                </div>
+            ))}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+            <button onClick={() => fotoRef.current?.click()} style={{ width: 36, height: 36, background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.muted, flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+            <button onClick={() => archRef.current?.click()} style={{ width: 36, height: 36, background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.muted, flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder="Responder al cliente..." rows={2}
+                style={{ flex: 1, padding: '10px 14px', borderRadius: T.rsm, border: `1.5px solid ${T.border}`, fontSize: 14, color: T.text, background: T.bg, resize: 'none', fontFamily: 'inherit' }} />
+            <PBtn onClick={enviar} disabled={!texto.trim()} style={{ padding: '11px 16px', flexShrink: 0 }}>➤</PBtn>
+        </div>
+    </div>);
+}
+
+function TabFaltantes({ detail, upd }) {
+    const [tipo, setTipo] = useState('doc'); // 'doc' | 'def'
+    const [nuevo, setNuevo] = useState('');
+    const [nota, setNota] = useState('');
+    const faltantesDoc = detail.faltantes_doc || [];
+    const faltantesDef = detail.faltantes_def || [];
+
+    function agregar() {
+        if (!nuevo.trim()) return;
+        const item = { id: uid(), titulo: nuevo.trim(), nota: nota.trim(), fecha: new Date().toLocaleDateString('es-AR') };
+        if (tipo === 'doc') upd(detail.id, { faltantes_doc: [...faltantesDoc, item] });
+        else upd(detail.id, { faltantes_def: [...faltantesDef, item] });
+        setNuevo(''); setNota('');
+    }
+    function eliminar(id, t) {
+        if (t === 'doc') upd(detail.id, { faltantes_doc: faltantesDoc.filter(f => f.id !== id) });
+        else upd(detail.id, { faltantes_def: faltantesDef.filter(f => f.id !== id) });
+    }
+
+    const lista = tipo === 'doc' ? faltantesDoc : faltantesDef;
+    const color = tipo === 'doc' ? '#B91C1C' : '#92400E';
+    const bg = tipo === 'doc' ? '#FEF2F2' : '#FFFBEB';
+    const border = tipo === 'doc' ? '#FECACA' : '#FDE68A';
+
+    return (<div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            {[['doc', '📄 Documentación'], ['def', '❓ Definiciones']].map(([id, lbl]) => (
+                <button key={id} onClick={() => setTipo(id)} style={{ flex: 1, padding: '9px', borderRadius: T.rsm, border: `1.5px solid ${tipo === id ? T.accent : T.border}`, background: tipo === id ? T.accentLight : T.card, color: tipo === id ? T.accent : T.sub, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{lbl}</button>
+            ))}
+        </div>
+        <TInput value={nuevo} onChange={e => setNuevo(e.target.value)} placeholder={tipo === 'doc' ? 'Ej: Plano de instalación eléctrica' : 'Ej: Color de pintura living'} />
+        <TInput value={nota} onChange={e => setNota(e.target.value)} placeholder="Nota adicional (opcional)" style={{ marginTop: 8 }} />
+        <PBtn full onClick={agregar} disabled={!nuevo.trim()} style={{ marginTop: 8, marginBottom: 16 }}>+ Agregar faltante</PBtn>
+        {lista.length === 0 && <div style={{ textAlign: 'center', padding: '30px 0', color: '#10B981', fontWeight: 700, fontSize: 13 }}>✅ Sin faltantes</div>}
+        {lista.map(f => (
+            <div key={f.id} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 8, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color }}>{f.titulo}</div>
+                    {f.nota && <div style={{ fontSize: 11, color, opacity: 0.8, marginTop: 3 }}>{f.nota}</div>}
+                    <div style={{ fontSize: 10, color: T.muted, marginTop: 4 }}>{f.fecha}</div>
+                </div>
+                <button onClick={() => eliminar(f.id, tipo)} style={{ background: 'none', border: 'none', color: T.muted, fontSize: 16, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+            </div>
+        ))}
+    </div>);
+}
+
+function TabSubcontratos({ detail, upd }) {
+    const [showNew, setShowNew] = useState(false);
+    const [form, setForm] = useState({ nombre: '', empresa: '', contacto: '', estado: 'activo' });
+    const subcontratos = detail.subcontratos || [];
+    const TIPOS = ['Interiorismo', 'Carpintería', 'Paisajismo', 'Electricidad', 'Plomería', 'Pintura', 'Vidriería', 'Herrería', 'Yesería', 'Climatización', 'Seguridad', 'Domótica'];
+
+    function agregar() {
+        if (!form.nombre.trim()) return;
+        upd(detail.id, { subcontratos: [...subcontratos, { id: uid(), ...form }] });
+        setForm({ nombre: '', empresa: '', contacto: '', estado: 'activo' }); setShowNew(false);
+    }
+    function eliminar(id) { upd(detail.id, { subcontratos: subcontratos.filter(s => s.id !== id) }); }
+
+    return (<div>
+        {!showNew && <PBtn full onClick={() => setShowNew(true)} style={{ marginBottom: 14 }}>+ Agregar subcontrato</PBtn>}
+        {showNew && (<div style={{ background: T.bg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+            <Lbl>Especialidad</Lbl>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {TIPOS.map(t => (<button key={t} onClick={() => setForm(p => ({ ...p, nombre: t }))} style={{ padding: '6px 10px', borderRadius: 20, border: `1.5px solid ${form.nombre === t ? T.accent : T.border}`, background: form.nombre === t ? T.accentLight : T.card, color: form.nombre === t ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{t}</button>))}
+            </div>
+            <TInput value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="O escribí una especialidad..." />
+            <TInput value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="Empresa / Profesional" style={{ marginTop: 8 }} />
+            <TInput value={form.contacto} onChange={e => setForm(p => ({ ...p, contacto: e.target.value }))} placeholder="Contacto / Teléfono" style={{ marginTop: 8 }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                {[['activo', '✅ Activo'], ['pendiente', '⏳ Pendiente'], ['finalizado', '✓ Finalizado']].map(([v, l]) => (
+                    <button key={v} onClick={() => setForm(p => ({ ...p, estado: v }))} style={{ flex: 1, padding: '8px', borderRadius: T.rsm, border: `1.5px solid ${form.estado === v ? T.accent : T.border}`, background: form.estado === v ? T.accentLight : T.card, color: form.estado === v ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{l}</button>
+                ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button onClick={() => setShowNew(false)} style={{ flex: 1, padding: 10, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                <PBtn onClick={agregar} disabled={!form.nombre.trim()} style={{ flex: 2 }}>Guardar</PBtn>
+            </div>
+        </div>)}
+        {subcontratos.length === 0 && !showNew && <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted, fontSize: 13 }} style={{display:"flex",alignItems:"center",gap:8}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 12l-8.5 8.5a2.12 2.12 0 01-3-3L12 9"/><path d="M17.64 15L22 10.64"/></svg> Sin subcontratos asignados</div>}
+        {subcontratos.map(s => (
+            <div key={s.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', marginBottom: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: T.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>🔨</div>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{s.nombre}</div>
+                    {s.empresa && <div style={{ fontSize: 12, color: T.sub }}>{s.empresa}</div>}
+                    {s.contacto && <div style={{ fontSize: 11, color: T.muted }}>{s.contacto}</div>}
+                    <div style={{ fontSize: 10, background: s.estado === 'activo' ? '#ECFDF5' : s.estado === 'finalizado' ? '#F0FDF4' : '#FFFBEB', color: s.estado === 'activo' ? '#10B981' : s.estado === 'finalizado' ? '#16A34A' : '#92400E', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginTop: 4, fontWeight: 700 }}>{s.estado}</div>
+                </div>
+                <button onClick={() => eliminar(s.id)} style={{ background: 'none', border: 'none', color: T.muted, fontSize: 16, cursor: 'pointer' }}>✕</button>
+            </div>
+        ))}
+    </div>);
+}
+
+function TabGastosBOP({ detail, upd, apiKey }) {
+    const [form, setForm] = useState({ desc: '', tipo: 'general', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
+    const compRef = useRef(null);
+    const ticketRef = useRef(null);
+    const gastos = detail.gastos || [];
+
+    const total = gastos.reduce((s, g) => s + parseMontoNum(g.monto), 0);
+    const porTipo = TIPOS_GASTO.map(t => ({ ...t, total: gastos.filter(g => g.tipo === t.id).reduce((s, g) => s + parseMontoNum(g.monto), 0) })).filter(t => t.total > 0);
+
+    async function handleComp(e) {
+        const f = e.target.files?.[0]; if (!f) return;
+        const url = await toDataUrl(f);
+        setForm(p => ({ ...p, comprobante: { url, nombre: f.name, ext: f.name.split('.').pop().toUpperCase() } }));
+        e.target.value = '';
+    }
+
+    // Escanear ticket con IA
+    async function escanearTicket(e) {
+        const f = e.target.files?.[0]; if (!f) return;
+        const url = await toDataUrl(f);
+        e.target.value = '';
+        setEscaneando(true);
+        try {
+            const headers = { "Content-Type": "application/json", "anthropic-dangerous-direct-browser-access": "true", "anthropic-version": "2023-06-01" };
+            if (apiKey) headers["x-api-key"] = apiKey;
+            const body = {
+                model: "claude-sonnet-4-20250514", max_tokens: 500,
+                messages: [{ role: 'user', content: [
+                    { type: 'image', source: { type: 'base64', media_type: getMediaType(url), data: getBase64(url) } },
+                    { type: 'text', text: 'Analizá este ticket o factura. Extraé SOLO estos datos en JSON sin markdown:\n{"desc":"descripción corta del gasto","monto":"número sin símbolos","tipo":"general|viatico|compra|pago|personal|combustible|subcontrato|herramienta|otro","fecha":"dd/mm/aaaa","quien":"nombre del proveedor o persona si aparece"}\nSi no encontrás un campo, dejalo vacío. Respondé SOLO con el JSON.' }
+                ]}],
+            };
+            const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: JSON.stringify(body) });
+            if (r.ok) {
+                const d = await r.json();
+                const txt = d.content?.[0]?.text || '{}';
+                const datos = JSON.parse(txt.replace(/```json|```/g,'').trim());
+                setForm(p => ({
+                    ...p,
+                    desc: datos.desc || p.desc,
+                    monto: datos.monto || p.monto,
+                    tipo: datos.tipo || p.tipo,
+                    fecha: datos.fecha || p.fecha,
+                    quien: datos.quien || p.quien,
+                    comprobante: { url, nombre: f.name, ext: f.name.split('.').pop().toUpperCase() }
+                }));
+                setShowNew(true);
+            }
+        } catch(e) { alert('Error escaneando ticket: ' + e.message); }
+        setEscaneando(false);
+    }
+
+    function agregar() {
+        if (!form.desc.trim() || !form.monto) return;
+        const nuevo = { id: uid(), ...form };
+        upd(detail.id, { gastos: [...gastos, nuevo] });
+        setForm({ desc: '', tipo: 'general', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
+        setShowNew(false);
+    }
+
+    const [editandoId, setEditandoId] = useState(null);
+
+    function eliminar(id) { upd(detail.id, { gastos: gastos.filter(g => g.id !== id) }); }
+
+    function editarGasto(g) {
+        setForm({ desc: g.desc, tipo: g.tipo, monto: g.monto, fecha: g.fecha, quien: g.quien || '', comprobante: g.comprobante || null });
+        setEditandoId(g.id);
+        setShowNew(true);
+    }
+
+    function guardar() {
+        if (!form.desc.trim() || !form.monto) return;
+        if (editandoId) {
+            upd(detail.id, { gastos: gastos.map(g => g.id === editandoId ? { ...g, ...form } : g) });
+            setEditandoId(null);
+        } else {
+            upd(detail.id, { gastos: [...gastos, { id: uid(), ...form }] });
+        }
+        setForm({ desc: '', tipo: 'viatico', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null });
+        setShowNew(false);
+    }
+
+    // Exportar a Excel (CSV descargable)
+    function exportarExcel() {
+        const filas = [
+            ['Obra', 'Descripción', 'Categoría', 'Monto ($)', 'Fecha', 'Proveedor/Quien', 'Comprobante'],
+            ...gastos.map(g => [
+                detail.nombre,
+                g.desc,
+                TIPOS_GASTO.find(t => t.id === g.tipo)?.label || g.tipo,
+                parseMontoNum(g.monto).toString(),
+                g.fecha,
+                g.quien || '',
+                g.comprobante?.nombre || ''
+            ]),
+            ['', '', 'TOTAL', total.toString(), '', '', '']
+        ];
+        const csv = filas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Gastos_${detail.nombre}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.csv`;
+        a.click();
+    }
+
+    return (<div>
+        {/* Resumen */}
+        <div style={{ background: T.navy, borderRadius: T.rsm, padding: "14px 16px", marginBottom: 14, color: "#fff" }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Total gastos — {detail.nombre}</div>
+            <div style={{ fontSize: 26, fontWeight: 800 }}>${total.toLocaleString('es-AR')}</div>
+            {porTipo.length > 0 && <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                {porTipo.map(t => (
+                    <div key={t.id} style={{ background: "rgba(255,255,255,.1)", borderRadius: 8, padding: "4px 10px" }}>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,.6)" }}>{t.label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>${t.total.toLocaleString('es-AR')}</div>
+                    </div>
+                ))}
+            </div>}
+        </div>
+
+        {/* Botones de acción */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+            <input type="file" accept="image/*" ref={ticketRef} style={{ display: 'none' }} onChange={escanearTicket} />
+            <button onClick={() => ticketRef.current?.click()} disabled={escaneando} style={{ background: escaneando ? '#94A3B8' : '#F59E0B', border: "none", borderRadius: T.rsm, padding: "12px 8px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: escaneando ? 'not-allowed' : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                {escaneando ? '⏳ Escaneando...' : '📷 Escanear ticket'}
+            </button>
+            <button onClick={() => setShowNew(true)} style={{ background: T.accent, border: "none", borderRadius: T.rsm, padding: "12px 8px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                ✏️ Cargar manual
+            </button>
+        </div>
+
+        {/* Exportar Excel */}
+        {gastos.length > 0 && (
+            <button onClick={exportarExcel} style={{ width: '100%', background: '#ECFDF5', border: '1.5px solid #86EFAC', borderRadius: T.rsm, padding: "10px", fontSize: 12, fontWeight: 700, color: '#15803D', cursor: "pointer", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                📊 Exportar planilla Excel ({gastos.length} gastos · ${total.toLocaleString('es-AR')})
+            </button>
+        )}
+
+        {gastos.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "30px 0", color: T.muted, fontSize: 13 }}>Sin gastos registrados<br/><span style={{fontSize:11}}>Escaneá un ticket o cargá manualmente</span></div>
+        ) : (
+            [...gastos].reverse().map(g => {
+                const tipo = TIPOS_GASTO.find(t => t.id === g.tipo) || TIPOS_GASTO[8];
+                return (<div key={g.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: T.rsm, padding: "12px 14px", marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+                                <span style={{ background: tipo.bg, color: tipo.color, borderRadius: 20, padding: "2px 9px", fontSize: 10, fontWeight: 700, border: `1px solid ${tipo.color}22` }}>{tipo.label}</span>
+                                <span style={{ fontSize: 11, color: T.muted }}>{g.fecha}</span>
+                            </div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{g.desc}</div>
+                            {g.quien && <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>👤 {g.quien}</div>}
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 10 }}>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: T.accent }}>${parseMontoNum(g.monto).toLocaleString('es-AR')}</div>
+                        </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        {g.comprobante && (
+                            g.comprobante.ext?.match(/^(JPG|JPEG|PNG|WEBP|HEIC)$/i) ? (
+                                <div style={{ flex: 1, borderRadius: 8, overflow: 'hidden', maxHeight: 120 }}>
+                                    <img src={g.comprobante.url} alt="ticket" style={{ width: '100%', objectFit: 'cover', borderRadius: 8 }} />
+                                </div>
+                            ) : (
+                                <a href={g.comprobante.url} download={g.comprobante.nombre} style={{ textDecoration: "none", flex: 1 }}>
+                                    <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                                        <div style={{ width: 24, height: 24, borderRadius: 5, background: T.accentLight, color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800 }}>{g.comprobante.ext}</div>
+                                        <span style={{ fontSize: 11, color: T.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.comprobante.nombre}</span>
+                                        <span style={{ fontSize: 10, color: T.accent, fontWeight: 600, marginLeft: "auto" }}>↓</span>
+                                    </div>
+                                </a>
+                            )
+                        )}
+                        <button onClick={() => editarGasto(g)} style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, color: T.accent, cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>✏️</button>
+                        <button onClick={() => eliminar(g.id)} style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "6px 10px", fontSize: 11, color: "#EF4444", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>✕</button>
+                    </div>
+                </div>);
+            })
+        )}
+
+        {showNew && (<Sheet title={editandoId ? "Editar gasto" : "Cargar gasto"} onClose={() => { setShowNew(false); setEditandoId(null); setForm({ desc: '', tipo: 'viatico', monto: '', fecha: new Date().toLocaleDateString('es-AR'), quien: '', comprobante: null }); }}>
+            <Field label="Descripción">
+                <TInput value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} placeholder="Ej: Estacionamiento, cemento, etc." />
+            </Field>
+            <Lbl>Categoría</Lbl>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 12 }}>
+                {TIPOS_GASTO.map(t => (
+                    <button key={t.id} onClick={() => setForm(p => ({ ...p, tipo: t.id }))} style={{ padding: "8px 4px", borderRadius: T.rsm, border: `1.5px solid ${form.tipo === t.id ? t.color : T.border}`, background: form.tipo === t.id ? t.bg : T.card, color: t.color, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>{t.label}</button>
+                ))}
+            </div>
+            <FieldRow>
+                <Field label="Monto ($)">
+                    <MontoInput value={form.monto} onChange={v => setForm(p => ({ ...p, monto: v }))} placeholder="0 $" />
+                </Field>
+                <Field label="Fecha">
+                    <TInput value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))} placeholder="dd/mm/aa" />
+                </Field>
+            </FieldRow>
+            <Field label="Quién realizó el gasto (opcional)">
+                <TInput value={form.quien} onChange={e => setForm(p => ({ ...p, quien: e.target.value }))} placeholder="Nombre del trabajador" />
+            </Field>
+            <Field label="Comprobante (foto o PDF)">
+                <input ref={compRef} type="file" accept="image/*,.pdf" onChange={handleComp} style={{ display: "none" }} />
+                {form.comprobante ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#ECFDF5", border: "1px solid #86EFAC", borderRadius: T.rsm, padding: "10px 12px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#15803D", flex: 1 }}>✓ {form.comprobante.nombre}</div>
+                        <button onClick={() => setForm(p => ({ ...p, comprobante: null }))} style={{ background: "none", border: "none", color: "#EF4444", cursor: "pointer", fontSize: 14 }}>✕</button>
+                    </div>
+                ) : (
+                    <button onClick={() => compRef.current?.click()} style={{ width: "100%", background: T.bg, border: `1.5px dashed ${T.border}`, borderRadius: T.rsm, padding: "11px", fontSize: 12, fontWeight: 600, color: T.sub, cursor: "pointer" }}>
+                        📎 Adjuntar comprobante
+                    </button>
+                )}
+            </Field>
+            <PBtn full onClick={guardar} disabled={!form.desc.trim() || !form.monto}>{editandoId ? 'Guardar cambios' : 'Guardar gasto'}</PBtn>
+        </Sheet>)}
+    </div>);
+}
+
 function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg, apiKey }) {
     const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
     const UBICS = getUbics(cfg);
@@ -1816,9 +2472,32 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                     <input type="range" min="0" max="100" value={detail.avance} onChange={e => upd(detail.id, { avance: parseInt(e.target.value) })} style={{ width: "100%", accentColor: "var(--accent,#1D4ED8)", marginTop: 10 }} />
                 </div>
                 <div style={{ background: T.card, borderBottom: `1px solid ${T.border}`, display: "flex", overflowX: "auto" }}>
-                    {[[`info`, t(cfg, 'obras_info')], [`obs`, t(cfg, 'obras_notas')], [`fotos`, t(cfg, 'obras_fotos')], [`archivos`, t(cfg, 'obras_archivos')], [`informes`, 'Informes'], [`gastos`, 'Gastos']].map(([id, label]) => (
-                        <button key={id} onClick={() => setTab(id)} style={{ flex: 1, minWidth: 52, padding: "10px 4px", background: "none", border: "none", fontSize: 11, fontWeight: tab === id ? 700 : 500, color: tab === id ? T.accent : T.muted, borderBottom: `2px solid ${tab === id ? "var(--accent,#1D4ED8)" : "transparent"}`, whiteSpace: "nowrap" }}>{label}</button>
-                    ))}
+                    {(() => {
+                    const SECCIONES = [
+                        ['info', t(cfg,'obras_info')], ['obs', t(cfg,'obras_notas')],
+                        ['fotos', t(cfg,'obras_fotos')], ['archivos', t(cfg,'obras_archivos')],
+                        ['renders', 'Renders'], ['informes', 'Informes'], ['gastos', 'Gastos'],
+                        ['cronograma', 'Cronograma'], ['subcontratos', 'Subcontratos'],
+                        ['actas', 'Actas'], ['checklist', 'Checklist'],
+                        ['faltantes', 'Faltantes'], ['mensajes_c', '💬 Cliente'],
+                    ];
+                    const msgsNoLeidos = (() => {
+                        const msgs = detail?.mensajes_cliente || [];
+                        const key = 'bcm_last_emp_msg_seen_' + detail.id;
+                        const seen = parseInt(localStorage.getItem(key) || '0');
+                        return Math.max(0, msgs.filter(m=>m.esCliente).length - seen);
+                    })();
+                    if (tab === 'mensajes_c') {
+                        const key = 'bcm_last_emp_msg_seen_' + detail.id;
+                        localStorage.setItem(key, (detail?.mensajes_cliente||[]).filter(m=>m.esCliente).length.toString());
+                    }
+                    return SECCIONES.map(([id, label]) => (
+                        <button key={id} onClick={() => setTab(id)} style={{ flex:'0 0 auto', padding: "10px 10px", background: "none", border: "none", fontSize: 11, fontWeight: tab === id ? 700 : 500, color: tab === id ? T.accent : T.muted, borderBottom: `2px solid ${tab === id ? T.accent : "transparent"}`, whiteSpace: "nowrap", position:'relative' }}>
+                            {label}
+                            {id==='mensajes_c' && msgsNoLeidos > 0 && <span style={{ position:'absolute', top:4, right:2, background:'#EF4444', color:'#fff', borderRadius:'50%', width:14, height:14, fontSize:8, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{msgsNoLeidos}</span>}
+                        </button>
+                    ));
+                })()}
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", padding: "14px 18px", paddingBottom: 80 }}>
                     {tab === "info" && (<div>
@@ -1911,6 +2590,13 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                     </div>)}
                     {tab === "informes" && <TabInformes detail={detail} upd={upd} />}
                     {tab === "gastos" && <TabGastos detail={detail} upd={upd} apiKey={apiKey} />}
+                    {tab === "renders" && <TabRenders detail={detail} upd={upd} />}
+                    {tab === "cronograma" && <TabCronograma detail={detail} upd={upd} />}
+                    {tab === "subcontratos" && <TabSubcontratos detail={detail} upd={upd} />}
+                    {tab === "actas" && <TabActas detail={detail} upd={upd} />}
+                    {tab === "checklist" && <TabChecklist detail={detail} upd={upd} />}
+                    {tab === "faltantes" && <TabFaltantes detail={detail} upd={upd} />}
+                    {tab === "mensajes_c" && <TabMensajesCliente detail={detail} upd={upd} />}
                 </div>
             </div>
         );
@@ -6434,8 +7120,7 @@ export default AppInterna;
 // ── GESTIÓN DE USUARIOS (solo super admin) ───────────────────────────
 // ── VISTA CLIENTE ─────────────────────────────────────────────────────
 
-
-function MsgArchivo({ m, colorBg, colorText, align }) {
+function MsgArchivoBOP({ m, colorBg, colorText, align }) {
     const [dataUrl, setDataUrl] = React.useState(m.archivo || null);
     const [cargando, setCargando] = React.useState(!m.archivo && !!m.archivoKey);
 
