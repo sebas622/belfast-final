@@ -6380,7 +6380,6 @@ function MsgArchivo({ m, colorBg, colorText, align }) {
     );
 }
 
-
 function UbicacionesEditor({ cfg, updCfg, T }) {
     const init = cfg.ubicaciones?.length ? cfg.ubicaciones : DEFAULT_UBICACIONES;
     const [ubics, setUbics] = useState(init);
@@ -6470,7 +6469,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                         // Restaurar fotos desde localStorage
                         const obrasConFotos = obrasData.map(o => ({
                             ...o,
-                            fotos: (() => { try { return JSON.parse(localStorage.getItem('bop_fotos_'+o.id) || '[]'); } catch { return []; } })(),
+                            fotos: (() => { try { return JSON.parse(localStorage.getItem('bcm_fotos_'+o.id) || '[]'); } catch { return []; } })(),
                         }));
                         setObrasSupabase(obrasConFotos);
                     }
@@ -6572,7 +6571,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                 }
             } catch {}
             // 2. Buscar dentro de bop_obras
-            for (const prefix of ['bcm_','bcm_']) {
+            for (const prefix of ['bop_','bcm_']) {
                 try {
                     const r = await storage.get(prefix+'obras');
                     if (cancelado) return;
@@ -6599,7 +6598,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
         }
 
         async function cargarFotos() {
-            for (const prefix of ['bcm_','bcm_']) {
+            for (const prefix of ['bop_','bcm_']) {
                 try {
                     const r = await storage.get(prefix+'fotos_'+obraCliente.id);
                     if (r?.value) {
@@ -6745,7 +6744,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                             Cerrar sesión
                         </button>
                         <button onClick={() => {
-                            Object.keys(localStorage).filter(k => k.startsWith('bcm_') || k.startsWith('fotodata_')).forEach(k => localStorage.removeItem(k));
+                            Object.keys(localStorage).filter(k => k.startsWith('bop_') || k.startsWith('fotodata_')).forEach(k => localStorage.removeItem(k));
                             if ('serviceWorker' in navigator) {
                                 navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))).then(() => caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))).then(() => window.location.reload(true));
                             } else { window.location.reload(true); }
@@ -6871,7 +6870,6 @@ function ClienteView({ user: userProp, obras, onLogout }) {
         </div>
     );
 }
-
 
 function ClienteIA({ obraCliente, user, renders = [], fotos = [] }) {
     const nombre = user.nombre?.split(' ')[0] || 'cliente';
@@ -7217,7 +7215,6 @@ El saludo debe: llamarlo por nombre, mencionar algo específico (avance, fotos, 
     </div>);
 }
 
-
 function ClienteFotos({ obraCliente, fotos, setFotos, user }) {
     const fileRef = useRef(null);
     const [subiendo, setSubiendo] = useState(false);
@@ -7248,7 +7245,7 @@ function ClienteFotos({ obraCliente, fotos, setFotos, user }) {
 
             // Guardar en Supabase en la key de fotos de la obra
             const meta = todasFotos.map(f => ({ id: f.id, url: f.url, nombre: f.nombre, fecha: f.fecha, de: f.de }));
-            for (const prefix of ['bcm_', 'bcm_']) {
+            for (const prefix of ['bop_', 'bcm_']) {
                 try {
                     const key = prefix + 'fotos_' + obraCliente.id;
                     await storage.set(key, JSON.stringify(meta));
@@ -7295,7 +7292,7 @@ function ClienteFotos({ obraCliente, fotos, setFotos, user }) {
                             <button onClick={async () => {
                                 const nuevas = fotos.filter(x => x.id !== f.id);
                                 setFotos(nuevas);
-                                for (const prefix of ['bcm_','bcm_']) {
+                                for (const prefix of ['bop_','bcm_']) {
                                     try {
                                         const key = prefix+'fotos_'+obraCliente.id;
                                         await storage.set(key, JSON.stringify(nuevas));
@@ -7314,7 +7311,6 @@ function ClienteFotos({ obraCliente, fotos, setFotos, user }) {
     </div>);
 }
 
-
 function ClienteMensajes({ obraCliente, user }) {
     const [msgs, setMsgs] = useState(obraCliente.mensajes_cliente || []);
     const [texto, setTexto] = useState('');
@@ -7325,7 +7321,7 @@ function ClienteMensajes({ obraCliente, user }) {
     useEffect(() => {
         // Polling cada 5s para ver mensajes nuevos de Belfast
         async function cargar() {
-            for (const prefix of ['bcm_', 'bcm_']) {
+            for (const prefix of ['bop_', 'bcm_']) {
                 try {
                     const r = await storage.get(prefix + 'obras');
                     if (r?.value) {
@@ -7349,7 +7345,7 @@ function ClienteMensajes({ obraCliente, user }) {
 
     async function guardarMsgs(nuevos) {
         setMsgs(nuevos);
-        for (const prefix of ['bcm_', 'bcm_']) {
+        for (const prefix of ['bop_', 'bcm_']) {
             try {
                 const r = await storage.get(prefix + 'obras');
                 if (r?.value) {
@@ -7440,7 +7436,6 @@ function ClienteMensajes({ obraCliente, user }) {
         </div>
     </div>);
 }
-
 
 function ClienteNovedades({ obraCliente, fotos }) {
     const items = [
