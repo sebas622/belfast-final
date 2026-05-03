@@ -1109,7 +1109,7 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
                 }}
             />
 
-            <PBtn full variant="danger" onClick={() => { if (window.confirm(`¿Eliminar "${detail.nombre}"? Esta acción no se puede deshacer.`)) del(detail.id); }} style={{ marginTop: 8 }}>Eliminar licitación</PBtn>
+            <PBtn full variant="danger" onClick={() => { del(detail.id); }} style={{ marginTop: 8 }}>Eliminar licitación</PBtn>
         </Sheet>)}
     </div>);
 }
@@ -1545,7 +1545,7 @@ function TabGastos({ detail, upd, apiKey }) {
 
     const [editandoId, setEditandoId] = useState(null);
 
-    function eliminar(id) { if (window.confirm('¿Eliminar este gasto?')) upd(detail.id, { gastos: gastos.filter(g => g.id !== id) }); }
+    function eliminar(id) { upd(detail.id, { gastos: gastos.filter(g => g.id !== id) }); }
 
     function editarGasto(g) {
         setForm({ desc: g.desc, tipo: g.tipo, monto: g.monto, fecha: g.fecha, quien: g.quien || '', comprobante: g.comprobante || null });
@@ -1888,7 +1888,7 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 14 }}>
                             {OBRA_ESTADOS.map(e => (<button key={e.id} onClick={() => upd(detail.id, { estado: e.id })} style={{ padding: "9px", borderRadius: T.rsm, border: `1.5px solid ${detail.estado === e.id ? e.color : T.border}`, background: detail.estado === e.id ? e.bg : T.card, color: e.color, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{e.label}</button>))}
                         </div>
-                        <button onClick={() => { if (window.confirm(`¿Eliminar "${detail.nombre}"? Esta acción no se puede deshacer.`)) { setObras(p => p.filter(o => o.id !== detail.id)); setDetailId(null); } }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'obras_eliminar')}</button>
+                        <button onClick={() => { setObras(p => p.filter(o => o.id !== detail.id)); setDetailId(null); }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'obras_eliminar')}</button>
                     </div>)}
                     {tab === "obs" && (<div>
                         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
@@ -2159,7 +2159,7 @@ function Personal({ personal, setPersonal, obras, cfg }) {
                                     </div>
                                 ))}
                             </div>
-                            <button onClick={() => { if (window.confirm(`¿Eliminar a ${p.nombre}? Esta acción no se puede deshacer.`)) { setPersonal(prev => prev.filter(x => x.id !== p.id)); if (expanded === p.id) setExpanded(null); } }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'pers_eliminar')}</button>
+                            <button onClick={() => { setPersonal(prev => prev.filter(x => x.id !== p.id)); if (expanded === p.id) setExpanded(null); }} style={{ width: "100%", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: T.rsm, padding: "9px", fontSize: 12, fontWeight: 600, color: "#EF4444", cursor: "pointer" }}>{t(cfg, 'pers_eliminar')}</button>
                         </div>)}
 
                         {/* TAB HISTORIAL DE PRESENCIA */}
@@ -4691,7 +4691,7 @@ Al final incluí: [[ACTION:{"tipo":"subir_minuta","obraId":"${obraReunion}","tit
         return (<div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <AppHeader title={cfg.tituloAsistente || 'Asistente IA'} sub={cfg.subtituloAsistente || 'Lee todos los datos de la app'} right={
                 msgs.length > 0 ? (
-                    <button onClick={() => { if (window.confirm('¿Limpiar la conversación actual?')) limpiarChat(); }} style={{ background: 'none', border: '1px solid ' + T.border, borderRadius: 8, padding: '5px 10px', fontSize: 11, color: T.muted, cursor: 'pointer', fontWeight: 600 }}>
+                    <button onClick={() => { limpiarChat(); }} style={{ background: 'none', border: '1px solid ' + T.border, borderRadius: 8, padding: '5px 10px', fontSize: 11, color: T.muted, cursor: 'pointer', fontWeight: 600 }}>
                         Nueva conversación
                     </button>
                 ) : null
@@ -5726,7 +5726,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     } : null;
 
     const [user, setUser] = useState(() => {
-        // Primero verificar si hay usuario guardado en localStorage
+        if (typeof window === 'undefined') return null;
         try {
             const saved = localStorage.getItem('bcm_auth_user');
             if (saved) return JSON.parse(saved);
@@ -7718,7 +7718,7 @@ function GestionUsuarios({ obras = [] }) {
     }
 
     async function resetPass(id, nombre) {
-        const nueva = window.prompt(`Nueva contraseña para ${nombre}:`);
+        const nueva = null; // prompt no funciona en iOS PWA - usar modal
         if (!nueva || nueva.length < 6) { alert('Mínimo 6 caracteres'); return; }
         const nuevos = usuarios.map(u => u.id === id ? { ...u, passHash: hashPass(nueva) } : u);
         setUsuarios(nuevos);
