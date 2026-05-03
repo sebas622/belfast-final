@@ -440,6 +440,9 @@ function parseMonto(val) { return String(val).replace(/[^\d]/g, ''); }
 
 const T = { bg: "var(--bg,#F1F5F9)", card: "var(--card,#fff)", border: "var(--border,#E2E8F0)", text: "var(--text,#0F172A)", sub: "var(--sub,#475569)", muted: "var(--muted,#94A3B8)", accent: "var(--accent,#1D4ED8)", accentLight: "var(--al,#EFF6FF)", navy: "var(--navy,#0F172A)", r: "var(--r,14px)", rsm: "var(--rsm,10px)", shadow: "0 1px 3px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04)" };
 
+const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'belfast', nombre: 'Sebastián', nivel: 'superadmin' };
+const MAX_USUARIOS = 8;
+
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Montserrat:wght@400;600;700;800&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -5610,6 +5613,78 @@ const IC = {
     plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
     x: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
 };
+// Hash simple (no criptográfico pero suficiente para uso interno)
+function hashPass(pass) {
+    if (typeof pass !== 'string') return 'h0';
+    let hash = 0;
+    for (let i = 0; i < pass.length; i++) { hash = Math.imul(31, hash) + pass.charCodeAt(i) | 0; }
+    return 'h' + Math.abs(hash).toString(36);
+}
+
+async function cargarUsuarios() {
+    try {
+        const r = await storage.get('bcm_usuarios');
+        if (r?.value) return JSON.parse(r.value);
+    } catch {}
+    return [];
+}
+
+async function guardarUsuarios(usuarios) {
+    const json = JSON.stringify(usuarios);
+    try { localStorage.setItem('bcm_usuarios', json); } catch {}
+    await storage.set('bcm_usuarios', json).catch(() => {});
+}
+
+function LoginPropio({ onLogin, cfg }) {
+    const [u, setU] = React.useState('');
+    const [p, setP] = React.useState('');
+    const [err, setErr] = React.useState('');
+    const [loading, setLoading] = React.useState(false);
+
+    async function login() {
+        const usuario = u.trim().toLowerCase();
+        const contra = p.trim();
+        if (!usuario || !contra) { setErr('Completá usuario y contraseña'); return; }
+        setLoading(true);
+        // Verificar superadmin
+        if (usuario === SUPER_ADMIN.usuario && contra === SUPER_ADMIN.pass) {
+            onLogin(SUPER_ADMIN); return;
+        }
+        // Verificar usuarios creados
+        const lista = await cargarUsuarios();
+        const found = lista.find(x => x.usuario === usuario && x.passHash === hashPass(contra));
+        if (found) { onLogin(found); return; }
+        setErr('Usuario o contraseña incorrectos');
+        setLoading(false);
+    }
+
+    return (
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0F172A', padding: 24 }}>
+            {cfg?.logoCentral
+                ? <img src={cfg.logoCentral} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
+                : <img src="/icons/belfast-logo.jpeg" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
+            }
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Belfast CM</div>
+            <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 32 }}>Construction Management</div>
+            <div style={{ width: '100%', maxWidth: 340 }}>
+                <input value={u} onChange={e => { setU(e.target.value); setErr(''); }}
+                    placeholder="Usuario" autoCapitalize="none" autoCorrect="off"
+                    onKeyDown={e => e.key === 'Enter' && login()}
+                    style={{ width: '100%', marginBottom: 10, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #334155', background: '#1E293B', color: '#fff', fontSize: 14, boxSizing: 'border-box' }} />
+                <input type="password" value={p} onChange={e => { setP(e.target.value); setErr(''); }}
+                    placeholder="Contraseña"
+                    onKeyDown={e => e.key === 'Enter' && login()}
+                    style={{ width: '100%', marginBottom: 12, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #334155', background: '#1E293B', color: '#fff', fontSize: 14, boxSizing: 'border-box' }} />
+                {err && <div style={{ color: '#F87171', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{err}</div>}
+                <button onClick={login} disabled={loading}
+                    style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: '#1D4ED8', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+                    {loading ? 'Ingresando...' : 'Ingresar'}
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     // Config base según empresa seleccionada
     const empresaConfig = empresa === 'vv' ? {
@@ -5642,7 +5717,14 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         pass: '',
     } : null;
 
-    const [user, setUser] = useState(() => supaUser || getLocalJSON(SP+'current_user', null));
+    const [user, setUser] = useState(() => {
+        // Primero verificar si hay usuario guardado en localStorage
+        try {
+            const saved = localStorage.getItem('bcm_auth_user');
+            if (saved) return JSON.parse(saved);
+        } catch {}
+        return supaUser || getLocalJSON(SP+'current_user', null);
+    });
     const [view, setView] = useState('chat');
     const [detailObraId, setDetailObraId] = useState(null);
     // Prefijo de storage según empresa (evita mezclar datos Belfast/VV)
@@ -6268,9 +6350,10 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     </div>);
 
     if (!user) return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0F172A' }}>
-            <div style={{ color: '#fff', fontSize: 14 }}>Cargando sesión...</div>
-        </div>
+        <LoginPropio onLogin={u => {
+            setUser(u);
+            try { localStorage.setItem('bcm_auth_user', JSON.stringify(u)); } catch {}
+        }} cfg={cfg} />
     );
 
     // Si es cliente, mostrar solo su obra
@@ -7886,27 +7969,4 @@ function GestionUsuarios({ obras = [] }) {
 // Cada usuario: { id, usuario, passHash, nombre, empresa ('belfast'|'vv'|'ambas'), creado }
 // El super admin puede ver y gestionar todos los usuarios
 
-const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'belfast', nombre: 'Sebastián', nivel: 'superadmin' };
-const MAX_USUARIOS = 8;
 
-// Hash simple (no criptográfico pero suficiente para uso interno)
-function hashPass(pass) {
-    if (typeof pass !== 'string') return 'h0';
-    let hash = 0;
-    for (let i = 0; i < pass.length; i++) { hash = Math.imul(31, hash) + pass.charCodeAt(i) | 0; }
-    return 'h' + Math.abs(hash).toString(36);
-}
-
-async function cargarUsuarios() {
-    try {
-        const r = await storage.get('bcm_usuarios');
-        if (r?.value) return JSON.parse(r.value);
-    } catch {}
-    return [];
-}
-
-async function guardarUsuarios(usuarios) {
-    const json = JSON.stringify(usuarios);
-    try { localStorage.setItem('bcm_usuarios', json); } catch {}
-    await storage.set('bcm_usuarios', json).catch(() => {});
-}
