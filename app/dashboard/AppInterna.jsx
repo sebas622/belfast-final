@@ -5600,6 +5600,16 @@ class ErrorBoundary extends React.Component {
     }
 }
 
+const IC = {
+    msg: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+    doc: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+    def: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    sub: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
+    send: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    ok: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    x: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+};
 function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     // Config base según empresa seleccionada
     const empresaConfig = empresa === 'vv' ? {
@@ -6327,22 +6337,13 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
 function AppInterna({ supaSession, empresa, onCambiarEmpresa }) {
     return <ErrorBoundary><AppInner supaSession={supaSession} empresa={empresa} onCambiarEmpresa={onCambiarEmpresa} /></ErrorBoundary>;
 }
+export default AppInterna;
 
 
 // ── LOGIN ─────────────────────────────────────────────────────────
 // ── GESTIÓN DE USUARIOS (solo super admin) ───────────────────────────
 // ── VISTA CLIENTE ─────────────────────────────────────────────────────
 
-const IC = {
-    msg: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-    doc: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
-    def: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    sub: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
-    send: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
-    ok: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
-    plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-    x: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-};
 
 function MsgArchivo({ m, colorBg, colorText, align }) {
     const [dataUrl, setDataUrl] = React.useState(m.archivo || null);
@@ -6410,7 +6411,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                     if (fresco) setUser(fresco);
                 }
                 // Recargar obras
-                const jsonO = await storage.get('bop_obras');
+                const jsonO = await storage.get('bcm_obras');
                 if (jsonO?.value) {
                     const parsed = JSON.parse(jsonO.value);
                     const obrasData = (parsed && parsed._ts) ? parsed.data : parsed;
@@ -6446,7 +6447,7 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                     { event: '*', schema: 'public', table: 'bcm_storage' },
                     (payload) => {
                         const k = payload.new?.key || '';
-                        if (k === 'bop_obras' || k === 'bcm_usuarios' || k.startsWith('bop_fotos_')) {
+                        if (k === 'bcm_obras' || k === 'bcm_usuarios' || k.startsWith('bcm_fotos_')) {
                             recargar();
                         }
                     }
@@ -7575,7 +7576,7 @@ function GestionUsuarios({ obras = [] }) {
         if (form.pass.length < 6) { setError('Contraseña mínimo 6 caracteres'); return; }
         if (usuarios.find(u => u.usuario.toLowerCase() === form.usuario.trim().toLowerCase())) { setError('Ese usuario ya existe'); return; }
         if (usuarios.length >= MAX_USUARIOS) { setError('Límite de usuarios alcanzado'); return; }
-        const nuevo = { id: uid(), usuario: form.usuario.trim().toLowerCase(), passHash: hashPass(form.pass), nombre: form.nombre.trim(), empresa: 'belfast', nivel: form.nivel, obra_id: form.obra_id || '', renders: form.renders || [], creado: new Date().toLocaleDateString('es-AR') };
+        const nuevo = { id: uid(), usuario: form.usuario.trim().toLowerCase(), passHash: hashPass(form.pass), nombre: form.nombre.trim(), empresa: 'belfast', nivel: form.nivel, obra_id: form.obra_id || '', obras_ids: form.obras_ids || (form.obra_id ? [form.obra_id] : []), renders: form.renders || [], creado: new Date().toLocaleDateString('es-AR') };
         const nuevos = [...usuarios, nuevo];
         setUsuarios(nuevos);
         await guardarUsuarios(nuevos);
@@ -7659,11 +7660,25 @@ function GestionUsuarios({ obras = [] }) {
                 ))}
             </div>
             {form.nivel === 'cliente' && obras.length > 0 && (<>
-                <Lbl>Obra asignada</Lbl>
-                <select value={form.obra_id} onChange={e => setForm(p => ({ ...p, obra_id: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: T.rsm, border: `1px solid ${T.border}`, fontSize: 13, color: T.text, background: T.bg, marginBottom: 8 }}>
-                    <option value="">— Sin asignar —</option>
-                    {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                </select>
+                <Lbl>Obras asignadas (puede tener más de una)</Lbl>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                    {obras.map(o => {
+                        const ids = form.obras_ids || (form.obra_id ? [form.obra_id] : []);
+                        const activa = ids.includes(o.id);
+                        return (
+                            <button key={o.id} onClick={() => {
+                                setForm(p => {
+                                    const prevIds = p.obras_ids || (p.obra_id ? [p.obra_id] : []);
+                                    const nuevosIds = prevIds.includes(o.id) ? prevIds.filter(x => x !== o.id) : [...prevIds, o.id];
+                                    return { ...p, obras_ids: nuevosIds, obra_id: nuevosIds[0] || '' };
+                                });
+                            }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${activa ? T.accent : T.border}`, background: activa ? T.accentLight : T.card, cursor: 'pointer', textAlign: 'left' }}>
+                                <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${activa ? T.accent : T.border}`, background: activa ? T.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, flexShrink: 0 }}>{activa ? '✓' : ''}</div>
+                                <span style={{ fontSize: 13, color: activa ? T.accent : T.text, fontWeight: activa ? 700 : 400 }}>{o.nombre}</span>
+                            </button>
+                        );
+                    })}
+                </div>
             </>)}
             {form.nivel === 'cliente' && (<>
                 <Lbl>Renders del proyecto (fondo del cliente)</Lbl>
@@ -7876,9 +7891,10 @@ const MAX_USUARIOS = 8;
 
 // Hash simple (no criptográfico pero suficiente para uso interno)
 function hashPass(pass) {
-    let h = 0;
-    for (let i = 0; i < pass.length; i++) { h = Math.imul(31, h) + pass.charCodeAt(i) | 0; }
-    return 'h' + Math.abs(h).toString(36);
+    if (typeof pass !== 'string') return 'h0';
+    let hash = 0;
+    for (let i = 0; i < pass.length; i++) { hash = Math.imul(31, hash) + pass.charCodeAt(i) | 0; }
+    return 'h' + Math.abs(hash).toString(36);
 }
 
 async function cargarUsuarios() {
