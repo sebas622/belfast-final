@@ -6334,14 +6334,14 @@ function AppInterna({ supaSession, empresa, onCambiarEmpresa }) {
 // ── VISTA CLIENTE ─────────────────────────────────────────────────────
 
 const IC = {
-    msg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-    doc: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
-    def: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    sub: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
-    send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
-    ok: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
-    plus: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-    x: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    msg: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+    doc: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+    def: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    sub: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
+    send: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    ok: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    x: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
 };
 
 function MsgArchivo({ m, colorBg, colorText, align }) {
@@ -7189,7 +7189,7 @@ El saludo debe: llamarlo por nombre, mencionar algo específico (avance, fotos, 
                     style={{ flex: 1, padding: '9px 14px', borderRadius: 20, border: `1.5px solid ${T.border}`, fontSize: 15, color: T.text, background: T.card, resize: 'none', fontFamily: 'inherit', lineHeight: 1.4, maxHeight: 80, overflowY: 'auto' }} />
                 <button onClick={enviar} disabled={(!input.trim() && !imgAdjunta) || loading}
                     style={{ width: 38, height: 38, background: (input.trim() || imgAdjunta) && !loading ? T.accent : T.border, border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
-                    {IC.send}
+                    {<IC.send />}
                 </button>
             </div>
         </div>
@@ -7412,7 +7412,7 @@ function ClienteMensajes({ obraCliente, user }) {
                 style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: `1.5px solid ${T.border}`, fontSize: 15, color: T.text, background: T.bg, resize: 'none', fontFamily: 'inherit' }} />
             <button onClick={enviar} disabled={!texto.trim()}
                 style={{ width: 38, height: 38, background: texto.trim() ? T.accent : T.border, border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
-                {IC.send}
+                {<IC.send />}
             </button>
         </div>
     </div>);
@@ -7453,7 +7453,7 @@ function ClienteFaltantes({ obraCliente, tipo }) {
             {tipo === 'doc' ? 'Documentos pendientes de entrega' : 'Definiciones pendientes del cliente'}
         </div>
         <button onClick={() => setShowNew(v => !v)} style={{ width: '100%', background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 600, color: color.text, cursor: 'pointer', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            {IC.plus} Agregar
+            {<IC.plus />} Agregar
         </button>
         {showNew && (<div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
             <TInput value={nuevo} onChange={e => setNuevo(e.target.value)} placeholder={tipo === 'doc' ? 'Ej: Plano de electricidad' : 'Ej: Color de piso living'} />
@@ -7464,7 +7464,7 @@ function ClienteFaltantes({ obraCliente, tipo }) {
             </div>
         </div>)}
         {items.length === 0 && !showNew && <div style={{ textAlign: 'center', padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <div style={{ color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: '#ECFDF5' }}>{IC.ok}</div>
+            <div style={{ color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: '#ECFDF5' }}>{<IC.ok />}</div>
             <div style={{ color: T.muted, fontSize: 13 }}>Sin pendientes</div>
         </div>}
         {items.map(f => (
@@ -7475,7 +7475,7 @@ function ClienteFaltantes({ obraCliente, tipo }) {
                     {f.nota && <div style={{ fontSize: 11, color: color.sub, marginTop: 3 }}>{f.nota}</div>}
                     <div style={{ fontSize: 10, color: T.muted, marginTop: 4 }}>{f.fecha}</div>
                 </div>
-                <button onClick={() => guardar(items.filter(i => i.id !== f.id))} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 4 }}>{IC.x}</button>
+                <button onClick={() => guardar(items.filter(i => i.id !== f.id))} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 4 }}>{<IC.x />}</button>
             </div>
         ))}
     </div>);
