@@ -5276,9 +5276,12 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
     function restaurarTema() { updCfg({ themeId: 'azul', colors: { ...DEFAULT_COLORS }, fontId: 'jakarta', radiusId: 'normal' }); }
 
     function logout() {
-        try { localStorage.removeItem('bcm_auth_user'); localStorage.removeItem('bcm_auth_empresa'); } catch {}
-        // Recargar la página para volver al login limpio
-        window.location.reload();
+        try { 
+            localStorage.removeItem('bcm_auth_user'); 
+            localStorage.removeItem('bcm_auth_empresa');
+            localStorage.removeItem(SP+'current_user');
+        } catch {}
+        setUser(null);
     }
 
     return (<div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
@@ -6361,7 +6364,10 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     if (user?.nivel === 'cliente') {
         return (<>
             <style>{css}</style>
-            <ClienteView user={user} obras={obras} onLogout={() => { try { localStorage.removeItem('bcm_auth_user'); localStorage.removeItem('bcm_auth_empresa'); } catch {} window.location.reload(); }} />
+            <ClienteView user={user} obras={obras} onLogout={() => { 
+                try { localStorage.removeItem('bcm_auth_user'); localStorage.removeItem('bcm_auth_empresa'); } catch {} 
+                setUser(null); 
+            }} />
         </>);
     }
 
