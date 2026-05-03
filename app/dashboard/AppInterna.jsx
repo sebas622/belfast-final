@@ -5708,6 +5708,11 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     function getLocalJSON(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
     function getLocalStr(k, def = '') { try { return localStorage.getItem(k) || def; } catch { return def; } }
 
+    // Prefijo de storage según empresa — DEBE ir antes de los useState que lo usan
+    const SP = empresa === 'vv' ? 'vv_' : 'bcm_';
+    // Exponer SP globalmente para que componentes hijos puedan usarlo
+    if (typeof window !== 'undefined') window.__APP_SP = SP;
+
     // Setear user desde sesión Supabase automáticamente
     const supaUser = supaSession?.user ? {
         id: supaSession.user.id,
@@ -5727,10 +5732,6 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
     });
     const [view, setView] = useState('chat');
     const [detailObraId, setDetailObraId] = useState(null);
-    // Prefijo de storage según empresa (evita mezclar datos Belfast/VV)
-    const SP = empresa === 'vv' ? 'vv_' : 'bcm_';
-    // Exponer SP globalmente para que componentes hijos puedan usarlo
-    window.__APP_SP = SP;
     const [lics, setLics] = useState(() => {
         const licsBase = getLocalJSON(SP + 'lics', []);
         // Restaurar visitas (fotos) desde keys separadas al arrancar
