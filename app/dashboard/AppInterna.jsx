@@ -2500,9 +2500,9 @@ function distanciaMetros(lat1, lon1, lat2, lon2) {
 }
 function formatDuration(ms) {
     if (!ms || ms < 0) return '—';
-    const h = Math.floor(ms / 3600000);
+    const hrs = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
-    return `${h}h ${m}m`;
+    return `${hrs}h ${m}m`;
 }
 async function getCurrentPosition() {
     return new Promise((resolve, reject) => {
