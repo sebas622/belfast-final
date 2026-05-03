@@ -1885,6 +1885,7 @@ function TabChecklist({ detail, upd }) {
     </div>);
 }
 
+
 function MsgArchivo({ m, colorBg, colorText, align }) {
     const [dataUrl, setDataUrl] = React.useState(m.archivo || null);
     const [cargando, setCargando] = React.useState(!m.archivo && !!m.archivoKey);
@@ -1931,6 +1932,7 @@ function MsgArchivo({ m, colorBg, colorText, align }) {
         </div>
     );
 }
+
 
 function TabMensajesCliente({ detail, upd }) {
     const [texto, setTexto] = useState('');
@@ -2357,6 +2359,7 @@ function TabGastosBOP({ detail, upd, apiKey }) {
         </Sheet>)}
     </div>);
 }
+
 
 function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg, apiKey }) {
     const SP = localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_';
@@ -8067,6 +8070,7 @@ function ClienteFotos({ obraCliente, fotos, setFotos, user }) {
         {fotos.length > 0 && <div style={{ fontSize: 11, color: T.muted, textAlign: 'center', marginTop: 10 }}>{fotos.length} foto{fotos.length !== 1 ? 's' : ''} · Las tuyas tienen ✕ para borrar</div>}
     </div>);
 }
+
 
 function ClienteMensajes({ obraCliente, user }) {
     const [msgs, setMsgs] = useState(obraCliente.mensajes_cliente || []);
