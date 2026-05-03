@@ -6332,219 +6332,1158 @@ function AppInterna({ supaSession, empresa, onCambiarEmpresa }) {
 // ── LOGIN ─────────────────────────────────────────────────────────
 // ── GESTIÓN DE USUARIOS (solo super admin) ───────────────────────────
 // ── VISTA CLIENTE ─────────────────────────────────────────────────────
-// Usuario con nivel 'cliente' solo ve su obra: fotos e informes
-function ClienteView({ user, obras, onLogout }) {
-    const obraCliente = obras.find(o => o.id === user.obra_id) || obras[0];
-    const [tabC, setTabC] = useState('fotos');
 
-    if (!obraCliente) return (
-        <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 24 }}>
-            <svg width="52" height="52" viewBox="0 0 278 212" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinejoin="miter">
-                <polygon points="8,84 98,84 126,54 36,54" /><path d="M8,84 L8,200 L98,200 L98,174 L52,174 L52,132 L98,132 L98,117 L57,117 L57,88 L98,88 L98,84 Z" />
-                <polygon points="100,54 100,200 190,200 190,54" /><rect x="112" y="66" width="66" height="42" />
-                <polygon points="192,76 192,200 270,200 270,130 246,96 246,76" /><rect x="204" y="136" width="42" height="42" />
-            </svg>
-            <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>No hay proyectos asignados aún</div>
-            <div style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center' }}>El equipo de Belfast te asignará tu proyecto pronto</div>
-            <button onClick={onLogout} style={{ marginTop: 16, background: 'transparent', border: '1px solid #475569', borderRadius: 10, padding: '10px 20px', color: '#94A3B8', fontSize: 13, cursor: 'pointer' }}>Cerrar sesión</button>
-        </div>
-    );
+function MsgArchivo({ m, colorBg, colorText, align }) {
+    const [dataUrl, setDataUrl] = React.useState(m.archivo || null);
+    const [cargando, setCargando] = React.useState(!m.archivo && !!m.archivoKey);
 
-    const fotos = obraCliente.fotos || [];
-    const informes = obraCliente.informes || [];
+    React.useEffect(() => {
+        if (dataUrl || !m.archivoKey) return;
+        const local = localStorage.getItem(m.archivoKey);
+        if (local) { setDataUrl(local); setCargando(false); return; }
+        storage.get(m.archivoKey).then(r => {
+            if (r?.value) {
+                try { localStorage.setItem(m.archivoKey, r.value); } catch {}
+                setDataUrl(r.value);
+            }
+            setCargando(false);
+        }).catch(() => setCargando(false));
+    }, [m.archivoKey]);
 
+    function abrir() {
+        if (!dataUrl) return;
+        try {
+            // Convertir data URL a blob y abrir — funciona en iOS Safari
+            const arr = dataUrl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8 = new Uint8Array(n);
+            while (n--) u8[n] = bstr.charCodeAt(n);
+            const blob = new Blob([u8], { type: mime });
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
+        } catch {
+            window.open(dataUrl, '_blank');
+        }
+    }
+
+    if (!m.archivo && !m.archivoKey) return null;
     return (
-        <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: T.bg, fontFamily: 'system-ui, sans-serif' }}>
-            {/* Header con logo Belfast */}
-            <div style={{ background: T.navy, padding: '20px 20px 16px', color: '#fff' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                    <svg width="32" height="32" viewBox="0 0 278 212" fill="none" stroke="#fff" strokeWidth="6" strokeLinejoin="miter">
-                        <polygon points="8,84 98,84 126,54 36,54" /><path d="M8,84 L8,200 L98,200 L98,174 L52,174 L52,132 L98,132 L98,117 L57,117 L57,88 L98,88 L98,84 Z" />
-                        <polygon points="100,54 100,200 190,200 190,54" /><rect x="112" y="66" width="66" height="42" />
-                        <polygon points="192,76 192,200 270,200 270,130 246,96 246,76" /><rect x="204" y="136" width="42" height="42" />
-                    </svg>
-                    <div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>BelfastCM</div>
-                        <div style={{ fontSize: 10, color: '#94A3B8' }}>Construction Management</div>
-                    </div>
-                </div>
-                <div style={{ fontSize: 10, color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tu proyecto</div>
-                <div style={{ fontSize: 20, fontWeight: 800 }}>{obraCliente.nombre}</div>
-                <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>{obraCliente.sector || obraCliente.direccion || ''}</div>
-                <div style={{ marginTop: 14, background: '#1E293B', borderRadius: 8, height: 8 }}>
-                    <div style={{ height: 8, borderRadius: 8, background: '#34D399', width: `${obraCliente.avance || 0}%`, transition: 'width 0.5s' }} />
-                </div>
-                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 6 }}>Avance: {obraCliente.avance || 0}%</div>
-            </div>
-
-            {/* Tabs */}
-            <div style={{ display: 'flex', background: T.card, borderBottom: `1px solid ${T.border}` }}>
-                {[['fotos', '📸 Fotos'], ['informes', '📋 Informes']].map(([id, label]) => (
-                    <button key={id} onClick={() => setTabC(id)} style={{ flex: 1, padding: '14px', border: 'none', background: 'none', fontSize: 13, fontWeight: tabC === id ? 700 : 500, color: tabC === id ? T.accent : T.muted, borderBottom: `2px solid ${tabC === id ? T.accent : 'transparent'}`, cursor: 'pointer' }}>{label}</button>
-                ))}
-            </div>
-
-            {/* Fotos */}
-            {tabC === 'fotos' && (
-                <div style={{ padding: 16 }}>
-                    {fotos.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📸 Las fotos de tu proyecto aparecerán acá</div>}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        {fotos.map(f => (
-                            <div key={f.id} style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '1', background: T.border }}>
-                                <img src={f.url} alt={f.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
-                            </div>
-                        ))}
-                    </div>
-                    {fotos.length > 0 && <div style={{ fontSize: 11, color: T.muted, textAlign: 'center', marginTop: 12 }}>{fotos.length} foto{fotos.length !== 1 ? 's' : ''}</div>}
-                </div>
-            )}
-
-            {/* Informes */}
-            {tabC === 'informes' && (
-                <div style={{ padding: 16 }}>
-                    {informes.length === 0 && <div style={{ textAlign: 'center', padding: '60px 0', color: T.muted, fontSize: 14 }}>📋 Los informes de tu proyecto aparecerán acá</div>}
-                    {informes.map(inf => (
-                        <div key={inf.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 4 }}>{inf.titulo || 'Informe'}</div>
-                            <div style={{ fontSize: 12, color: T.sub, lineHeight: 1.6 }}>{inf.texto}</div>
-                            <div style={{ fontSize: 10, color: T.muted, marginTop: 8 }}>{inf.fecha}</div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Footer */}
-            <div style={{ padding: 20, textAlign: 'center' }}>
-                <button onClick={onLogout} style={{ background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 20px', color: T.muted, fontSize: 13, cursor: 'pointer' }}>Cerrar sesión</button>
+        <div onClick={abrir} style={{ background: colorBg, color: colorText, borderRadius: align === 'right' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', padding: '10px 14px', fontSize: 13, border: `1px solid rgba(0,0,0,.1)`, display:'flex', alignItems:'center', gap:8, cursor: dataUrl ? 'pointer' : 'default', opacity: cargando ? 0.6 : 1 }}>
+            <span style={{ fontSize: 24 }}>{cargando ? '⏳' : '📎'}</span>
+            <div>
+                <div style={{ fontWeight:700, fontSize:12 }}>{m.archivoNombre||m.texto}</div>
+                <div style={{ fontSize:10, opacity:.7 }}>{cargando ? 'Cargando...' : 'Tocar para abrir · ' + (m.archivoExt||'')}</div>
             </div>
         </div>
     );
 }
 
-function GestionUsuarios({ obras = [] }) {
-    const [usuarios, setUsuarios] = React.useState([]);
-    const [cargando, setCargando] = React.useState(true);
 
-    React.useEffect(() => {
-        cargarUsuarios().then(u => { setUsuarios(u); setCargando(false); });
-    }, []);
+function UbicacionesEditor({ cfg, updCfg, T }) {
+    const init = cfg.ubicaciones?.length ? cfg.ubicaciones : DEFAULT_UBICACIONES;
+    const [ubics, setUbics] = useState(init);
 
-    async function cambiarEmpresa(id, empresa) {
-        const nuevos = usuarios.map(u => u.id === id ? { ...u, empresa } : u);
-        setUsuarios(nuevos);
-        await guardarUsuarios(nuevos);
+    // Sincronizar si cfg.ubicaciones cambia desde afuera
+    useEffect(() => {
+        const ext = cfg.ubicaciones?.length ? cfg.ubicaciones : DEFAULT_UBICACIONES;
+        setUbics(ext);
+    }, [JSON.stringify(cfg.ubicaciones)]);
+
+    function guardar(nuevas) {
+        setUbics(nuevas);
+        updCfg({ ubicaciones: nuevas });
     }
-
-    async function cambiarNivel(id, nivel) {
-        const nuevos = usuarios.map(u => u.id === id ? { ...u, nivel } : u);
-        setUsuarios(nuevos);
-        await guardarUsuarios(nuevos);
+    function agregar() {
+        guardar([...ubics, { id: uid(), code: 'NUEVO', name: 'Nueva ubicación' }]);
     }
-
-    async function eliminarUsuario(id, nombre) {
-        if (!window.confirm(`¿Eliminar a ${nombre}?`)) return;
-        const nuevos = usuarios.filter(u => u.id !== id);
-        setUsuarios(nuevos);
-        await guardarUsuarios(nuevos);
+    function borrar(id) {
+        const nuevas = ubics.filter(u => u.id !== id);
+        guardar(nuevas.length > 0 ? nuevas : [{ id: uid(), code: 'NUEVA', name: 'Nueva ubicación' }]);
     }
-
-    async function resetPass(id, nombre) {
-        const nueva = window.prompt(`Nueva contraseña para ${nombre}:`);
-        if (!nueva || nueva.length < 6) { alert('Mínimo 6 caracteres'); return; }
-        const nuevos = usuarios.map(u => u.id === id ? { ...u, passHash: hashPass(nueva) } : u);
-        setUsuarios(nuevos);
-        await guardarUsuarios(nuevos);
-        alert('Contraseña actualizada ✓');
+    function cambiar(id, campo, valor) {
+        setUbics(p => p.map(u => u.id === id ? { ...u, [campo]: valor } : u));
     }
-
-    if (cargando) return <div style={{ textAlign: 'center', padding: '20px', color: T.muted }}>Cargando...</div>;
+    function guardarCampo(id) {
+        updCfg({ ubicaciones: ubics });
+    }
 
     return (<div>
-        <div style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: T.accent }}>
-            <b>{usuarios.length}/{MAX_USUARIOS}</b> usuarios registrados
+        <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 4, textTransform: 'uppercase' }}>Etiqueta del campo</div>
+            <input defaultValue={cfg.labelUbicacion || 'Ubicación'} onBlur={e => updCfg({ labelUbicacion: e.target.value })}
+                style={{ width: '100%', background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 8, padding: '8px 12px', fontSize: 14, color: T.text, boxSizing: 'border-box' }} />
         </div>
-        {usuarios.length === 0 && <div style={{ textAlign: 'center', padding: '20px', color: T.muted, fontSize: 13 }}>Sin usuarios registrados aún</div>}
-        {usuarios.map(u => (
-            <div key={u.id} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, padding: '12px 14px', marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{u.nombre}</div>
-                        <div style={{ fontSize: 11, color: T.muted }}>@{u.usuario} · Registrado: {u.creado}</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 8, textTransform: 'uppercase' }}>Ubicaciones</div>
+        {ubics.map(u => (
+            <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 36px', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+                <input
+                    value={u.code}
+                    onChange={e => cambiar(u.id, 'code', e.target.value.toUpperCase())}
+                    onBlur={() => guardarCampo(u.id)}
+                    placeholder="Cód"
+                    style={{ background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 8, padding: '8px 10px', fontSize: 14, fontWeight: 700, color: T.text, textTransform: 'uppercase', textAlign: 'center' }}
+                />
+                <input
+                    value={u.name}
+                    onChange={e => cambiar(u.id, 'name', e.target.value)}
+                    onBlur={() => guardarCampo(u.id)}
+                    placeholder="Nombre"
+                    style={{ background: T.bg, border: '1.5px solid ' + T.border, borderRadius: 8, padding: '8px 10px', fontSize: 14, color: T.text }}
+                />
+                <button onClick={() => borrar(u.id)}
+                    style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px', fontSize: 14, color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+        ))}
+        <button onClick={agregar}
+            style={{ width: '100%', marginTop: 4, background: T.bg, border: '1.5px dashed ' + T.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, color: T.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <span style={{ fontSize: 18 }}>+</span> Agregar ubicación
+        </button>
+    </div>);
+}
+
+
+function ClienteView({ user: userProp, obras, onLogout }) {
+    const [user, setUser] = useState(userProp);
+
+    // Estado local de obras del cliente (se actualiza desde Supabase)
+    const [obrasSupabase, setObrasSupabase] = useState(obras);
+
+    // Recargar usuario y obras frescos desde Supabase cada 10s
+    useEffect(() => {
+        async function recargar() {
+            try {
+                // Recargar usuario
+                const jsonU = await storage.get('bcm_usuarios');
+                if (jsonU?.value) {
+                    const lista = JSON.parse(jsonU.value);
+                    const fresco = lista.find(u => u.id === userProp.id);
+                    if (fresco) setUser(fresco);
+                }
+                // Recargar obras
+                const jsonO = await storage.get('bcm_obras');
+                if (jsonO?.value) {
+                    const parsed = JSON.parse(jsonO.value);
+                    const obrasData = (parsed && parsed._ts) ? parsed.data : parsed;
+                    if (Array.isArray(obrasData) && obrasData.length > 0) {
+                        // Restaurar fotos desde localStorage
+                        const obrasConFotos = obrasData.map(o => ({
+                            ...o,
+                            fotos: (() => { try { return JSON.parse(localStorage.getItem('bop_fotos_'+o.id) || '[]'); } catch { return []; } })(),
+                        }));
+                        setObrasSupabase(obrasConFotos);
+                    }
+                }
+            } catch {}
+        }
+        // Cargar API key desde Supabase para que la IA funcione en el cliente
+        async function cargarApiKey() {
+            if (localStorage.getItem('bcm_api_key')) return;
+            try {
+                const r = await storage.get('bcm_api_key');
+                if (r?.value) { localStorage.setItem('bcm_api_key', r.value); }
+            } catch {}
+        }
+        cargarApiKey();
+
+        recargar();
+        const iv = setInterval(recargar, 5000);
+        // Realtime para actualizaciones instantáneas
+        let ch = null;
+        try {
+            ch = getSB()
+                .channel('cliente_sync_' + userProp.id)
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'bcm_storage' },
+                    (payload) => {
+                        const k = payload.new?.key || '';
+                        if (k === 'bcm_obras' || k === 'bcm_usuarios' || k.startsWith('bop_fotos_')) {
+                            recargar();
+                        }
+                    }
+                )
+                .subscribe();
+        } catch {}
+        return () => {
+            clearInterval(iv);
+            if (ch) { try { getSB().removeChannel(ch); } catch {} }
+        };
+    }, []);
+
+    // Soporte para múltiples obras — usar obrasSupabase (actualizado desde Supabase)
+    const obrasCliente = user.obras_ids?.length
+        ? obrasSupabase.filter(o => user.obras_ids.includes(o.id))
+        : user.obra_id ? obrasSupabase.filter(o => o.id === user.obra_id) : obrasSupabase.slice(0,1);
+    const [obraIdx, setObraIdx] = useState(0);
+    const obraCliente = obrasCliente[obraIdx] || obrasCliente[0];
+    const [tab, setTab] = useState('ia');
+    const [fotos, setFotos] = useState([]);
+    const [renders, setRenders] = useState([]);
+    const [renderIdx, setRenderIdx] = useState(0);
+    const [msgsNoLeidos, setMsgsNoLeidos] = useState(0);
+    const lastMsgSeenRef = useRef(parseInt(localStorage.getItem('bcm_last_msg_seen_' + (user.id||'')) || '0'));
+
+    // Detectar mensajes nuevos no leídos
+    useEffect(() => {
+        function checkNoLeidos() {
+            const msgs = obraCliente?.mensajes_cliente || [];
+            const msgsBoston = msgs.filter(m => !m.esCliente); // mensajes de Belfast
+            const ultimoIdx = msgsBoston.length;
+            const noLeidos = Math.max(0, ultimoIdx - lastMsgSeenRef.current);
+            setMsgsNoLeidos(noLeidos);
+        }
+        checkNoLeidos();
+    }, [obraCliente?.mensajes_cliente?.length]);
+
+    function marcarLeidos() {
+        const msgs = obraCliente?.mensajes_cliente || [];
+        const msgsBoston = msgs.filter(m => !m.esCliente);
+        lastMsgSeenRef.current = msgsBoston.length;
+        localStorage.setItem('bcm_last_msg_seen_' + (user.id||''), msgsBoston.length.toString());
+        setMsgsNoLeidos(0);
+    }
+
+    // Cargar renders y fotos al cambiar de obra — reset inmediato + carga desde Supabase
+    useEffect(() => {
+        if (!obraCliente) return;
+        // Reset inmediato con lo que ya tenemos localmente
+        setRenders([]); // reset limpio - cargarRenders lo llena con los de esta obra
+        setRenderIdx(0);
+        setFotos([]);
+
+        // Luego cargar frescos de Supabase
+        let cancelado = false; // flag para cancelar si cambia la obra antes de terminar
+
+        async function cargarRenders() {
+            if (cancelado) return;
+            // Solo renders de ESTA obra — NO mezclar con otras obras ni con user.renders
+            // 1. Buscar en key separada bop_renders_{id}
+            try {
+                const r = await storage.get('bcm_renders_' + obraCliente.id);
+                if (cancelado) return;
+                if (r?.value) {
+                    const lista = JSON.parse(r.value);
+                    if (Array.isArray(lista) && lista.length > 0) {
+                        setRenders(lista);
+                        setRenderIdx(0);
+                        return;
+                    }
+                }
+            } catch {}
+            // 2. Buscar dentro de bop_obras
+            for (const prefix of ['bcm_','bcm_']) {
+                try {
+                    const r = await storage.get(prefix+'obras');
+                    if (cancelado) return;
+                    if (r?.value) {
+                        const lista = JSON.parse(r.value);
+                        const obra = Array.isArray(lista) ? lista.find(o => o.id === obraCliente.id) : null;
+                        if (obra?.renders?.length) {
+                            setRenders(obra.renders);
+                            setRenderIdx(0);
+                            return;
+                        }
+                    }
+                } catch {}
+            }
+            // 3. Buscar en obrasSupabase en memoria
+            const obraLocal = obrasSupabase.find(o => o.id === obraCliente.id);
+            if (obraLocal?.renders?.length) {
+                setRenders(obraLocal.renders);
+                setRenderIdx(0);
+                return;
+            }
+            // Sin renders para esta obra — quedar en blanco
+            setRenders([]);
+        }
+
+        async function cargarFotos() {
+            for (const prefix of ['bcm_','bcm_']) {
+                try {
+                    const r = await storage.get(prefix+'fotos_'+obraCliente.id);
+                    if (r?.value) {
+                        const data = JSON.parse(r.value);
+                        if (data.length) {
+                            const res = await Promise.all(data.map(async f => {
+                                if (f.url?.startsWith('data:') || f.url?.startsWith('http')) return f;
+                                try {
+                                    const rd = await storage.get('fotodata_'+f.id);
+                                    if (rd?.value) return {...f, url: rd.value};
+                                } catch {}
+                                return f;
+                            }));
+                            setFotos(res.filter(f=>f.url).reverse().slice(0,30));
+                            return;
+                        }
+                    }
+                } catch {}
+            }
+            setFotos((obraCliente.fotos||[]).slice().reverse().slice(0,30));
+        }
+
+        cargarRenders();
+        cargarFotos();
+        const iv = setInterval(() => { cargarRenders(); cargarFotos(); }, 10000);
+        return () => { cancelado = true; clearInterval(iv); };
+    }, [obraCliente?.id]);
+
+    // Tema personalizable por cliente
+    const temaCliente = user.tema || {};
+    const TC = {
+        bg: temaCliente.bg || T.bg,
+        card: temaCliente.card || T.card,
+        accent: temaCliente.accent || T.accent,
+        text: temaCliente.text || T.text,
+        navy: temaCliente.navy || T.navy,
+        border: temaCliente.border || T.border,
+        muted: temaCliente.muted || T.muted,
+        sub: temaCliente.sub || T.sub,
+        font: temaCliente.font || 'system-ui, sans-serif',
+        radius: temaCliente.radius || '12px',
+    };
+
+
+
+    // Slideshow
+    useEffect(() => {
+        if (renders.length <= 1) return;
+        const iv = setInterval(() => setRenderIdx(i => (i+1)%renders.length), 4000);
+        return () => clearInterval(iv);
+    }, [renders.length]);
+
+
+
+    // Push permissions
+    useEffect(() => { setTimeout(()=>pedirPermisoPush(), 1500); }, []);
+
+    if (!obraCliente) return (
+        <div style={{ minHeight:'100vh', background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, padding:24 }}>
+            <img src="/icons/belfast-logo.jpeg" style={{ width:80, height:80, borderRadius:'50%', objectFit:'cover' }} />
+            <div style={{ color:'#fff', fontSize:16, fontWeight:700, textAlign:'center' }}>No hay proyectos asignados aún</div>
+            <div style={{ color:'#94A3B8', fontSize:13, textAlign:'center' }}>El equipo de Belfast te asignará tu proyecto pronto</div>
+            <button onClick={onLogout} style={{ marginTop:16, background:'transparent', border:'1px solid #475569', borderRadius:10, padding:'10px 20px', color:'#94A3B8', fontSize:13, cursor:'pointer' }}>Cerrar sesión</button>
+        </div>
+    );
+
+    const TABS_TODO = [
+        { id:'novedades', label:'Novedades' },
+        { id:'renders', label:'Renders' },
+        { id:'cronograma', label:'Cronograma' },
+        { id:'informes', label:'Informes' },
+        { id:'actas', label:'Actas' },
+        { id:'checklist', label:'Checklist' },
+        { id:'planos', label:'Planos' },
+        { id:'mensajes', label:'Mensajes' },
+        { id:'doc', label:'Documentación' },
+        { id:'def', label:'Definiciones' },
+        { id:'subs', label:'Subcontratos' },
+    ];
+
+    const esSeccion = !['ia','fotos','todo'].includes(tab);
+
+    return (
+        <div style={{ maxWidth:480, margin:'0 auto', minHeight:'100vh', background:TC.bg, fontFamily:TC.font, paddingBottom:80 }}>
+            {/* HEADER */}
+            <div style={{ position:'relative', overflow:'hidden', minHeight: renders.length>0 ? 200 : 140 }}>
+                {renders.length>0 ? (<>
+                    <img src={renders[renderIdx]?.url} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} />
+                    <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,rgba(0,0,0,.2),rgba(0,0,0,.75))' }} />
+                </>) : <div style={{ position:'absolute', inset:0, background:TC.navy }} />}
+                <div style={{ position:'relative', padding:'20px 20px 16px', color:'#fff', textAlign:'center' }}>
+                    <img src="/icons/belfast-logo.jpeg" alt="Belfast" style={{ width:70, height:70, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(255,255,255,.4)', marginBottom:10 }} />
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,.65)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:3 }}>Tu proyecto</div>
+                    {obrasCliente.length > 1 ? (
+                        <select value={obraIdx} onChange={e => { const idx = Number(e.target.value); setObraIdx(idx); setRenders([]); setRenderIdx(0); setFotos([]); setTab('ia'); }}
+                            style={{ background:'rgba(255,255,255,.15)', border:'1.5px solid rgba(255,255,255,.4)', borderRadius:10, color:'#fff', fontSize:16, fontWeight:800, padding:'6px 12px', cursor:'pointer', textAlign:'center', marginBottom:4, width:'100%', maxWidth:280 }}>
+                            {obrasCliente.map((o,i) => <option key={o.id} value={i} style={{ color:'#000' }}>{o.nombre}</option>)}
+                        </select>
+                    ) : (
+                        <div style={{ fontSize:18, fontWeight:800, textShadow:'0 1px 6px rgba(0,0,0,.4)' }}>{obraCliente.nombre}</div>
+                    )}
+                    {(obraCliente.sector||obraCliente.direccion) && <div style={{ fontSize:11, color:'rgba(255,255,255,.65)', marginTop:2 }}>{obraCliente.sector||obraCliente.direccion}</div>}
+                    <div style={{ marginTop:12, background:'rgba(255,255,255,.2)', borderRadius:6, height:4, maxWidth:200, margin:'12px auto 0' }}>
+                        <div style={{ height:4, borderRadius:6, background:'#34D399', width:`${obraCliente.avance||0}%` }} />
                     </div>
-                    <div style={{ display: 'flex', gap: 5 }}>
-                        <button onClick={() => resetPass(u.id, u.nombre)} style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 7, padding: '5px 8px', fontSize: 10, fontWeight: 700, color: T.accent, cursor: 'pointer' }}>🔑</button>
-                        <button onClick={() => eliminarUsuario(u.id, u.nombre)} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 7, padding: '5px 8px', fontSize: 10, fontWeight: 700, color: '#EF4444', cursor: 'pointer' }}>✕</button>
-                    </div>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                    <Lbl>Nivel</Lbl>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
-                        {[['empleado', '👷 Empleado'], ['directivo', '👔 Directivo'], ['cliente', '👤 Cliente']].map(([val, lbl]) => (
-                            <button key={val} onClick={() => cambiarNivel(u.id, val)}
-                                style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${(u.nivel||'empleado') === val ? T.accent : T.border}`, background: (u.nivel||'empleado') === val ? T.accentLight : T.card, color: (u.nivel||'empleado') === val ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                                {lbl}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                    <Lbl>Empresa / acceso</Lbl>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
-                        {[['belfast', '🔵 Belfast'], ['vv', '🟢 V+V'], ['ambas', '⚡ Ambas']].map(([val, lbl]) => (
-                            <button key={val} onClick={() => cambiarEmpresa(u.id, val)}
-                                style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${u.empresa === val ? T.accent : T.border}`, background: u.empresa === val ? T.accentLight : T.card, color: u.empresa === val ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                                {lbl}
-                            </button>
-                        ))}
-                    </div>
-                    {/* Selector de obra para clientes */}
-                    {u.nivel === 'cliente' && obras.length > 0 && (
-                        <div style={{ marginTop: 8 }}>
-                            <Lbl>Obra asignada</Lbl>
-                            <select value={u.obra_id || ''} onChange={async e => {
-                                const nuevos = usuarios.map(x => x.id === u.id ? { ...x, obra_id: e.target.value } : x);
-                                setUsuarios(nuevos);
-                                await guardarUsuarios(nuevos);
-                            }} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, color: T.text, background: T.bg }}>
-                                <option value="">— Sin asignar —</option>
-                                {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                            </select>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,.65)', marginTop:4 }}>Avance {obraCliente.avance||0}%</div>
+                    {renders.length>1 && (
+                        <div style={{ display:'flex', justifyContent:'center', gap:4, marginTop:8 }}>
+                            {renders.map((_,i)=><div key={i} onClick={()=>setRenderIdx(i)} style={{ width:i===renderIdx?16:5, height:4, borderRadius:2, background:i===renderIdx?'#fff':'rgba(255,255,255,.3)', cursor:'pointer', transition:'all .3s' }} />)}
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* CONTENIDO */}
+            <div style={{ padding:16, paddingBottom:90 }}>
+                {tab==='ia' && <ClienteIA key={obraCliente?.id} obraCliente={obraCliente} user={user} renders={renders} fotos={fotos} />}
+                {tab==='fotos' && <ClienteFotos obraCliente={obraCliente} fotos={fotos} setFotos={setFotos} user={user} />}
+
+                {tab==='todo' && (
+                    <div>
+                        {obrasCliente.length > 1 && (
+                            <div style={{ background: TC.card, border: `1px solid ${TC.border}`, borderRadius: TC.radius, padding: '12px 14px', marginBottom: 14 }}>
+                                <div style={{ fontSize: 11, color: TC.muted, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Cambiar proyecto</div>
+                                {obrasCliente.map((o,i) => (
+                                    <button key={o.id} onClick={() => { setObraIdx(i); setRenders([]); setRenderIdx(0); setFotos([]); setTab('ia'); }}
+                                        style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:6, borderRadius:10, border:`1.5px solid ${i===obraIdx?TC.accent:TC.border}`, background:i===obraIdx?TC.accent+'18':'transparent', cursor:'pointer' }}>
+                                        <div style={{ width:8, height:8, borderRadius:'50%', background:i===obraIdx?TC.accent:TC.border, flexShrink:0 }} />
+                                        <span style={{ fontSize:14, fontWeight:i===obraIdx?700:500, color:i===obraIdx?TC.accent:TC.text }}>{o.nombre}</span>
+                                        {i===obraIdx && <span style={{ marginLeft:'auto', fontSize:10, color:TC.accent, fontWeight:700 }}>Actual</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div style={{ fontSize:12, color:TC.muted, marginBottom:10, textTransform:'uppercase', letterSpacing:'.05em', fontWeight:600 }}>Secciones</div>
+                        {TABS_TODO.map(t=>(
+                            <button key={t.id} onClick={()=>setTab(t.id)} style={{ width:'100%', background:TC.card, border:`1px solid ${TC.border}`, borderRadius:TC.radius, padding:'14px 16px', marginBottom:8, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}>
+                                <span style={{ fontSize:14, fontWeight:600, color:TC.text }}>{t.label}</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={TC.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        ))}
+                        <button onClick={onLogout} style={{ width:'100%', marginTop:8, background:'transparent', border:`1px solid ${TC.border}`, borderRadius:TC.radius, padding:'14px', fontSize:14, color:TC.muted, cursor:'pointer' }}>
+                            Cerrar sesión
+                        </button>
+                        <button onClick={() => {
+                            Object.keys(localStorage).filter(k => k.startsWith('bcm_') || k.startsWith('fotodata_')).forEach(k => localStorage.removeItem(k));
+                            if ('serviceWorker' in navigator) {
+                                navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))).then(() => caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))).then(() => window.location.reload(true));
+                            } else { window.location.reload(true); }
+                        }} style={{ width:'100%', marginTop:8, background:'transparent', border:`1px solid #FECACA`, borderRadius:TC.radius, padding:'14px', fontSize:13, color:'#EF4444', cursor:'pointer' }}>
+                            🔄 Actualizar app
+                        </button>
+                    </div>
+                )}
+
+                {esSeccion && (<>
+                    <button onClick={()=>setTab('todo')} style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:'none', color:TC.accent, fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:16, padding:0 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        Volver
+                    </button>
+                    {tab==='novedades' && <ClienteNovedades obraCliente={obraCliente} fotos={fotos} />}
+                    {tab==='renders' && (<>
+                        {(renders||[]).length===0 && <div style={{ textAlign:'center', padding:'50px 0', color:TC.muted }}>Los renders aparecerán acá</div>}
+                        {(renders||[]).map((r,i)=>(
+                            <div key={r.id} style={{ borderRadius:14, overflow:'hidden', marginBottom:12, boxShadow:'0 4px 20px rgba(0,0,0,.1)' }}>
+                                <img src={r.url} style={{ width:'100%', display:'block' }} onError={e=>e.target.style.display='none'} />
+                            </div>
+                        ))}
+                    </>)}
+                    {tab==='cronograma' && (<>
+                        {(obraCliente.cronograma||[]).length===0 && <div style={{ textAlign:'center', padding:'50px 0', color:TC.muted }}>El cronograma aparecerá acá</div>}
+                        {(obraCliente.cronograma||[]).map((e,i)=>(
+                            <div key={e.id||i} style={{ display:'flex', gap:10, marginBottom:8 }}>
+                                <div style={{ width:28, height:28, borderRadius:'50%', background:e.estado==='completado'?'#ECFDF5':e.estado==='en_curso'?TC.accent+'22':'transparent', border:`2px solid ${e.estado==='completado'?'#10B981':e.estado==='en_curso'?TC.accent:TC.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:e.estado==='completado'?'#10B981':e.estado==='en_curso'?TC.accent:TC.muted, flexShrink:0 }}>{e.estado==='completado'?'✓':i+1}</div>
+                                <div style={{ flex:1, background:TC.card, border:`1px solid ${TC.border}`, borderRadius:10, padding:'10px 12px' }}>
+                                    <div style={{ fontSize:13, fontWeight:700, color:TC.text }}>{e.nombre}</div>
+                                    {(e.inicio||e.fin) && <div style={{ fontSize:11, color:TC.muted, marginTop:2 }}>{e.inicio} → {e.fin}</div>}
+                                </div>
+                            </div>
+                        ))}
+                    </>)}
+                    {tab==='informes' && (<>
+                        {(obraCliente.informes||[]).length===0 && <div style={{ textAlign:'center', padding:'50px 0', color:TC.muted }}>Los informes aparecerán acá</div>}
+                        {(obraCliente.informes||[]).slice().reverse().map(inf=>(
+                            <div key={inf.id} style={{ background:TC.card, border:`1px solid ${TC.border}`, borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
+                                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom: inf.texto ? 8 : 0 }}>
+                                    {inf.ext && <div style={{ width:36, height:36, borderRadius:8, background:TC.accentLight, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                        <span style={{ fontSize:9, fontWeight:800, color:TC.accent }}>{inf.ext}</span>
+                                    </div>}
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ fontSize:13, fontWeight:700, color:TC.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{inf.titulo||inf.nombre||'Informe'}</div>
+                                        <div style={{ fontSize:10, color:TC.muted }}>{inf.fecha}{inf.size ? ' · '+inf.size : ''}</div>
+                                    </div>
+                                    {inf.url && (
+                                        <a href={inf.url} download={inf.nombre||inf.titulo||'informe'} target="_blank" rel="noreferrer" style={{ textDecoration:'none', flexShrink:0 }}>
+                                            <button style={{ background:TC.accent, border:'none', borderRadius:8, width:34, height:34, cursor:'pointer', color:'#fff', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>↓</button>
+                                        </a>
+                                    )}
+                                </div>
+                                {inf.texto && <div style={{ fontSize:12, color:TC.sub, lineHeight:1.6 }}>{inf.texto}</div>}
+                                {inf.notas && <div style={{ fontSize:12, color:TC.sub, lineHeight:1.6, marginTop:4 }}>{inf.notas}</div>}
+                            </div>
+                        ))}
+                    </>)}
+                    {tab==='actas' && (<>
+                        {(obraCliente.actas||[]).length===0 && <div style={{ textAlign:'center', padding:'50px 0', color:TC.muted }}>Las actas aparecerán acá</div>}
+                        {(obraCliente.actas||[]).slice().reverse().map(a=>(
+                            <div key={a.id} style={{ background:TC.card, border:`1px solid ${TC.border}`, borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
+                                <div style={{ fontSize:13, fontWeight:700, color:TC.text }}>{a.titulo}</div>
+                                <div style={{ fontSize:10, color:TC.muted, margin:'4px 0 8px' }}>{a.fecha}</div>
+                                <div style={{ fontSize:12, color:TC.sub, lineHeight:1.6, whiteSpace:'pre-line' }}>{a.texto}</div>
+                            </div>
+                        ))}
+                    </>)}
+                    {tab==='checklist' && (<>
+                        {(obraCliente.checklist||[]).length===0 && <div style={{ textAlign:'center', padding:'50px 0', color:TC.muted }}>El checklist aparecerá acá</div>}
+                        {(obraCliente.checklist||[]).map((c,i)=>(
+                            <div key={c.id||i} style={{ display:'flex', alignItems:'center', gap:12, background:TC.card, border:`1px solid ${c.ok?'#86EFAC':TC.border}`, borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
+                                <div style={{ width:22, height:22, borderRadius:6, border:`2px solid ${c.ok?'#10B981':TC.border}`, background:c.ok?'#ECFDF5':'transparent', display:'flex', alignItems:'center', justifyContent:'center', color:'#10B981', fontSize:13, flexShrink:0 }}>{c.ok?'✓':''}</div>
+                                <div style={{ fontSize:13, color:TC.text, textDecoration:c.ok?'line-through':'none', opacity:c.ok?.5:1 }}>{c.titulo}</div>
+                            </div>
+                        ))}
+                    </>)}
+                    {tab==='planos' && (<>
+                        {(obraCliente.archivos||[]).length===0 && <div style={{ textAlign:'center', padding:'50px 0', color:TC.muted }}>Los planos aparecerán acá</div>}
+                        {(obraCliente.archivos||[]).map(a=>(
+                            <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>
+                                <div style={{ background:TC.card, border:`1px solid ${TC.border}`, borderRadius:12, padding:'14px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={TC.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    <div style={{ flex:1, fontSize:13, fontWeight:600, color:TC.accent }}>{a.nombre}</div>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={TC.muted} strokeWidth="2" strokeLinecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                </div>
+                            </a>
+                        ))}
+                    </>)}
+                    {tab==='mensajes' && <ClienteMensajes obraCliente={obraCliente} user={user} />}
+                    {tab==='doc' && <ClienteFaltantes obraCliente={obraCliente} tipo="doc" />}
+                    {tab==='def' && <ClienteFaltantes obraCliente={obraCliente} tipo="def" />}
+                    {tab==='subs' && <ClienteSubcontratos obraCliente={obraCliente} />}
+                </>)}
+            </div>
+
+            {/* NAV FIJO — 3 botones */}
+            <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:480, background:TC.card, borderTop:`1px solid ${TC.border}`, display:'flex', alignItems:'flex-end', padding:'6px 0 max(10px,env(safe-area-inset-bottom))', zIndex:200, boxShadow:'0 -2px 20px rgba(0,0,0,.1)' }}>
+                {/* IA */}
+                <button onClick={()=>setTab('ia')} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, background:'none', border:'none', cursor:'pointer', color:tab==='ia'?TC.accent:TC.muted, padding:'6px 0', position:'relative' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l4.93-1.37A9.96 9.96 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/><circle cx="8" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="16" cy="12" r="1" fill="currentColor"/></svg>
+                    <span style={{ fontSize:10, fontWeight:tab==='ia'?700:500 }}>IA</span>
+                </button>
+                {/* MENSAJES con badge */}
+                <button onClick={()=>{ setTab('mensajes'); marcarLeidos(); }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, background:'none', border:'none', cursor:'pointer', color:tab==='mensajes'?TC.accent:TC.muted, padding:'6px 0', position:'relative' }}>
+                    <div style={{ position:'relative' }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                        {msgsNoLeidos > 0 && <div style={{ position:'absolute', top:-4, right:-6, background:'#EF4444', color:'#fff', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{msgsNoLeidos > 9 ? '9+' : msgsNoLeidos}</div>}
+                    </div>
+                    <span style={{ fontSize:10, fontWeight:tab==='mensajes'?700:500 }}>Mensajes</span>
+                </button>
+                {/* CÁMARA — sin elevar, ahora hay 4 botones */}
+                <button onClick={()=>setTab('fotos')} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, background:'none', border:'none', cursor:'pointer', color:tab==='fotos'?TC.accent:TC.muted, padding:'6px 0' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span style={{ fontSize:10, fontWeight:tab==='fotos'?700:500 }}>Fotos</span>
+                </button>
+                {/* TODO */}
+                <button onClick={()=>setTab('todo')} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, background:'none', border:'none', cursor:'pointer', color:(!['ia','fotos'].includes(tab))?TC.accent:TC.muted, padding:'6px 0' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    <span style={{ fontSize:10, fontWeight:(!['ia','fotos'].includes(tab))?700:500 }}>Todo</span>
+                </button>
+            </nav>
+        </div>
+    );
+}
+
+
+function ClienteIA({ obraCliente, user, renders = [], fotos = [] }) {
+    const nombre = user.nombre?.split(' ')[0] || 'cliente';
+    const [msgs, setMsgs] = useState([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [bienvenidaLista, setBienvenidaLista] = useState(false);
+    const [imgAdjunta, setImgAdjunta] = useState(null); // { base64, mime, nombre }
+    const fileIARef = useRef(null);
+    const scrollRef = useRef(null);
+    const apiKey = localStorage.getItem('bcm_api_key') || localStorage.getItem('bcm_api_key') || '';
+
+    useEffect(() => {
+        setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50);
+    }, [msgs]);
+
+    // Generar bienvenida personalizada con IA al abrir
+    useEffect(() => {
+        if (bienvenidaLista || !obraCliente) return;
+        setBienvenidaLista(true);
+        setLoading(true);
+        const fotosCount = fotos.length || obraCliente?.fotos?.length || 0;
+        const ultimoInforme = (obraCliente?.informes || []).slice(-1)[0];
+        const etapaActual = (obraCliente?.cronograma || []).find(e => e.estado === 'en_curso');
+        const avance = obraCliente?.avance || 0;
+        const promptBienvenida = `Generá un saludo de bienvenida cálido y personalizado para ${nombre}, cliente del proyecto "${obraCliente?.nombre}".
+Datos disponibles: avance ${avance}%, ${fotosCount} fotos cargadas, ${renders.length} renders del proyecto, etapa en curso: ${etapaActual?.nombre || 'no especificada'}, último informe: ${ultimoInforme ? ultimoInforme.titulo : 'ninguno aún'}.
+El saludo debe: llamarlo por nombre, mencionar algo específico (avance, fotos, renders o etapa según lo que haya), ser positivo y natural, terminar preguntando en qué puede ayudarlo. Máximo 3 oraciones. Español rioplatense. Variá el saludo inicial. Si hay renders mencionalo.`;
+        fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages: [{ role: 'user', content: promptBienvenida }] })
+        })
+        .then(r => r.json())
+        .then(data => { setMsgs([{ role: 'assistant', content: data.content?.[0]?.text || `¡Hola ${nombre}! ¿En qué te puedo ayudar con tu proyecto?` }]); })
+        .catch(() => { setMsgs([{ role: 'assistant', content: `¡Hola ${nombre}! Estoy acá para ayudarte. ¿En qué te puedo ayudar?` }]); })
+        .finally(() => setLoading(false));
+    }, [obraCliente?.id]);
+    const contexto = (function() {
+        const o = obraCliente;
+        const gastoTotal = (o?.gastos||[]).reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+        const informesStr = (o?.informes||[]).length===0 ? 'Sin informes aún.' :
+            (o.informes||[]).slice(-8).map(function(i){ return '['+i.fecha+'] '+(i.tipo?i.tipo.toUpperCase()+': ':'')+
+            (i.titulo||'Informe')+(i.notas?'\n  Notas: '+i.notas:''); }).join('\n');
+        const cronoStr = (o?.cronograma||[]).length===0 ? 'Sin cronograma cargado.' :
+            (o.cronograma||[]).map(function(e){ return (e.estado==='completado'?'✓':e.estado==='en_curso'?'▶':'○')+
+            ' '+e.nombre+': '+e.estado+' ('+(e.inicio||'?')+' → '+(e.fin||'?')+')'+
+            (e.desc?'\n  '+e.desc:''); }).join('\n');
+        const subStr = (o?.subcontratos||[]).length===0 ? 'Sin subcontratos asignados.' :
+            (o.subcontratos||[]).map(function(s){ return '• '+s.nombre+(s.empresa?' — '+s.empresa:'')+
+            ' ['+(s.estado||'activo')+']'+(s.contacto?'\n  Contacto: '+s.contacto:''); }).join('\n');
+        const gastosStr = (o?.gastos||[]).length===0 ? 'Sin gastos cargados.' :
+            (o.gastos||[]).slice(-5).map(function(g){ return '• '+(g.titulo||g.concepto||'Gasto')+': $'+g.monto+' ('+(g.fecha||'-')+')'; }).join('\n');
+        const docStr = (o?.faltantes_doc||[]).length===0 ? 'Sin faltantes de documentación.' :
+            (o.faltantes_doc||[]).map(function(f){ return '• '+f.titulo+(f.nota?': '+f.nota:''); }).join('\n');
+        const defStr = (o?.faltantes_def||[]).length===0 ? 'Sin definiciones pendientes.' :
+            (o.faltantes_def||[]).map(function(f){ return '• '+f.titulo+(f.nota?': '+f.nota:''); }).join('\n');
+        const actasStr = (o?.actas||[]).length===0 ? 'Sin actas.' :
+            (o.actas||[]).slice(-5).map(function(a){ return '['+a.fecha+'] '+a.titulo+'\n  '+(a.texto||'').slice(0,300); }).join('\n');
+        const checkStr = (o?.checklist||[]).length===0 ? 'Sin checklist.' :
+            (o.checklist||[]).map(function(c){ return '['+(c.ok?'✓':'○')+'] '+c.titulo; }).join('\n');
+        const fotosStr = fotos.length===0 ? 'Sin fotos aún.' :
+            'Últimas: '+fotos.slice(0,5).map(function(f){ return (f.fecha||'sin fecha')+(f.de?' ('+f.de+')':''); }).join(', ');
+        const rendersStr = renders.length===0 ? 'Sin renders cargados aún.' :
+            renders.length+' render'+(renders.length>1?'s':'')+' disponibles. El cliente los ve en Todo → Renders.';
+        const msgsBelfastStr = (o?.mensajes_cliente||[]).filter(function(m){return !m.esCliente;}).slice(-5)
+            .map(function(m){ return '['+m.fecha+'] Belfast: '+m.texto; }).join('\n') || 'Sin mensajes recientes.';
+        const msgsClienteStr = (o?.mensajes_cliente||[]).filter(function(m){return m.esCliente;}).slice(-5)
+            .map(function(m){ return '['+m.fecha+'] '+(user.nombre||'Cliente')+': '+m.texto; }).join('\n') || 'Sin mensajes recientes.';
+        const checkComp = (o?.checklist||[]).filter(function(c){return c.ok;}).length;
+        const checkTotal = (o?.checklist||[]).length;
+
+        return 'Sos el asistente personal de obra de '+(user.nombre||'el cliente')+', cliente de Belfast Construction Management.\n'+
+        'Tenés acceso TOTAL y REAL a su proyecto. Respondé siempre con los datos concretos.\n\n'+
+        '=== PROYECTO ===\n'+
+        'Nombre: '+(o?.nombre||'Sin nombre')+'\n'+
+        'Avance: '+(o?.avance||0)+'% completado\n'+
+        'Ubicación/Sector: '+(o?.sector||o?.direccion||'No especificado')+'\n'+
+        'Inicio: '+(o?.inicio||'-')+' | Cierre estimado: '+(o?.cierre||'-')+'\n'+
+        'Presupuesto: '+(o?.monto?'$'+o.monto:'No especificado')+'\n\n'+
+        '=== INFORMES ('+(o?.informes||[]).length+' total) ===\n'+informesStr+'\n\n'+
+        '=== CRONOGRAMA ('+(o?.cronograma||[]).length+' etapas) ===\n'+cronoStr+'\n\n'+
+        '=== SUBCONTRATOS ('+(o?.subcontratos||[]).length+') ===\n'+subStr+'\n\n'+
+        '=== GASTOS ===\n'+
+        'Total registrado: $'+gastoTotal.toLocaleString('es-AR')+'\n'+gastosStr+'\n\n'+
+        '=== DOCUMENTACIÓN FALTANTE ===\n'+docStr+'\n\n'+
+        '=== DEFINICIONES PENDIENTES ===\n'+defStr+'\n\n'+
+        '=== ACTAS ('+(o?.actas||[]).length+') ===\n'+actasStr+'\n\n'+
+        '=== CHECKLIST ===\n'+checkStr+'\n'+
+        'Completado: '+checkComp+'/'+checkTotal+' items\n\n'+
+        '=== FOTOS ('+fotos.length+' total) ===\n'+fotosStr+'\n\n'+
+        '=== RENDERS ===\n'+rendersStr+'\n\n'+
+        '=== MENSAJES DE BELFAST ===\n'+msgsBelfastStr+'\n\n'+
+        '=== MENSAJES DEL CLIENTE ===\n'+msgsClienteStr+'\n\n'+
+        '=== INSTRUCCIONES ===\n'+
+        '1. NUNCA digas que no tenés acceso — toda la info está arriba.\n'+
+        '2. Si mandan una foto o PDF, analizalo en detalle relacionándolo con la obra.\n'+
+        '3. Si preguntan por cronograma, dá fechas y estados. Por gastos, calculá totales.\n'+
+        '4. Podés buscar precios, proveedores y normativas en Argentina via web.\n'+
+        '5. Español rioplatense, directo y amigable. Llamalo por nombre.';
+    })();
+
+    async function enviarConImg(imgDirecta) {
+        await enviarInterno(imgDirecta || imgAdjunta, input.trim());
+    }
+
+    async function enviar() {
+        if ((!input.trim() && !imgAdjunta) || loading) return;
+        await enviarInterno(imgAdjunta, input.trim());
+    }
+
+    async function enviarInterno(imgData, textoData) {
+        if ((!textoData && !imgData) || loading) return;
+        
+        // Construir contenido del mensaje
+        let userContent;
+        const textoUsuario = textoData || (imgData ? '¿Podés analizar esta imagen en el contexto de mi proyecto?' : '');
+        
+        if (imgData) {
+            const bloque = imgData.isPdf
+                ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: imgData.base64 } }
+                : { type: 'image', source: { type: 'base64', media_type: imgData.mime, data: imgData.base64 } };
+            userContent = [ bloque, { type: 'text', text: textoUsuario } ];
+        } else {
+            userContent = textoUsuario;
+        }
+
+        const userMsg = { role: 'user', content: userContent };
+        const userMsgDisplay = { role: 'user', content: textoUsuario, _img: imgData?.previewUrl };
+        
+        // Incluir últimas fotos de la obra en el historial para que la IA las vea
+        const fotosParaIA = fotos.slice(0, 5).filter(f => f.url && f.url.startsWith('data:image'));
+        
+        const historialBase = msgs.filter(m => m.role).map(m => ({
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content : m.content
+        }));
+
+        // Si es la primera pregunta y hay fotos, incluirlas como contexto visual
+        let historialAPI;
+        if (historialBase.length === 0 && fotosParaIA.length > 0) {
+            // Comprimir fotos para la API (máx 800px)
+            const fotosComprimidas = await Promise.all(fotosParaIA.map(async f => {
+                try {
+                    return await new Promise(res => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const MAX = 800;
+                            let w = img.width, h = img.height;
+                            if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+                            const c = document.createElement('canvas');
+                            c.width = w; c.height = h;
+                            c.getContext('2d').drawImage(img, 0, 0, w, h);
+                            let dataUrl = c.toDataURL('image/jpeg', 0.6);
+                            res(dataUrl.split(',')[1]);
+                        };
+                        img.onerror = () => res(null);
+                        img.src = f.url;
+                    });
+                } catch { return null; }
+            }));
+            const fotosValidas = fotosComprimidas.filter(Boolean);
+            if (fotosValidas.length > 0) {
+                const bloquesFotos = fotosValidas.map((b, i) => ({
+                    type: 'image',
+                    source: { type: 'base64', media_type: 'image/jpeg', data: b }
+                }));
+                const mensajeContextoFotos = {
+                    role: 'user',
+                    content: [
+                        ...bloquesFotos,
+                        { type: 'text', text: 'Estas son las últimas ' + fotosValidas.length + ' fotos del avance de mi obra. Tenelas en cuenta para responder mis preguntas.' }
+                    ]
+                };
+                const respuestaAck = { role: 'assistant', content: 'Perfecto, ya vi las fotos del avance de tu obra. ¿En qué te puedo ayudar?' };
+                historialAPI = [mensajeContextoFotos, respuestaAck, userMsg];
+            } else {
+                historialAPI = [...historialBase, userMsg];
+            }
+        } else {
+            historialAPI = [...historialBase, userMsg];
+        }
+        
+        setMsgs(p => [...p, userMsgDisplay]);
+        setInput('');
+        setImgAdjunta(null);
+        setLoading(true);
+
+        try {
+            const key = apiKey || localStorage.getItem('bcm_api_key') || localStorage.getItem('bcm_api_key') || '';
+            if (!key) {
+                setMsgs(p => [...p, { role: 'assistant', content: 'La IA aún no está configurada. Pedile al equipo de Belfast que configure la API key en la app.' }]);
+                setLoading(false);
+                return;
+            }
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': key,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true',
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 2048,
+                    system: contexto,
+                    messages: historialAPI,
+                    tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+                })
+            });
+            const data = await response.json();
+            if (data.error) {
+                const errMsg = data.error.message || JSON.stringify(data.error);
+                if (errMsg.includes('API key') || errMsg.includes('auth')) {
+                    setMsgs(p => [...p, { role: 'assistant', content: 'Error de autenticación. La API key no es válida. Pedile al equipo que la verifique.' }]);
+                } else {
+                    setMsgs(p => [...p, { role: 'assistant', content: 'Error de IA: ' + errMsg }]);
+                }
+                setLoading(false);
+                return;
+            }
+            const texto = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n') || 'Sin respuesta.';
+            setMsgs(p => [...p, { role: 'assistant', content: texto }]);
+        } catch (e) {
+            console.error('IA error:', e);
+            setMsgs(p => [...p, { role: 'assistant', content: 'Error de conexión: ' + (e.message || 'desconocido') + '. Verificá tu internet e intentá de nuevo.' }]);
+        }
+        setLoading(false);
+    }
+
+    async function adjuntarImagen(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const isImg = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf';
+
+        if (isImg) {
+            // Comprimir hasta < 4MB (API acepta máx 5MB)
+            const comprimida = await new Promise(res => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let w = img.width, h = img.height;
+                        const MAX = 1600;
+                        if (w > MAX || h > MAX) {
+                            const ratio = Math.min(MAX/w, MAX/h);
+                            w = Math.round(w * ratio);
+                            h = Math.round(h * ratio);
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        let quality = 0.75;
+                        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        while (dataUrl.length > 5000000 && quality > 0.2) {
+                            quality -= 0.1;
+                            dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        }
+                        res(dataUrl);
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+            const base64 = comprimida.split(',')[1];
+            const adjunta = { base64, mime: 'image/jpeg', nombre: file.name, previewUrl: comprimida, isPdf: false };
+            setImgAdjunta(adjunta);
+            setTimeout(() => enviarConImg(adjunta), 150);
+        } else if (isPdf) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const dataUrl = ev.target.result;
+                const base64 = dataUrl.split(',')[1];
+                if (base64.length > 6000000) {
+                    setMsgs(p => [...p, { role: 'assistant', content: 'El PDF es muy grande (máx 5MB). Comprimilo antes de enviarlo.' }]);
+                    return;
+                }
+                const adjunta = { base64, mime: 'application/pdf', nombre: file.name, previewUrl: null, isPdf: true };
+                setImgAdjunta(adjunta);
+                setTimeout(() => enviarConImg(adjunta), 150);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            setInput(prev => prev + (prev ? '\n' : '') + '[Archivo: ' + file.name + ']');
+        }
+        e.target.value = '';
+    }
+
+    return (<div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingBottom: 130, paddingRight: 4 }}>
+            {msgs.map((m, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
+                    {m.role === 'assistant' && (
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: T.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 8, marginTop: 4 }}>
+                            <img src="/icons/belfast-logo.jpeg" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                        </div>
+                    )}
+                    <div style={{ maxWidth: '80%', background: m.role === 'user' ? T.accent : T.card, color: m.role === 'user' ? '#fff' : T.text, borderRadius: m.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.6, border: m.role === 'user' ? 'none' : `1px solid ${T.border}`, whiteSpace: 'pre-wrap' }}>
+                        {m._img && <img src={m._img} style={{ width: '100%', maxWidth: 200, borderRadius: 8, marginBottom: 6, display: 'block' }} />}
+                        {typeof m.content === 'string' ? m.content : m.content}
+                    </div>
+                </div>
+            ))}
+            {loading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <img src="/icons/belfast-logo.jpeg" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: '18px 18px 18px 4px', padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: T.muted, animation: `pulse 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+        {imgAdjunta && (
+            <div style={{ position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, padding: '0 16px', zIndex: 50 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,.1)' }}>
+                    <img src={imgAdjunta.previewUrl} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
+                    <span style={{ fontSize: 12, color: T.muted, flex: 1 }}>{imgAdjunta.nombre}</span>
+                    <button onClick={() => setImgAdjunta(null)} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 16 }}>✕</button>
+                </div>
+            </div>
+        )}
+        <input ref={fileIARef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" style={{ display: 'none' }} onChange={adjuntarImagen} />
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: T.bg, borderTop: `1px solid ${T.border}`, padding: '8px 12px', zIndex: 210 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                <button onClick={() => fileIARef.current?.click()}
+                    style={{ width: 38, height: 38, background: T.card, border: `1.5px solid ${T.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </button>
+                <textarea value={input} onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) enviar(); }}
+                    placeholder="Preguntá sobre tu proyecto..." rows={1}
+                    style={{ flex: 1, padding: '9px 14px', borderRadius: 20, border: `1.5px solid ${T.border}`, fontSize: 15, color: T.text, background: T.card, resize: 'none', fontFamily: 'inherit', lineHeight: 1.4, maxHeight: 80, overflowY: 'auto' }} />
+                <button onClick={enviar} disabled={(!input.trim() && !imgAdjunta) || loading}
+                    style={{ width: 38, height: 38, background: (input.trim() || imgAdjunta) && !loading ? T.accent : T.border, border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
+                    {IC.send}
+                </button>
+            </div>
+        </div>
+    </div>);
+}
+
+
+function ClienteFotos({ obraCliente, fotos, setFotos, user }) {
+    const fileRef = useRef(null);
+    const [subiendo, setSubiendo] = useState(false);
+
+    async function subirFoto(e) {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        setSubiendo(true);
+        try {
+            const nuevas = await Promise.all(files.map(async f => {
+                const dataUrl = await toDataUrl(f, 600);
+                const fotoId = uid();
+                const foto = {
+                    id: fotoId,
+                    url: dataUrl,
+                    nombre: f.name,
+                    fecha: new Date().toLocaleDateString('es-AR'),
+                    de: user.nombre || 'Cliente',
+                };
+                // Guardar base64 individual en Supabase
+                storage.set('fotodata_' + fotoId, dataUrl).catch(() => {});
+                try { localStorage.setItem('fotodata_' + fotoId, dataUrl); } catch {}
+                return foto;
+            }));
+
+            const todasFotos = [...fotos, ...nuevas];
+            setFotos(todasFotos);
+
+            // Guardar en Supabase en la key de fotos de la obra
+            const meta = todasFotos.map(f => ({ id: f.id, url: f.url, nombre: f.nombre, fecha: f.fecha, de: f.de }));
+            for (const prefix of ['bcm_', 'bcm_']) {
+                try {
+                    const key = prefix + 'fotos_' + obraCliente.id;
+                    await storage.set(key, JSON.stringify(meta));
+                    try { localStorage.setItem(key, JSON.stringify(meta)); } catch {}
+                } catch {}
+            }
+        } catch {}
+        setSubiendo(false);
+        e.target.value = '';
+    }
+
+    return (<div>
+        {/* Botón cámara */}
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple onChange={subirFoto} style={{ display: 'none' }} />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <button onClick={() => { fileRef.current.removeAttribute('capture'); fileRef.current.click(); }}
+                style={{ flex: 1, background: T.accentLight, border: `1.5px solid ${T.accent}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, color: T.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Galería
+            </button>
+            <button onClick={() => { fileRef.current.setAttribute('capture', 'environment'); fileRef.current.click(); }}
+                style={{ flex: 1, background: T.navy, border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Cámara
+            </button>
+        </div>
+
+        {subiendo && <div style={{ textAlign: 'center', padding: 12, color: T.accent, fontSize: 13, fontWeight: 600 }}>Subiendo fotos...</div>}
+
+        {fotos.length === 0 && !subiendo && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted, fontSize: 14 }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={T.border} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <div>Sacá fotos de tu visita a la obra</div>
+            </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {fotos.map(f => {
+                const esMia = !f.de || f.de !== 'Belfast';
+                return (
+                    <div key={f.id} style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '1', background: T.border, position: 'relative' }}>
+                        <img src={f.url} alt={f.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'} />
+                        {esMia && (
+                            <button onClick={async () => {
+                                const nuevas = fotos.filter(x => x.id !== f.id);
+                                setFotos(nuevas);
+                                for (const prefix of ['bcm_','bcm_']) {
+                                    try {
+                                        const key = prefix+'fotos_'+obraCliente.id;
+                                        await storage.set(key, JSON.stringify(nuevas));
+                                    } catch {}
+                                }
+                            }} style={{ position: 'absolute', top: 5, right: 5, width: 24, height: 24, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                        )}
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.45)', padding: '3px 6px', fontSize: 9, color: '#fff' }}>
+                            {esMia ? '📷 Yo' : f.de || 'Belfast'}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+        {fotos.length > 0 && <div style={{ fontSize: 11, color: T.muted, textAlign: 'center', marginTop: 10 }}>{fotos.length} foto{fotos.length !== 1 ? 's' : ''} · Las tuyas tienen ✕ para borrar</div>}
+    </div>);
+}
+
+
+function ClienteMensajes({ obraCliente, user }) {
+    const [msgs, setMsgs] = useState(obraCliente.mensajes_cliente || []);
+    const [texto, setTexto] = useState('');
+    const scrollRef = useRef(null);
+    const fotoRef = useRef(null);
+    const archRef = useRef(null);
+
+    useEffect(() => {
+        // Polling cada 5s para ver mensajes nuevos de Belfast
+        async function cargar() {
+            for (const prefix of ['bcm_', 'bcm_']) {
+                try {
+                    const r = await storage.get(prefix + 'obras');
+                    if (r?.value) {
+                        const obras = JSON.parse(r.value);
+                        const obra = obras.find(o => o.id === obraCliente.id);
+                        if (obra?.mensajes_cliente?.length >= msgs.length) {
+                            setMsgs(obra.mensajes_cliente);
+                            return;
+                        }
+                    }
+                } catch {}
+            }
+        }
+        const iv = setInterval(cargar, 5000);
+        return () => clearInterval(iv);
+    }, [obraCliente?.id, msgs.length]);
+
+    useEffect(() => {
+        setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50);
+    }, [msgs]);
+
+    async function guardarMsgs(nuevos) {
+        setMsgs(nuevos);
+        for (const prefix of ['bcm_', 'bcm_']) {
+            try {
+                const r = await storage.get(prefix + 'obras');
+                if (r?.value) {
+                    const obras = JSON.parse(r.value);
+                    const updated = obras.map(o => o.id === obraCliente.id ? { ...o, mensajes_cliente: nuevos } : o);
+                    await storage.set(prefix + 'obras', JSON.stringify(updated));
+                }
+            } catch {}
+        }
+    }
+
+    async function enviar() {
+        if (!texto.trim()) return;
+        const nuevo = { id: uid(), de: user.nombre || 'Cliente', texto: texto.trim(), fecha: new Date().toLocaleDateString('es-AR'), esCliente: true };
+        setTexto('');
+        await guardarMsgs([...msgs, nuevo]);
+    }
+
+    async function enviarFoto(e) {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        let current = [...msgs];
+        for (const f of files) {
+            const isImg = f.type.startsWith('image/');
+            const dataUrl = await toDataUrl(f, isImg ? 800 : null);
+            const msgId = uid();
+            if (!isImg) {
+                await storage.set('bcm_msgarch_' + msgId, dataUrl).catch(() => {});
+                try { localStorage.setItem('bcm_msgarch_' + msgId, dataUrl); } catch {}
+            }
+            current = [...current, {
+                id: msgId, de: user.nombre || 'Cliente',
+                texto: isImg ? '📷 ' + f.name : '📎 ' + f.name,
+                imagen: isImg ? dataUrl : null,
+                archivoKey: !isImg ? 'bcm_msgarch_' + msgId : null,
+                archivoNombre: f.name,
+                archivoExt: f.name.split('.').pop().toUpperCase(),
+                fecha: new Date().toLocaleDateString('es-AR'),
+                esCliente: true
+            }];
+        }
+        await guardarMsgs(current);
+        e.target.value = '';
+    }
+
+    return (<div style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
+        <input ref={fotoRef} type="file" accept="image/*" capture="environment" multiple onChange={enviarFoto} style={{ display: 'none' }} />
+        <input ref={archRef} type="file" multiple onChange={enviarFoto} style={{ display: 'none' }} />
+
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', marginBottom: 12 }}>
+            {msgs.length === 0 && <div style={{ textAlign: 'center', padding: '40px 0', color: T.muted, fontSize: 13 }}>Iniciá la conversación con el equipo de Belfast</div>}
+            {msgs.map(m => (
+                <div key={m.id} style={{ display: 'flex', justifyContent: m.esCliente ? 'flex-end' : 'flex-start', marginBottom: 10, alignItems: 'flex-end', gap: 6 }}>
+                    {m.esCliente && (
+                        <button onClick={() => guardarMsgs(msgs.filter(x => x.id !== m.id))}
+                            style={{ background: 'none', border: 'none', color: T.muted, fontSize: 14, cursor: 'pointer', padding: '4px', opacity: 0.6, flexShrink: 0 }}>✕</button>
+                    )}
+                    <div style={{ maxWidth: '82%' }}>
+                        <div style={{ fontSize: 10, color: T.muted, marginBottom: 3, textAlign: m.esCliente ? 'right' : 'left' }}>{m.de}</div>
+                        {m.imagen ? (
+                            <img src={m.imagen} style={{ width: '100%', borderRadius: 12, display: 'block', cursor:'pointer' }} onClick={() => window.open(m.imagen)} />
+                        ) : (m.archivo || m.archivoKey) ? (
+                            <MsgArchivo m={m} colorBg={m.esCliente ? T.accent : T.card} colorText={m.esCliente ? '#fff' : T.text} align={m.esCliente ? 'right' : 'left'} />
+                        ) : (
+                            <div style={{ background: m.esCliente ? T.accent : T.card, color: m.esCliente ? '#fff' : T.text, borderRadius: m.esCliente ? '16px 16px 4px 16px' : '16px 16px 16px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.5, border: m.esCliente ? 'none' : `1px solid ${T.border}` }}>{m.texto}</div>
+                        )}
+                        <div style={{ fontSize: 10, color: T.muted, marginTop: 3, textAlign: m.esCliente ? 'right' : 'left' }}>{m.fecha}</div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <button onClick={() => { fotoRef.current.setAttribute('capture','environment'); fotoRef.current.click(); }}
+                style={{ width: 38, height: 38, background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.muted, flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+            <button onClick={() => archRef.current.click()}
+                style={{ width: 38, height: 38, background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.muted, flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder="Escribí tu mensaje..." rows={1}
+                style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: `1.5px solid ${T.border}`, fontSize: 15, color: T.text, background: T.bg, resize: 'none', fontFamily: 'inherit' }} />
+            <button onClick={enviar} disabled={!texto.trim()}
+                style={{ width: 38, height: 38, background: texto.trim() ? T.accent : T.border, border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
+                {IC.send}
+            </button>
+        </div>
+    </div>);
+}
+
+
+function ClienteNovedades({ obraCliente, fotos }) {
+    const items = [
+        ...(obraCliente.informes||[]).map(i=>({...i, tipo:'informe'})),
+        ...(obraCliente.obs||[]).map(o=>({id:o.id,titulo:o.txt,fecha:o.fecha,tipo:'obs'})),
+        ...(fotos||[]).slice(0,5).map(f=>({id:f.id,titulo:'Fotos nuevas cargadas',fecha:f.fecha,tipo:'foto',url:f.url})),
+    ].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).slice(0,20);
+    if (!items.length) return <div style={{ textAlign:'center', padding:'50px 0', color:T.muted, fontSize:14 }}>Las novedades aparecerán acá</div>;
+    return (<div>
+        {items.map((item,i)=>(
+            <div key={item.id||i} style={{ display:'flex', gap:12, marginBottom:14 }}>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                    <div style={{ width:34, height:34, borderRadius:'50%', background:T.accentLight, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:T.accent }}>
+                        {item.tipo==='informe' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        : item.tipo==='foto' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                    </div>
+                    {i<items.length-1 && <div style={{ width:2, flex:1, background:T.border, marginTop:4 }} />}
+                </div>
+                <div style={{ flex:1, paddingBottom:14 }}>
+                    {item.url && <img src={item.url} style={{ width:'100%', borderRadius:10, marginBottom:6, maxHeight:120, objectFit:'cover' }} />}
+                    <div style={{ fontSize:13, fontWeight:600, color:T.text }}>{item.titulo}</div>
+                    {item.texto && <div style={{ fontSize:12, color:T.sub, marginTop:3, lineHeight:1.5 }}>{item.texto.slice(0,120)}</div>}
+                    <div style={{ fontSize:10, color:T.muted, marginTop:3 }}>{item.fecha}</div>
                 </div>
             </div>
         ))}
     </div>);
 }
 
-// ── LOGIN CON SISTEMA PROPIO ─────────────────────────────────────────
-// Máximo 8 usuarios. Se guardan en Supabase tabla bcm_storage key 'bcm_usuarios'
-// Cada usuario: { id, usuario, passHash, nombre, empresa ('belfast'|'vv'|'ambas'), creado }
-// El super admin puede ver y gestionar todos los usuarios
 
-const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'ambas', nombre: 'Sebastián', nivel: 'superadmin' };
-const MAX_USUARIOS = 8;
+// SVG íconos profesionales estilo Apple
+const IC = {
+    msg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+    doc: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+    def: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    sub: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
+    send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    ok: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    plus: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    x: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+};
 
-// Hash simple (no criptográfico pero suficiente para uso interno)
-function hashPass(pass) {
-    let h = 0;
-    for (let i = 0; i < pass.length; i++) { h = Math.imul(31, h) + pass.charCodeAt(i) | 0; }
-    return 'h' + Math.abs(h).toString(36);
-}
-
-async function cargarUsuarios() {
-    try {
-        const r = await storage.get('bcm_usuarios');
-        if (r?.value) return JSON.parse(r.value);
-    } catch {}
-    return [];
-}
-
-async function guardarUsuarios(usuarios) {
-    const json = JSON.stringify(usuarios);
-    try { localStorage.setItem('bcm_usuarios', json); } catch {}
-    await storage.set('bcm_usuarios', json).catch(() => {});
-}
 
 function LoginScreen({ onLogin }) {
     const T2 = { navy: '#0F172A', accent: '#1D4ED8', bg: '#F8FAFC', text: '#1E293B', muted: '#94A3B8', border: '#E2E8F0', card: '#fff' };
@@ -6896,3 +7835,338 @@ export default function App() {
         />
     );
 }
+function GestionUsuarios({ obras = [] }) {
+    const [usuarios, setUsuarios] = React.useState([]);
+    const [cargando, setCargando] = React.useState(true);
+    const [showNew, setShowNew] = React.useState(false);
+    const [form, setForm] = React.useState({ nombre: '', usuario: '', pass: '', nivel: 'cliente', obra_id: '', renders: [] });
+    const [error, setError] = React.useState('');
+    const renderRef = React.useRef(null);
+
+    React.useEffect(() => {
+        cargarUsuarios().then(u => { setUsuarios(u); setCargando(false); });
+    }, []);
+
+    async function subirRender(e) {
+        const files = Array.from(e.target.files);
+        const nuevos = await Promise.all(files.map(async f => {
+            const dataUrl = await toDataUrl(f, 1200);
+            return { id: uid(), url: dataUrl, nombre: f.name };
+        }));
+        setForm(p => ({ ...p, renders: [...(p.renders||[]), ...nuevos] }));
+    }
+
+    async function crearUsuario() {
+        if (!form.nombre.trim() || !form.usuario.trim() || !form.pass.trim()) { setError('Completá todos los campos'); return; }
+        if (form.pass.length < 6) { setError('Contraseña mínimo 6 caracteres'); return; }
+        if (usuarios.find(u => u.usuario.toLowerCase() === form.usuario.trim().toLowerCase())) { setError('Ese usuario ya existe'); return; }
+        if (usuarios.length >= MAX_USUARIOS) { setError('Límite de usuarios alcanzado'); return; }
+        const nuevo = { id: uid(), usuario: form.usuario.trim().toLowerCase(), passHash: hashPass(form.pass), nombre: form.nombre.trim(), empresa: 'belfast', nivel: form.nivel, obra_id: form.obra_id || '', renders: form.renders || [], creado: new Date().toLocaleDateString('es-AR') };
+        const nuevos = [...usuarios, nuevo];
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+        setForm({ nombre: '', usuario: '', pass: '', nivel: 'cliente', obra_id: '', renders: [] });
+        setShowNew(false);
+        setError('');
+        alert(`✅ Usuario "${nuevo.usuario}" creado.\n\nCredenciales para enviar:\nURL: belfast-obras.vercel.app\nUsuario: ${nuevo.usuario}\nContraseña: ${form.pass}`);
+    }
+
+    async function cambiarEmpresa(id, empresa) {
+        const nuevos = usuarios.map(u => u.id === id ? { ...u, empresa } : u);
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+    }
+
+    async function cambiarNivel(id, nivel) {
+        const nuevos = usuarios.map(u => u.id === id ? { ...u, nivel } : u);
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+    }
+
+    async function eliminarUsuario(id, nombre) {
+        const nuevos = usuarios.filter(u => u.id !== id);
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+    }
+
+    const [editandoRendersId, setEditandoRendersId] = React.useState(null);
+    const [expandido, setExpandido] = React.useState({});
+    const renderEditRef = React.useRef(null);
+
+    async function subirRendersUsuario(id, e) {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        const nuevosRenders = await Promise.all(files.map(async f => {
+            const dataUrl = await toDataUrl(f, 1200);
+            return { id: uid(), url: dataUrl, nombre: f.name };
+        }));
+        const nuevos = usuarios.map(u => u.id === id ? { ...u, renders: [...(u.renders||[]), ...nuevosRenders] } : u);
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+        setEditandoRendersId(null);
+    }
+
+    async function borrarRender(userId, renderId) {
+        const nuevos = usuarios.map(u => u.id === userId ? { ...u, renders: (u.renders||[]).filter(r => r.id !== renderId) } : u);
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+    }
+
+    async function resetPass(id, nombre) {
+        const nueva = window.prompt(`Nueva contraseña para ${nombre}:`);
+        if (!nueva || nueva.length < 6) { alert('Mínimo 6 caracteres'); return; }
+        const nuevos = usuarios.map(u => u.id === id ? { ...u, passHash: hashPass(nueva) } : u);
+        setUsuarios(nuevos);
+        await guardarUsuarios(nuevos);
+        alert('Contraseña actualizada ✓');
+    }
+
+    if (cargando) return <div style={{ textAlign: 'center', padding: '20px', color: T.muted }}>Cargando...</div>;
+
+    return (<div>
+        <div style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: T.accent, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span><b>{usuarios.length}/{MAX_USUARIOS}</b> usuarios</span>
+            <button onClick={() => { setShowNew(v => !v); setError(''); }} style={{ background: T.accent, border: 'none', borderRadius: 8, padding: '6px 14px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Crear usuario</button>
+        </div>
+
+        {/* Formulario crear usuario */}
+        {showNew && (<div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Nuevo usuario</div>
+            <Lbl>Nombre completo</Lbl>
+            <TInput value={form.nombre} onChange={e => { setForm(p => ({ ...p, nombre: e.target.value })); setError(''); }} placeholder="Ej: Juan García" />
+            <Lbl style={{ marginTop: 8 }}>Usuario (para login)</Lbl>
+            <TInput value={form.usuario} onChange={e => { setForm(p => ({ ...p, usuario: e.target.value.toLowerCase().replace(/\s/g,'') })); setError(''); }} placeholder="Ej: juangarcia" />
+            <Lbl style={{ marginTop: 8 }}>Contraseña</Lbl>
+            <TInput value={form.pass} onChange={e => { setForm(p => ({ ...p, pass: e.target.value })); setError(''); }} placeholder="Mínimo 6 caracteres" type="text" />
+            <Lbl style={{ marginTop: 8 }}>Nivel</Lbl>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 8 }}>
+                {[['cliente','👤 Cliente'],['empleado','👷 Empleado'],['directivo','👔 Directivo']].map(([v,l]) => (
+                    <button key={v} onClick={() => setForm(p => ({ ...p, nivel: v }))} style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${form.nivel === v ? T.accent : T.border}`, background: form.nivel === v ? T.accentLight : T.card, color: form.nivel === v ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{l}</button>
+                ))}
+            </div>
+            {form.nivel === 'cliente' && obras.length > 0 && (<>
+                <Lbl>Obra asignada</Lbl>
+                <select value={form.obra_id} onChange={e => setForm(p => ({ ...p, obra_id: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: T.rsm, border: `1px solid ${T.border}`, fontSize: 13, color: T.text, background: T.bg, marginBottom: 8 }}>
+                    <option value="">— Sin asignar —</option>
+                    {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                </select>
+            </>)}
+            {form.nivel === 'cliente' && (<>
+                <Lbl>Renders del proyecto (fondo del cliente)</Lbl>
+                <input ref={renderRef} type="file" accept="image/*" multiple onChange={subirRender} style={{ display: 'none' }} />
+                <button onClick={() => renderRef.current?.click()} style={{ width: '100%', background: T.bg, border: `1.5px dashed ${T.border}`, borderRadius: T.rsm, padding: 12, fontSize: 13, color: T.accent, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}>
+                    + Subir renders / imágenes del proyecto
+                </button>
+                {form.renders?.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 8 }}>
+                        {form.renders.map(r => (
+                            <div key={r.id} style={{ position: 'relative', aspectRatio: '1', borderRadius: 8, overflow: 'hidden' }}>
+                                <img src={r.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <button onClick={() => setForm(p => ({ ...p, renders: p.renders.filter(x => x.id !== r.id) }))}
+                                    style={{ position: 'absolute', top: 3, right: 3, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 20, height: 20, color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </>)}
+            {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#DC2626', marginBottom: 10 }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { setShowNew(false); setError(''); }} style={{ flex: 1, padding: 10, background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                <PBtn onClick={crearUsuario} style={{ flex: 2 }}>Crear y ver credenciales</PBtn>
+            </div>
+        </div>)}
+
+        {usuarios.length === 0 && !showNew && <div style={{ textAlign: 'center', padding: '20px', color: T.muted, fontSize: 13 }}>Sin usuarios registrados aún</div>}
+        <input ref={renderEditRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+            onChange={e => subirRendersUsuario(editandoRendersId, e)} />
+
+        {usuarios.map(u => (
+            <div key={u.id} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.rsm, padding: '12px 14px', marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setExpandido(p => ({ ...p, [u.id]: !p[u.id] }))}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{u.nombre}</div>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.muted} strokeWidth="2" strokeLinecap="round" style={{ transform: expandido[u.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div style={{ fontSize: 11, color: T.muted }}>@{u.usuario} · {u.nivel} · {u.creado}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                        <button onClick={() => resetPass(u.id, u.nombre)} style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 7, padding: '5px 8px', fontSize: 10, fontWeight: 700, color: T.accent, cursor: 'pointer' }}>🔑</button>
+                        <button onClick={() => eliminarUsuario(u.id, u.nombre)} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 7, padding: '5px 8px', fontSize: 10, fontWeight: 700, color: '#EF4444', cursor: 'pointer' }}>✕</button>
+                    </div>
+                </div>
+
+                {/* Config expandible */}
+                {expandido[u.id] && (<>
+
+                {/* Renders del cliente */}
+                {u.nivel === 'cliente' && (<div style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <Lbl>Renders del proyecto</Lbl>
+                        <button onClick={() => { setEditandoRendersId(u.id); renderEditRef.current?.click(); }}
+                            style={{ background: T.accentLight, border: `1px solid ${T.border}`, borderRadius: 7, padding: '4px 10px', fontSize: 10, fontWeight: 700, color: T.accent, cursor: 'pointer' }}>
+                            + Agregar
+                        </button>
+                    </div>
+                    {(u.renders||[]).length === 0 && (
+                        <div style={{ fontSize: 11, color: T.muted, fontStyle: 'italic' }}>Sin renders cargados</div>
+                    )}
+                    {(u.renders||[]).length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 5 }}>
+                            {(u.renders||[]).map(r => (
+                                <div key={r.id} style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', background: T.border }}>
+                                    <img src={r.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <button onClick={() => borrarRender(u.id, r.id)}
+                                        style={{ position: 'absolute', top: 3, right: 3, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 18, height: 18, color: '#fff', fontSize: 9, cursor: 'pointer' }}>✕</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>)}
+                <div style={{ marginTop: 8 }}>
+                    <Lbl>Nivel</Lbl>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
+                        {[['empleado', '👷 Empleado'], ['directivo', '👔 Directivo'], ['cliente', '👤 Cliente']].map(([val, lbl]) => (
+                            <button key={val} onClick={() => cambiarNivel(u.id, val)}
+                                style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${(u.nivel||'empleado') === val ? T.accent : T.border}`, background: (u.nivel||'empleado') === val ? T.accentLight : T.card, color: (u.nivel||'empleado') === val ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                                {lbl}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                    <Lbl>Empresa / acceso</Lbl>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
+                        {[['belfast', 'Belfast']].map(([val, lbl]) => (
+                            <button key={val} onClick={() => cambiarEmpresa(u.id, val)}
+                                style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${u.empresa === val ? T.accent : T.border}`, background: u.empresa === val ? T.accentLight : T.card, color: u.empresa === val ? T.accent : T.sub, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                                {lbl}
+                            </button>
+                        ))}
+                    </div>
+                    {/* Selector de obra para clientes */}
+                    {u.nivel === 'cliente' && (
+                        <div style={{ marginTop: 8 }}>
+                            <Lbl>Obras asignadas (puede tener más de una)</Lbl>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                                {obras.map(o => {
+                                    // Leer siempre directo de usuarios[] para evitar stale closure
+                                    const uActual = usuarios.find(x => x.id === u.id) || u;
+                                    const ids = uActual.obras_ids?.length ? uActual.obras_ids : (uActual.obra_id ? [uActual.obra_id] : []);
+                                    const activa = ids.includes(o.id);
+                                    return (
+                                        <button key={o.id} onClick={async () => {
+                                            setUsuarios(prev => {
+                                                const uPrev = prev.find(x => x.id === u.id) || u;
+                                                const prevIds = uPrev.obras_ids?.length ? uPrev.obras_ids : (uPrev.obra_id ? [uPrev.obra_id] : []);
+                                                const yaActiva = prevIds.includes(o.id);
+                                                const nuevosIds = yaActiva ? prevIds.filter(x => x !== o.id) : [...prevIds, o.id];
+                                                const nuevos = prev.map(x => x.id === u.id ? { ...x, obras_ids: nuevosIds, obra_id: nuevosIds[0] || '' } : x);
+                                                guardarUsuarios(nuevos);
+                                                return nuevos;
+                                            });
+                                        }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${activa ? T.accent : T.border}`, background: activa ? T.accentLight : T.card, cursor: 'pointer', textAlign: 'left' }}>
+                                            <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${activa ? T.accent : T.border}`, background: activa ? T.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, flexShrink: 0 }}>{activa ? '✓' : ''}</div>
+                                            <span style={{ fontSize: 13, color: activa ? T.accent : T.text, fontWeight: activa ? 700 : 400 }}>{o.nombre}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                    {u.nivel === 'cliente' && (<>
+                        <div style={{ marginTop: 10 }}>
+                            <Lbl>Color de la app del cliente</Lbl>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                                {[
+                                    { label: 'Azul', accent: '#1D4ED8', navy: '#0F172A', bg: '#F8FAFC' },
+                                    { label: 'Verde', accent: '#16A34A', navy: '#052e16', bg: '#F0FDF4' },
+                                    { label: 'Naranja', accent: '#EA580C', navy: '#1C1917', bg: '#FFF7ED' },
+                                    { label: 'Violeta', accent: '#7C3AED', navy: '#1E1B4B', bg: '#F5F3FF' },
+                                    { label: 'Negro', accent: '#111827', navy: '#000', bg: '#F9FAFB' },
+                                    { label: 'Rosa', accent: '#DB2777', navy: '#1F1235', bg: '#FDF2F8' },
+                                ].map(tema => {
+                                    const activo = u.tema?.accent === tema.accent;
+                                    return (
+                                        <button key={tema.label} onClick={async () => {
+                                            const nuevos = usuarios.map(x => x.id === u.id ? { ...x, tema: { ...x.tema, ...tema } } : x);
+                                            setUsuarios(nuevos);
+                                            await guardarUsuarios(nuevos);
+                                        }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 20, border: `2px solid ${activo ? tema.accent : T.border}`, background: activo ? tema.accent + '22' : T.card, cursor: 'pointer' }}>
+                                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: tema.accent }} />
+                                            <span style={{ fontSize: 11, fontWeight: activo ? 700 : 500, color: activo ? tema.accent : T.sub }}>{tema.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div style={{ marginTop: 10 }}>
+                            <Lbl>Forma de recuadros</Lbl>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                                {[
+                                    { label: 'Redondeado', radius: '16px', preview: 16 },
+                                    { label: 'Suave', radius: '8px', preview: 8 },
+                                    { label: 'Cuadrado', radius: '2px', preview: 2 },
+                                ].map(op => {
+                                    const activo = (u.tema?.radius || '16px') === op.radius;
+                                    return (
+                                        <button key={op.label} onClick={async () => {
+                                            const nuevos = usuarios.map(x => x.id === u.id ? { ...x, tema: { ...x.tema, radius: op.radius } } : x);
+                                            setUsuarios(nuevos);
+                                            await guardarUsuarios(nuevos);
+                                        }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '8px', borderRadius: 8, border: `2px solid ${activo ? T.accent : T.border}`, background: activo ? T.accentLight : T.card, cursor: 'pointer' }}>
+                                            <div style={{ width: 32, height: 20, background: activo ? T.accent : T.border, borderRadius: op.preview }} />
+                                            <span style={{ fontSize: 10, fontWeight: activo ? 700 : 500, color: activo ? T.accent : T.sub }}>{op.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div style={{ marginTop: 10 }}>
+                            <Lbl>Fuente</Lbl>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                                {[
+                                    { label: 'Sistema', font: 'system-ui, sans-serif' },
+                                    { label: 'Georgia', font: 'Georgia, serif' },
+                                    { label: 'Mono', font: 'ui-monospace, monospace' },
+                                ].map(op => {
+                                    const activo = (u.tema?.font || 'system-ui, sans-serif') === op.font;
+                                    return (
+                                        <button key={op.label} onClick={async () => {
+                                            const nuevos = usuarios.map(x => x.id === u.id ? { ...x, tema: { ...x.tema, font: op.font } } : x);
+                                            setUsuarios(nuevos);
+                                            await guardarUsuarios(nuevos);
+                                        }} style={{ flex: 1, padding: '8px', borderRadius: 8, border: `2px solid ${activo ? T.accent : T.border}`, background: activo ? T.accentLight : T.card, cursor: 'pointer', fontFamily: op.font }}>
+                                            <div style={{ fontSize: 13, fontWeight: activo ? 700 : 500, color: activo ? T.accent : T.sub }}>Aa</div>
+                                            <div style={{ fontSize: 9, color: T.muted, marginTop: 2 }}>{op.label}</div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </>)}
+                </div>
+                </>)}
+            </div>
+        ))}
+    </div>);
+}
+
+// ── LOGIN CON SISTEMA PROPIO ─────────────────────────────────────────
+// Máximo 8 usuarios. Se guardan en Supabase tabla bcm_storage key 'bcm_usuarios'
+// Cada usuario: { id, usuario, passHash, nombre, empresa ('belfast'|'vv'|'ambas'), creado }
+// El super admin puede ver y gestionar todos los usuarios
+
+const SUPER_ADMIN = { usuario: 'sebastian', pass: 'Valentina22', empresa: 'belfast', nombre: 'Sebastián', nivel: 'superadmin' };
+const MAX_USUARIOS = 8;
+
+// Hash simple (no criptográfico pero suficiente para uso interno)
+
+async function guardarUsuarios(usuarios) {
+    const json = JSON.stringify(usuarios);
+    try { localStorage.setItem('bcm_usuarios', json); } catch {}
+    await storage.set('bcm_usuarios', json).catch(() => {});
+}
+
+
+
