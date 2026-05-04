@@ -1722,8 +1722,9 @@ function TabRenders({ detail, upd }) {
         upd(detail.id, { renders: nuevosRenders });
         // Guardar en key separada para que el cliente los cargue fácil
         const rendersMeta = nuevosRenders.map(r => ({ id: r.id, url: r.url, nombre: r.nombre }));
-        storage.set('bop_renders_' + detail.id, JSON.stringify(rendersMeta)).catch(() => {});
-        try { localStorage.setItem('bop_renders_' + detail.id, JSON.stringify(rendersMeta)); } catch {}
+        const _sp = typeof window !== 'undefined' ? (localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_') : 'bcm_';
+        storage.set(_sp+'renders_' + detail.id, JSON.stringify(rendersMeta)).catch(() => {});
+        try { localStorage.setItem(_sp+'renders_' + detail.id, JSON.stringify(rendersMeta)); } catch {}
         e.target.value = '';
     }
 
@@ -1731,8 +1732,9 @@ function TabRenders({ detail, upd }) {
         const nuevosRenders = renders.filter(r => r.id !== id);
         upd(detail.id, { renders: nuevosRenders });
         const rendersMeta = nuevosRenders.map(r => ({ id: r.id, url: r.url, nombre: r.nombre }));
-        storage.set('bop_renders_' + detail.id, JSON.stringify(rendersMeta)).catch(() => {});
-        try { localStorage.setItem('bop_renders_' + detail.id, JSON.stringify(rendersMeta)); } catch {}
+        const _sp = typeof window !== 'undefined' ? (localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_') : 'bcm_';
+        storage.set(_sp+'renders_' + detail.id, JSON.stringify(rendersMeta)).catch(() => {});
+        try { localStorage.setItem(_sp+'renders_' + detail.id, JSON.stringify(rendersMeta)); } catch {}
     }
 
     return (<div>
@@ -7284,22 +7286,21 @@ function ClienteView({ user: userProp, obras, onLogout }) {
 
         async function cargarRenders() {
             if (cancelado) return;
-            // Solo renders de ESTA obra — NO mezclar con otras obras ni con user.renders
-            // 1. Buscar en key separada bop_renders_{id}
-            try {
-                const r = await storage.get('bcm_renders_' + obraCliente.id);
-                if (cancelado) return;
-                if (r?.value) {
-                    const lista = JSON.parse(r.value);
-                    if (Array.isArray(lista) && lista.length > 0) {
-                        setRenders(lista);
-                        setRenderIdx(0);
-                        return;
+            // Buscar renders en key separada (todos los prefijos posibles)
+            for (const pfx of ['bcm_', 'bop_', 'vv_']) {
+                try {
+                    const r = await storage.get(pfx+'renders_' + obraCliente.id);
+                    if (cancelado) return;
+                    if (r?.value) {
+                        const lista = JSON.parse(r.value);
+                        if (Array.isArray(lista) && lista.length > 0) {
+                            setRenders(lista); setRenderIdx(0); return;
+                        }
                     }
-                }
-            } catch {}
-            // 2. Buscar dentro de bop_obras
-            for (const prefix of ['bop_','bcm_']) {
+                } catch {}
+            }
+            // Buscar dentro de obras (todos los prefijos)
+            for (const prefix of ['bcm_','bop_','vv_']) {
                 try {
                     const r = await storage.get(prefix+'obras');
                     if (cancelado) return;
@@ -7307,21 +7308,16 @@ function ClienteView({ user: userProp, obras, onLogout }) {
                         const lista = JSON.parse(r.value);
                         const obra = Array.isArray(lista) ? lista.find(o => o.id === obraCliente.id) : null;
                         if (obra?.renders?.length) {
-                            setRenders(obra.renders);
-                            setRenderIdx(0);
-                            return;
+                            setRenders(obra.renders); setRenderIdx(0); return;
                         }
                     }
                 } catch {}
             }
-            // 3. Buscar en obrasSupabase en memoria
+            // Buscar en memoria
             const obraLocal = obrasSupabase.find(o => o.id === obraCliente.id);
             if (obraLocal?.renders?.length) {
-                setRenders(obraLocal.renders);
-                setRenderIdx(0);
-                return;
+                setRenders(obraLocal.renders); setRenderIdx(0); return;
             }
-            // Sin renders para esta obra — quedar en blanco
             setRenders([]);
         }
 
