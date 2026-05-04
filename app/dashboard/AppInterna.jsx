@@ -6330,48 +6330,90 @@ async function guardarUsuarios(usuarios) {
 }
 
 function LoginPropio({ onLogin, cfg }) {
+    const [empresa, setEmpresa] = React.useState('belfast');
     const [u, setU] = React.useState('');
     const [p, setP] = React.useState('');
     const [err, setErr] = React.useState('');
     const [loading, setLoading] = React.useState(false);
+
+    // Superadmins por empresa
+    const ADMINS = {
+        belfast: { usuario: 'sebastian', pass: 'Valentina22', nombre: 'Sebastián', nivel: 'superadmin', empresa: 'belfast' },
+        vv: { usuario: 'sebastian', pass: 'Valentina22', nombre: 'Sebastián', nivel: 'superadmin', empresa: 'vv' },
+    };
 
     async function login() {
         const usuario = u.trim().toLowerCase();
         const contra = p.trim();
         if (!usuario || !contra) { setErr('Completá usuario y contraseña'); return; }
         setLoading(true);
-        // Verificar superadmin
-        if (usuario === SUPER_ADMIN.usuario && contra === SUPER_ADMIN.pass) {
-            onLogin(SUPER_ADMIN); return;
+
+        const admin = ADMINS[empresa];
+        if (usuario === admin.usuario && contra === admin.pass) {
+            localStorage.setItem('bcm_auth_empresa', empresa);
+            onLogin({ ...admin });
+            return;
         }
-        // Verificar usuarios creados
+
+        // Verificar usuarios creados para esta empresa
         const lista = await cargarUsuarios();
-        const found = lista.find(x => x.usuario === usuario && x.passHash === hashPass(contra));
-        if (found) { onLogin(found); return; }
+        const found = lista.find(x => x.usuario === usuario && x.passHash === hashPass(contra) &&
+            (x.empresa === empresa || x.empresa === 'ambas'));
+        if (found) {
+            localStorage.setItem('bcm_auth_empresa', empresa);
+            onLogin(found);
+            return;
+        }
+
+        // También verificar ADMIN_CREDS original
+        const adminCred = ADMIN_CREDS.find(c => c.user === usuario && c.pass === contra);
+        if (adminCred) {
+            localStorage.setItem('bcm_auth_empresa', empresa);
+            onLogin({ ...adminCred, nombre: adminCred.rol });
+            return;
+        }
+
         setErr('Usuario o contraseña incorrectos');
         setLoading(false);
     }
 
+    const empresaConfig = {
+        belfast: { nombre: 'Belfast CM', color: '#1D4ED8', logo: '/icons/belfast-logo.jpeg' },
+        vv: { nombre: 'V+V Construcciones', color: '#16A34A', logo: null },
+    };
+    const ec = empresaConfig[empresa];
+
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0F172A', padding: 24 }}>
-            {cfg?.logoCentral
-                ? <img src={cfg.logoCentral} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
-                : <img src="/icons/belfast-logo.jpeg" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
+            {/* Selector de empresa */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
+                {Object.entries(empresaConfig).map(([key, conf]) => (
+                    <button key={key} onClick={() => { setEmpresa(key); setErr(''); }}
+                        style={{ padding: '10px 20px', borderRadius: 12, border: `2px solid ${empresa === key ? conf.color : '#334155'}`, background: empresa === key ? conf.color + '22' : 'transparent', color: empresa === key ? conf.color : '#94A3B8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                        {conf.nombre}
+                    </button>
+                ))}
+            </div>
+
+            {ec.logo
+                ? <img src={ec.logo} style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', marginBottom: 16 }} />
+                : <div style={{ width: 72, height: 72, borderRadius: '50%', background: ec.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 28, fontWeight: 800, color: '#fff' }}>V</div>
             }
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Belfast CM</div>
-            <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 32 }}>Construction Management</div>
-            <div style={{ width: '100%', maxWidth: 340 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 4 }}>{ec.nombre}</div>
+            <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 28 }}>Construction Management</div>
+
+            <div style={{ width: '100%', maxWidth: 320 }}>
                 <input value={u} onChange={e => { setU(e.target.value); setErr(''); }}
                     placeholder="Usuario" autoCapitalize="none" autoCorrect="off"
                     onKeyDown={e => e.key === 'Enter' && login()}
-                    style={{ width: '100%', marginBottom: 10, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #334155', background: '#1E293B', color: '#fff', fontSize: 14, boxSizing: 'border-box' }} />
+                    style={{ width: '100%', marginBottom: 10, padding: '12px 16px', borderRadius: 12, border: `1.5px solid ${err ? '#EF4444' : '#334155'}`, background: '#1E293B', color: '#fff', fontSize: 14, boxSizing: 'border-box' }} />
                 <input type="password" value={p} onChange={e => { setP(e.target.value); setErr(''); }}
                     placeholder="Contraseña"
                     onKeyDown={e => e.key === 'Enter' && login()}
-                    style={{ width: '100%', marginBottom: 12, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #334155', background: '#1E293B', color: '#fff', fontSize: 14, boxSizing: 'border-box' }} />
+                    style={{ width: '100%', marginBottom: 12, padding: '12px 16px', borderRadius: 12, border: `1.5px solid ${err ? '#EF4444' : '#334155'}`, background: '#1E293B', color: '#fff', fontSize: 14, boxSizing: 'border-box' }} />
                 {err && <div style={{ color: '#F87171', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{err}</div>}
                 <button onClick={login} disabled={loading}
-                    style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: '#1D4ED8', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+                    style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: ec.color, color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
                     {loading ? 'Ingresando...' : 'Ingresar'}
                 </button>
             </div>
