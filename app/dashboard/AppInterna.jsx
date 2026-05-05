@@ -5996,8 +5996,6 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                     <span style={{ fontSize: 18, color: T.muted }}>→</span>
                 </div>
             </Card>
-            {onCambiarEmpresa && (
-            )}
             <Card style={{ padding: "14px 16px", cursor: "pointer" }} onClick={logout}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 42, height: 42, borderRadius: 10, background: "#FEF2F2", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
