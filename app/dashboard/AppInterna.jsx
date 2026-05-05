@@ -5997,18 +5997,6 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
                 </div>
             </Card>
             {onCambiarEmpresa && (
-                <Card style={{ padding: "14px 16px", cursor: "pointer", marginBottom: 10 }} onClick={onCambiarEmpresa}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 42, height: 42, borderRadius: 10, background: empresa === 'vv' ? '#EFF6FF' : '#DCFCE7', color: empresa === 'vv' ? '#1D4ED8' : '#16A34A', display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Cambiar empresa</div>
-                            <div style={{ fontSize: 11, color: T.muted }}>Ir a {empresa === 'vv' ? 'BelfastCM' : 'V+V Construcciones'}</div>
-                        </div>
-                        <span style={{ fontSize: 18, color: T.muted }}>→</span>
-                    </div>
-                </Card>
             )}
             <Card style={{ padding: "14px 16px", cursor: "pointer" }} onClick={logout}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -6377,11 +6365,7 @@ function LoginPropio({ onLogin, cfg }) {
         setLoading(false);
     }
 
-    const empresaConfig = {
-        belfast: { nombre: 'Belfast CM', color: '#1D4ED8', logo: '/icons/belfast-logo.jpeg' },
-        vv: { nombre: 'V+V Construcciones', color: '#16A34A', logo: null },
-    };
-    const ec = empresaConfig[empresa];
+    const ec = { nombre: 'Belfast CM', color: '#1D4ED8', logo: '/icons/belfast-logo.jpeg' };
 
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0F172A', padding: 24 }}>
