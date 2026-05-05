@@ -6330,7 +6330,7 @@ async function guardarUsuarios(usuarios) {
 }
 
 function LoginPropio({ onLogin, cfg }) {
-    const [empresa, setEmpresa] = React.useState('belfast');
+    const [empresa] = React.useState('belfast');
     const [u, setU] = React.useState('');
     const [p, setP] = React.useState('');
     const [err, setErr] = React.useState('');
@@ -6385,21 +6385,10 @@ function LoginPropio({ onLogin, cfg }) {
 
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0F172A', padding: 24 }}>
-            {/* Selector de empresa */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
-                {Object.entries(empresaConfig).map(([key, conf]) => (
-                    <button key={key} onClick={() => { setEmpresa(key); setErr(''); }}
-                        style={{ padding: '10px 20px', borderRadius: 12, border: `2px solid ${empresa === key ? conf.color : '#334155'}`, background: empresa === key ? conf.color + '22' : 'transparent', color: empresa === key ? conf.color : '#94A3B8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                        {conf.nombre}
-                    </button>
-                ))}
-            </div>
 
-            {ec.logo
-                ? <img src={ec.logo} style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', marginBottom: 16 }} />
-                : <div style={{ width: 72, height: 72, borderRadius: '50%', background: ec.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 28, fontWeight: 800, color: '#fff' }}>V</div>
-            }
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 4 }}>{ec.nombre}</div>
+
+            <img src="/icons/belfast-logo.jpeg" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', marginBottom: 16 }} />
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Belfast CM</div>
             <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 28 }}>Construction Management</div>
 
             <div style={{ width: '100%', maxWidth: 320 }}>
@@ -6413,7 +6402,7 @@ function LoginPropio({ onLogin, cfg }) {
                     style={{ width: '100%', marginBottom: 12, padding: '12px 16px', borderRadius: 12, border: `1.5px solid ${err ? '#EF4444' : '#334155'}`, background: '#1E293B', color: '#fff', fontSize: 14, boxSizing: 'border-box' }} />
                 {err && <div style={{ color: '#F87171', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{err}</div>}
                 <button onClick={login} disabled={loading}
-                    style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: ec.color, color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+                    style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: '#1D4ED8', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
                     {loading ? 'Ingresando...' : 'Ingresar'}
                 </button>
             </div>
