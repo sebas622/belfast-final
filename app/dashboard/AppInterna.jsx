@@ -6581,6 +6581,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
 
     // Refs para evitar sobrescribir cambios locales recientes
     const lastLocalEditRef = useRef({ lics: 0, obras: 0, personal: 0, cfg: 0 });
+    const lastSentRef = useRef({ lics: '', obras: '', personal: '', cfg: '' });
     function markLocalEdit(key) { lastLocalEditRef.current[key] = Date.now(); }
 
     // Persistir cambios — obras se guardan SIN fotos/archivos (esos van en keys separadas via upd())
@@ -6593,9 +6594,8 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         try { (window.__lastSave = window.__lastSave||{}).__lics = Date.now(); } catch {}
         const licsSinVisitas = lics.map(l => ({ ...l, visitas: [] }));
         const json = JSON.stringify(licsSinVisitas);
-        // Guardar en localStorage primero (síncrono, instantáneo)
+        lastSentRef.current.lics = json;
         try { localStorage.setItem(SP+'lics', json); } catch { }
-        // Luego en Supabase (async)
         storage.set(SP+'lics', json).catch(() => { });
         // Guardar visitas de cada lic en su propia key
         lics.forEach(l => {
@@ -6610,10 +6610,11 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         if (!loaded) return;
         if (!obras.length) return; // NUNCA guardar vacío
         markLocalEdit('obras');
-        // Guardar obras sin fotos/archivos para no superar el límite de 5MB
         const obrasSinMedia = obras.map(o => ({ ...o, fotos: [], archivos: [] }));
-        storage.set(SP+'obras', JSON.stringify(obrasSinMedia)).catch(() => { });
-        try { localStorage.setItem(SP+'obras', JSON.stringify(obrasSinMedia)); } catch { }
+        const obrasStr = JSON.stringify(obrasSinMedia);
+        lastSentRef.current.obras = obrasStr;
+        storage.set(SP+'obras', obrasStr).catch(() => { });
+        try { localStorage.setItem(SP+'obras', obrasStr); } catch { }
     }, [obras, loaded]);
     useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set(SP+'personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem(SP+'personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
     useEffect(() => { if (loaded) { markLocalEdit('cfg'); const payload = JSON.stringify({ ...cfg, _ts: Date.now() }); storage.set(SP+'cfg', payload).catch(() => { }); try { localStorage.setItem(SP+'cfg', payload); } catch { } } }, [cfg, loaded]);
@@ -6870,10 +6871,11 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                     storage.get(SP+'personal'),
                     storage.get(SP+'cfg'),
                 ]);
-                if (rLics?.value) { const loc = storage.getLocal(SP+'lics'); if (loc?.value !== rLics.value) await applyRemoteKey(SP+'lics', rLics.value); }
-                if (rObras?.value) { const loc = storage.getLocal(SP+'obras'); if (loc?.value !== rObras.value) await applyRemoteKey(SP+'obras', rObras.value); }
-                if (rPers?.value) { const loc = storage.getLocal(SP+'personal'); if (loc?.value !== rPers.value) await applyRemoteKey(SP+'personal', rPers.value); }
-                if (rCfg?.value) { const loc = storage.getLocal(SP+'cfg'); if (loc?.value !== rCfg.value) await applyRemoteKey(SP+'cfg', rCfg.value); }
+                const now2 = Date.now();
+                if (rLics?.value && rLics.value !== lastSentRef.current.lics && now2 - lastLocalEditRef.current.lics > PROTECT_MS) await applyRemoteKey(SP+'lics', rLics.value);
+                if (rObras?.value && rObras.value !== lastSentRef.current.obras && now2 - lastLocalEditRef.current.obras > PROTECT_MS) await applyRemoteKey(SP+'obras', rObras.value);
+                if (rPers?.value && rPers.value !== lastSentRef.current.personal && now2 - lastLocalEditRef.current.personal > PROTECT_MS) await applyRemoteKey(SP+'personal', rPers.value);
+                if (rCfg?.value && rCfg.value !== lastSentRef.current.cfg && now2 - lastLocalEditRef.current.cfg > PROTECT_MS) await applyRemoteKey(SP+'cfg', rCfg.value);
 
                 // Sync fotos de obras — verificar cada obra activa
                 const obrasActuales = JSON.parse(storage.getLocal(SP+'obras')?.value || '[]');
