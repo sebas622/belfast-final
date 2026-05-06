@@ -6330,6 +6330,94 @@ function LoginPropio({ onLogin, cfg }) {
     const [p, setP] = React.useState('');
     const [err, setErr] = React.useState('');
     const [loading, setLoading] = React.useState(false);
+    const [showPass, setShowPass] = React.useState(false);
+
+    async function login() {
+        const usuario = u.trim().toLowerCase();
+        const contra = p.trim();
+        if (!usuario || !contra) { setErr('Completá usuario y contraseña'); return; }
+        setLoading(true); setErr('');
+
+        // 1. Superadmin
+        if (usuario === SUPER_ADMIN.usuario && contra === SUPER_ADMIN.pass) {
+            localStorage.setItem('bcm_auth_empresa', empresa);
+            onLogin({ ...SUPER_ADMIN }); return;
+        }
+        // 2. ADMIN_CREDS
+        const adminCred = ADMIN_CREDS.find(c => c.user === usuario && c.pass === contra);
+        if (adminCred) {
+            localStorage.setItem('bcm_auth_empresa', empresa);
+            onLogin({ ...adminCred, nombre: adminCred.rol }); return;
+        }
+        // 3. Usuarios del panel de usuarios
+        const listaU = await cargarUsuarios();
+        const foundU = listaU.find(x => x.usuario === usuario && x.passHash === hashPass(contra));
+        if (foundU) {
+            localStorage.setItem('bcm_auth_empresa', empresa);
+            onLogin(foundU); return;
+        }
+        // 4. Personal con appUser/appPass
+        try {
+            const r = await storage.get('bcm_personal');
+            if (r?.value) {
+                const personal = JSON.parse(r.value);
+                const emp = personal.find(x => x.appUser === usuario && x.appPass === contra);
+                if (emp) {
+                    localStorage.setItem('bcm_auth_empresa', empresa);
+                    onLogin({ ...emp, user: emp.appUser, rol: emp.rol || 'Empleado' }); return;
+                }
+            }
+        } catch {}
+
+        setErr('Usuario o contraseña incorrectos');
+        setLoading(false);
+    }
+
+    return (
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: T.bg }}>
+            <AppBrand cfg={cfg} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                {cfg?.logoCentral
+                    ? <img src={cfg.logoCentral} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
+                    : <img src="/icons/belfast-logo.jpeg" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
+                }
+                <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 4 }}>Belfast CM</div>
+                <div style={{ fontSize: 13, color: T.muted, marginBottom: 28 }}>Construction Management</div>
+                <div style={{ width: '100%', maxWidth: 340 }}>
+                    <Field label="Usuario">
+                        <input value={u} onChange={e => { setU(e.target.value); setErr(''); }}
+                            placeholder="Usuario" autoCapitalize="none" autoCorrect="off"
+                            onKeyDown={e => e.key === 'Enter' && login()}
+                            style={{ width: '100%', background: T.card, border: \`1.5px solid \${err ? '#FECACA' : T.border}\`, borderRadius: T.rsm, padding: '12px 16px', fontSize: 14, color: T.text }} />
+                    </Field>
+                    <Field label="Contraseña">
+                        <div style={{ position: 'relative' }}>
+                            <input type={showPass ? 'text' : 'password'} value={p} onChange={e => { setP(e.target.value); setErr(''); }}
+                                placeholder="••••••••"
+                                onKeyDown={e => e.key === 'Enter' && login()}
+                                style={{ width: '100%', background: T.card, border: \`1.5px solid \${err ? '#FECACA' : T.border}\`, borderRadius: T.rsm, padding: '12px 44px 12px 16px', fontSize: 14, color: T.text }} />
+                            <button onClick={() => setShowPass(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: 16 }}>
+                                {showPass ? '🙈' : '👁'}
+                            </button>
+                        </div>
+                    </Field>
+                    {err && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '9px 14px', fontSize: 12, color: '#EF4444', marginBottom: 14, textAlign: 'center' }}>{err}</div>}
+                    <PBtn full onClick={login} disabled={loading} style={{ padding: 13, fontSize: 15 }}>
+                        {loading ? 'Ingresando...' : 'Ingresar'}
+                    </PBtn>
+                    <div style={{ textAlign: 'center', fontSize: 10, color: T.muted, marginTop: 16, lineHeight: 1.6 }}>
+                        Admin: <b>sebastian</b> / <b>Valentina22</b>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}) {
+    const [empresa] = React.useState('belfast');
+    const [u, setU] = React.useState('');
+    const [p, setP] = React.useState('');
+    const [err, setErr] = React.useState('');
+    const [loading, setLoading] = React.useState(false);
 
     // Superadmins por empresa
     const ADMINS = {
