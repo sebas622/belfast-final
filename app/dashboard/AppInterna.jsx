@@ -908,8 +908,16 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
     const [showNew, setShowNew] = useState(false);
     const [showDetail, setShowDetail] = useState(null);
     const [form, setForm] = useState({ nombre: "", ap: "", estado: "visitar", monto: "", fecha: "", sector: "", docs: {} });
+    const [editLocal, setEditLocal] = useState(null);
+    const [guardado, setGuardado] = useState(false);
     const docRefs = useRef({}); const newDocRefs = useRef({});
     const filtered = lics.filter(l => ap === "todos" || l.ap === ap);
+
+    // Sincronizar editLocal cuando cambia el detail seleccionado
+    useEffect(() => {
+        if (detail) setEditLocal({ nombre: detail.nombre||'', sector: detail.sector||'', fecha: detail.fecha||'', monto: detail.monto||'', ap: detail.ap||'' });
+        else setEditLocal(null);
+    }, [showDetail]);
 
     // Asegurar que form.ap tenga un valor válido cuando cambien las UBICS
     useEffect(() => {
@@ -1057,19 +1065,30 @@ function Licitaciones({ lics, setLics, requireAuth, cfg, obras, setObras }) {
             <PBtn full onClick={add} disabled={!form.nombre.trim()}>Crear licitación</PBtn>
         </Sheet>)}
         {detail && (<Sheet title={detail.nombre} onClose={() => setShowDetail(null)}>
-            <Field label="Nombre"><TInput value={detail.nombre} onChange={e => { const nuevoNombre = e.target.value; setLics(p => p.map(l => l.id === detail.id ? { ...l, nombre: nuevoNombre } : l)); setObras(p => p.map(o => o.lic_id === detail.id ? { ...o, nombre: nuevoNombre } : o)); }} placeholder="Nombre de la licitación" /></Field>
+            <Field label="Nombre"><TInput value={editLocal?.nombre ?? detail.nombre} onChange={e => setEditLocal(p => ({...p, nombre: e.target.value}))} placeholder="Nombre de la licitación" /></Field>
             <FieldRow>
                 <Field label={getLabelUbic(cfg)}>
-                    <Sel value={detail.ap} onChange={e => setLics(p => p.map(l => l.id === detail.id ? { ...l, ap: e.target.value } : l))}>
+                    <Sel value={editLocal?.ap ?? detail.ap} onChange={e => setEditLocal(p => ({...p, ap: e.target.value}))}>
                         {UBICS.map(a => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
                     </Sel>
                 </Field>
-                <Field label="Monto"><MontoInput value={detail.monto || ''} onChange={v => setLics(p => p.map(l => l.id === detail.id ? { ...l, monto: v } : l))} placeholder="0 $" /></Field>
+                <Field label="Monto"><MontoInput value={editLocal?.monto ?? detail.monto ?? ''} onChange={v => setEditLocal(p => ({...p, monto: v}))} placeholder="0 $" /></Field>
             </FieldRow>
             <FieldRow>
-                <Field label="Sector"><TInput value={detail.sector || ''} onChange={e => setLics(p => p.map(l => l.id === detail.id ? { ...l, sector: e.target.value } : l))} placeholder="Terminal A" /></Field>
-                <Field label="Fecha"><TInput value={detail.fecha || ''} onChange={e => setLics(p => p.map(l => l.id === detail.id ? { ...l, fecha: e.target.value } : l))} placeholder="dd/mm/aa" /></Field>
+                <Field label="Sector"><TInput value={editLocal?.sector ?? detail.sector ?? ''} onChange={e => setEditLocal(p => ({...p, sector: e.target.value}))} placeholder="Terminal A" /></Field>
+                <Field label="Fecha"><TInput value={editLocal?.fecha ?? detail.fecha ?? ''} onChange={e => setEditLocal(p => ({...p, fecha: e.target.value}))} placeholder="dd/mm/aa" /></Field>
             </FieldRow>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <button onClick={() => {
+                    if (!editLocal) return;
+                    setLics(p => p.map(l => l.id === detail.id ? { ...l, ...editLocal } : l));
+                    setObras(p => p.map(o => o.lic_id === detail.id ? { ...o, nombre: editLocal.nombre||o.nombre, sector: editLocal.sector||o.sector, monto: editLocal.monto||o.monto, ap: editLocal.ap||o.ap } : o));
+                    setGuardado(true);
+                    setTimeout(() => setGuardado(false), 2000);
+                }} style={{ background: guardado ? '#16A34A' : T.accent, color: '#fff', border: 'none', borderRadius: 10, padding: '8px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    {guardado ? '✓ Guardado' : '💾 Guardar cambios'}
+                </button>
+            </div>
             <div style={{ marginBottom: 16 }}><Lbl>Documentos</Lbl><DocMultiGrid docs={detail.docs || {}} onUpload={(did, file) => handleDoc(detail.id, did, file)} onRemove={(did, fileId) => removeDoc(detail.id, did, fileId)} refs={docRefs} prefix={`det_${detail.id}`} /></div>
             <Field label="Estado">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
