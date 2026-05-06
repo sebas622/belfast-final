@@ -6343,86 +6343,107 @@ async function guardarUsuarios(usuarios) {
     await storage.set('bcm_usuarios', json).catch(() => {});
 }
 
-function LoginPropio({ onLogin, cfg }) {
-    const [u, setU] = React.useState('');
-    const [p, setP] = React.useState('');
-    const [err, setErr] = React.useState('');
+
+function LoginPropio({ onLogin }) {
+    const T2 = { navy: '#0F172A', accent: '#1D4ED8', bg: '#F8FAFC', text: '#1E293B', muted: '#94A3B8', border: '#E2E8F0', card: '#fff' };
+    const [modo, setModo] = React.useState('login'); // 'login' | 'registro'
+    const [usuario, setUsuario] = React.useState('');
+    const [pass, setPass] = React.useState('');
+    const [passConfirm, setPassConfirm] = React.useState('');
+    const [nombre, setNombre] = React.useState('');
     const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState('');
     const [showPass, setShowPass] = React.useState(false);
 
     async function login() {
-        const usuario = u.trim().toLowerCase();
-        const contra = p.trim();
-        if (!usuario || !contra) { setErr('Ingresa usuario y contrasena'); return; }
-        setLoading(true); setErr('');
-        if (usuario === SUPER_ADMIN.usuario && contra === SUPER_ADMIN.pass) {
-            localStorage.setItem('bcm_auth_empresa', 'belfast');
-            onLogin({ ...SUPER_ADMIN }); return;
+        if (!usuario.trim() || !pass.trim()) { setError('Completá usuario y contraseña'); return; }
+        setLoading(true); setError('');
+        // Verificar super admin
+        if (usuario.trim().toLowerCase() === SUPER_ADMIN.usuario && pass === SUPER_ADMIN.pass) {
+            onLogin({ id: 'superadmin', usuario: SUPER_ADMIN.usuario, nombre: SUPER_ADMIN.nombre, empresa: SUPER_ADMIN.empresa, nivel: 'superadmin' });
+            return;
         }
-        const adminCred = ADMIN_CREDS.find(c => c.user === usuario && c.pass === contra);
-        if (adminCred) {
-            localStorage.setItem('bcm_auth_empresa', 'belfast');
-            onLogin({ ...adminCred, nombre: adminCred.rol }); return;
-        }
-        const listaU = await cargarUsuarios();
-        const foundU = listaU.find(x => x.usuario === usuario && x.passHash === hashPass(contra));
-        if (foundU) {
-            localStorage.setItem('bcm_auth_empresa', 'belfast');
-            onLogin(foundU); return;
-        }
-        try {
-            const r = await storage.get('bcm_personal');
-            if (r && r.value) {
-                const personal = JSON.parse(r.value);
-                const emp = personal.find(x => x.appUser === usuario && x.appPass === contra);
-                if (emp) {
-                    localStorage.setItem('bcm_auth_empresa', 'belfast');
-                    onLogin({ ...emp, user: emp.appUser, rol: emp.rol || 'Empleado' }); return;
-                }
-            }
-        } catch (e2) {}
-        setErr('Usuario o contrasena incorrectos');
+        // Verificar usuarios registrados
+        const usuarios = await cargarUsuarios();
+        const u = usuarios.find(x => x.usuario.toLowerCase() === usuario.trim().toLowerCase() && x.passHash === hashPass(pass));
+        if (u) { onLogin(u); }
+        else { setError('Usuario o contraseña incorrectos'); }
+        setLoading(false);
+    }
+
+    async function registrar() {
+        if (!usuario.trim() || !pass.trim() || !nombre.trim()) { setError('Completá todos los campos'); return; }
+        if (pass !== passConfirm) { setError('Las contraseñas no coinciden'); return; }
+        if (pass.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return; }
+        setLoading(true); setError('');
+        const usuarios = await cargarUsuarios();
+        if (usuarios.length >= MAX_USUARIOS) { setError('Límite de usuarios alcanzado. Contactá al administrador.'); setLoading(false); return; }
+        if (usuarios.find(x => x.usuario.toLowerCase() === usuario.trim().toLowerCase())) { setError('Ese usuario ya existe'); setLoading(false); return; }
+        // Nuevo usuario — empresa 'belfast' por defecto (el admin puede cambiarla)
+        const nuevo = { id: uid(), usuario: usuario.trim().toLowerCase(), passHash: hashPass(pass), nombre: nombre.trim(), empresa: 'belfast', nivel: 'empleado', empresa: 'belfast', creado: new Date().toLocaleDateString('es-AR') };
+        await guardarUsuarios([...usuarios, nuevo]);
+        onLogin(nuevo);
         setLoading(false);
     }
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: T.bg }}>
-            <AppBrand cfg={cfg} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-                {cfg && cfg.logoCentral
-                    ? <img src={cfg.logoCentral} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
-                    : <img src="/icons/belfast-logo.jpeg" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 20 }} />
-                }
-                <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 4 }}>Belfast CM</div>
-                <div style={{ fontSize: 13, color: T.muted, marginBottom: 28 }}>Construction Management</div>
-                <div style={{ width: '100%', maxWidth: 340 }}>
-                    <Field label="Usuario">
-                        <input value={u} onChange={e => { setU(e.target.value); setErr(''); }}
-                            placeholder="Usuario" autoCapitalize="none" autoCorrect="off"
-                            onKeyDown={e => e.key === 'Enter' && login()}
-                            style={{ width: '100%', background: T.card, border: '1.5px solid ' + T.border, borderRadius: T.rsm, padding: '12px 16px', fontSize: 14, color: T.text }} />
-                    </Field>
-                    <Field label="Contrasena">
-                        <div style={{ position: 'relative' }}>
-                            <input type={showPass ? 'text' : 'password'} value={p}
-                                onChange={e => { setP(e.target.value); setErr(''); }}
-                                placeholder="contrasena"
-                                onKeyDown={e => e.key === 'Enter' && login()}
-                                style={{ width: '100%', background: T.card, border: '1.5px solid ' + T.border, borderRadius: T.rsm, padding: '12px 44px 12px 16px', fontSize: 14, color: T.text }} />
-                            <button onClick={() => setShowPass(v => !v)}
-                                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: 16 }}>
-                                {showPass ? '🙈' : '👁'}
-                            </button>
-                        </div>
-                    </Field>
-                    {err && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '9px 14px', fontSize: 12, color: '#EF4444', marginBottom: 14, textAlign: 'center' }}>{err}</div>}
-                    <PBtn full onClick={login} disabled={loading} style={{ padding: 13, fontSize: 15 }}>
-                        {loading ? 'Ingresando...' : 'Ingresar'}
-                    </PBtn>
-                    <div style={{ textAlign: 'center', fontSize: 10, color: T.muted, marginTop: 16, lineHeight: 1.6 }}>
-                        Admin: sebastian / Valentina22
-                    </div>
+        <div style={{ minHeight: '100vh', background: T2.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ width: '100%', maxWidth: 380, background: T2.card, borderRadius: 20, padding: '36px 28px', boxShadow: '0 30px 60px rgba(0,0,0,.4)' }}>
+                <div style={{ textAlign: 'center', marginBottom: 28 }}>
+                    <img src="/icons/belfast-logo.jpeg" alt="Belfast" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", marginBottom: 10 }} />
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T2.text }}>Belfast</div>
+                    <div style={{ fontSize: 12, color: T2.muted, marginTop: 3 }}>Construction Management</div>
                 </div>
+
+                {/* Tabs login/registro */}
+                <div style={{ display: 'flex', background: T2.bg, borderRadius: 10, padding: 3, marginBottom: 20 }}>
+                    {[['login','Ingresar'],['registro','Registrarse']].map(([m,l]) => (
+                        <button key={m} onClick={() => { setModo(m); setError(''); }} style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: modo === m ? T2.card : 'transparent', color: modo === m ? T2.accent : T2.muted, fontSize: 13, fontWeight: modo === m ? 700 : 500, cursor: 'pointer', boxShadow: modo === m ? '0 1px 3px rgba(0,0,0,.1)' : 'none' }}>{l}</button>
+                    ))}
+                </div>
+
+                {/* Campos */}
+                {modo === 'registro' && (
+                    <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre completo</label>
+                        <input value={nombre} onChange={e => { setNombre(e.target.value); setError(''); }} placeholder="Ej: Juan García" onKeyDown={e => e.key === 'Enter' && registrar()}
+                            style={{ width: '100%', padding: '12px 14px', fontSize: 14, border: '1.5px solid ' + T2.border, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                )}
+                <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Usuario</label>
+                    <input value={usuario} onChange={e => { setUsuario(e.target.value); setError(''); }} placeholder="tu_usuario" autoCapitalize="none" autoCorrect="off" onKeyDown={e => e.key === 'Enter' && (modo === 'login' ? login() : registrar())}
+                        style={{ width: '100%', padding: '12px 14px', fontSize: 14, border: '1.5px solid ' + T2.border, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ marginBottom: modo === 'registro' ? 14 : 22, position: 'relative' }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contraseña</label>
+                    <input type={showPass ? 'text' : 'password'} value={pass} onChange={e => { setPass(e.target.value); setError(''); }} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && (modo === 'login' ? login() : registrar())}
+                        style={{ width: '100%', padding: '12px 44px 12px 14px', fontSize: 14, border: '1.5px solid ' + T2.border, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
+                    <button onClick={() => setShowPass(v => !v)} type="button" style={{ position: 'absolute', right: 12, top: 34, background: 'none', border: 'none', cursor: 'pointer', color: T2.muted, padding: 4 }}>
+                        {showPass ? '🙈' : '👁'}
+                    </button>
+                </div>
+                {modo === 'registro' && (
+                    <div style={{ marginBottom: 22 }}>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T2.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirmar contraseña</label>
+                        <input type={showPass ? 'text' : 'password'} value={passConfirm} onChange={e => { setPassConfirm(e.target.value); setError(''); }} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && registrar()}
+                            style={{ width: '100%', padding: '12px 14px', fontSize: 14, border: `1.5px solid ${passConfirm && pass !== passConfirm ? '#FECACA' : T2.border}`, borderRadius: 10, color: T2.text, background: T2.bg, outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                )}
+
+                {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#DC2626', marginBottom: 16, textAlign: 'center', fontWeight: 600 }}>{error}</div>}
+
+                <button onClick={modo === 'login' ? login : registrar} disabled={loading}
+                    style={{ width: '100%', padding: 14, background: loading ? T2.muted : T2.accent, color: '#fff', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                    {loading ? 'Procesando...' : modo === 'login' ? 'Ingresar' : 'Crear cuenta'}
+                </button>
+
+                {modo === 'registro' && (
+                    <div style={{ marginTop: 14, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#92400E', textAlign: 'center', lineHeight: 1.5 }}>
+                        ⚠ Al registrarte accedés a <b>BelfastCM</b> por defecto.<br/>
+                        El administrador puede cambiar tu empresa y permisos.
+                    </div>
+                )}
             </div>
         </div>
     );
