@@ -1912,17 +1912,38 @@ function MsgArchivo({ m, colorBg, colorText, align }) {
     const [cargando, setCargando] = React.useState(!m.archivo && !!m.archivoKey);
 
     React.useEffect(() => {
-        if (dataUrl || !m.archivoKey) return;
+        if (dataUrl) return;
+        if (m.url && (m.url.startsWith('data:') || m.url.startsWith('http'))) {
+            setDataUrl(m.url); setCargando(false); return;
+        }
+        if (!m.archivoKey) { setCargando(false); return; }
         const local = localStorage.getItem(m.archivoKey);
         if (local) { setDataUrl(local); setCargando(false); return; }
-        storage.get(m.archivoKey).then(r => {
-            if (r?.value) {
-                try { localStorage.setItem(m.archivoKey, r.value); } catch {}
-                setDataUrl(r.value);
-            }
+        // Buscar en Supabase — con soporte para chunks
+        (async () => {
+            try {
+                // ¿Tiene chunks?
+                const nChunks = m.chunks || 0;
+                if (nChunks > 1) {
+                    let full = '';
+                    for (let i = 0; i < nChunks; i++) {
+                        const r = await storage.get(m.archivoKey + '_chunk' + i);
+                        if (!r?.value) { setCargando(false); return; }
+                        full += r.value;
+                    }
+                    try { localStorage.setItem(m.archivoKey, full); } catch {}
+                    setDataUrl(full);
+                } else {
+                    const r = await storage.get(m.archivoKey);
+                    if (r?.value) {
+                        try { localStorage.setItem(m.archivoKey, r.value); } catch {}
+                        setDataUrl(r.value);
+                    }
+                }
+            } catch {}
             setCargando(false);
-        }).catch(() => setCargando(false));
-    }, [m.archivoKey]);
+        })();
+    }, [m.archivoKey, m.url, m.chunks]);
 
     function abrir() {
         if (!dataUrl) return;
