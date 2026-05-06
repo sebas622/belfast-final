@@ -6388,14 +6388,14 @@ function LoginPropio({ onLogin, cfg }) {
                         <input value={u} onChange={e => { setU(e.target.value); setErr(''); }}
                             placeholder="Usuario" autoCapitalize="none" autoCorrect="off"
                             onKeyDown={e => e.key === 'Enter' && login()}
-                            style={{ width: '100%', background: T.card, border: \`1.5px solid \${err ? '#FECACA' : T.border}\`, borderRadius: T.rsm, padding: '12px 16px', fontSize: 14, color: T.text }} />
+                            style={{ width: '100%', background: T.card, border: `1.5px solid ${err ? '#FECACA' : T.border}`, borderRadius: T.rsm, padding: '12px 16px', fontSize: 14, color: T.text }} />
                     </Field>
                     <Field label="Contraseña">
                         <div style={{ position: 'relative' }}>
                             <input type={showPass ? 'text' : 'password'} value={p} onChange={e => { setP(e.target.value); setErr(''); }}
                                 placeholder="••••••••"
                                 onKeyDown={e => e.key === 'Enter' && login()}
-                                style={{ width: '100%', background: T.card, border: \`1.5px solid \${err ? '#FECACA' : T.border}\`, borderRadius: T.rsm, padding: '12px 44px 12px 16px', fontSize: 14, color: T.text }} />
+                                style={{ width: '100%', background: T.card, border: `1.5px solid ${err ? '#FECACA' : T.border}`, borderRadius: T.rsm, padding: '12px 44px 12px 16px', fontSize: 14, color: T.text }} />
                             <button onClick={() => setShowPass(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: 16 }}>
                                 {showPass ? '🙈' : '👁'}
                             </button>
