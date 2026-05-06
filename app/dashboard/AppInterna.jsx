@@ -6947,16 +6947,19 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                 if (rPers?.value && rPers.value !== lastSentRef.current.personal && now2 - lastLocalEditRef.current.personal > PROTECT_MS) await applyRemoteKey(SP+'personal', rPers.value);
                 if (rCfg?.value && rCfg.value !== lastSentRef.current.cfg && now2 - lastLocalEditRef.current.cfg > PROTECT_MS) await applyRemoteKey(SP+'cfg', rCfg.value);
 
-                // Sync fotos de obras — verificar cada obra activa
+                // Sync fotos Y archivos de obras — verificar cada obra activa
                 const obrasActuales = JSON.parse(storage.getLocal(SP+'obras')?.value || '[]');
                 for (const o of obrasActuales.slice(0, 10)) {
                     try {
                         const rFotos = await storage.get(SP+'fotos_'+o.id);
                         if (rFotos?.value) {
                             const loc = storage.getLocal(SP+'fotos_'+o.id);
-                            if (loc?.value !== rFotos.value) {
-                                await applyRemoteKey(SP+'fotos_'+o.id, rFotos.value);
-                            }
+                            if (loc?.value !== rFotos.value) await applyRemoteKey(SP+'fotos_'+o.id, rFotos.value);
+                        }
+                        const rArchs = await storage.get(SP+'archs_'+o.id);
+                        if (rArchs?.value) {
+                            const loc = storage.getLocal(SP+'archs_'+o.id);
+                            if (loc?.value !== rArchs.value) await applyRemoteKey(SP+'archs_'+o.id, rArchs.value);
                         }
                     } catch { }
                 }
