@@ -6260,7 +6260,30 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
         if (!p) return;
         updCfg({ themeId: id, colors: { accent: p.accent, al: p.al, bg: p.bg, card: p.card, border: p.border, text: p.text, sub: p.sub, muted: p.muted, navy: p.navy } });
     }
-    async function handleLogoUpload(key, file) { const url = await toDataUrl(file); updCfg({ [key]: url }); }
+    async function handleLogoUpload(key, file) {
+        const compressed = await new Promise(res => {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const img = new Image();
+                img.onload = () => {
+                    const MAX = 400;
+                    let w = img.width, h = img.height;
+                    if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+                    const c = document.createElement('canvas');
+                    c.width = w; c.height = h;
+                    c.getContext('2d').drawImage(img, 0, 0, w, h);
+                    res(c.toDataURL('image/jpeg', 0.85));
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+        // Guardar logo en key separada (no dentro del cfg)
+        const logoKey = SP + 'cfg_logo_' + key.replace('logo', '').replace('Belfast','b').replace('Central','c').replace('Asistente','a').replace('AA2000','v').toLowerCase().slice(0,1);
+        storage.set(logoKey, compressed).catch(()=>{});
+        try { localStorage.setItem(logoKey, compressed); } catch {}
+        updCfg({ [key]: compressed });
+    }
     function agregarUbicacion() {
         const actuales = cfg.ubicaciones?.length ? cfg.ubicaciones : [...DEFAULT_UBICACIONES];
         updCfg({ ubicaciones: [...actuales, { id: uid(), code: 'NUEVO', name: 'Nueva ubicación' }] });
