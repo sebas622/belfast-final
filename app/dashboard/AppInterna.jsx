@@ -6047,7 +6047,7 @@ function HerramientasView({ cfg, updCfg }) {
 
 
 function DiasTrabajaosView({ obras }) {
-    const SP = 'bop_';
+    const SP = typeof window !== 'undefined' ? (localStorage.getItem('bcm_auth_empresa') === 'vv' ? 'vv_' : 'bcm_') : 'bcm_';
     const [obraId, setObraId] = useState(obras[0]?.id || '');
     const [fecha, setFecha] = useState(new Date().toLocaleDateString('es-AR'));
     const [trabajadores, setTrabajadores] = useState(() => {
