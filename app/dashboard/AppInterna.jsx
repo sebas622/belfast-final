@@ -5970,6 +5970,206 @@ function RecuperarFotos({ obras, setObras, lics, setLics, personal, setPersonal 
 
 // ── MAS (Más opciones + Configuración) ───────────────────────────────
 
+
+function MaquinariasView({ cfg, updCfg }) {
+    const maquinarias = cfg.maquinarias || [];
+    const [form, setForm] = useState({ nombre: '', tipo: '', patente: '', observaciones: '' });
+    const [showNew, setShowNew] = useState(false);
+
+    function agregar() {
+        if (!form.nombre.trim()) return;
+        const nueva = { id: uid(), ...form, fecha: new Date().toLocaleDateString('es-AR') };
+        updCfg({ maquinarias: [...maquinarias, nueva] });
+        setForm({ nombre: '', tipo: '', patente: '', observaciones: '' });
+        setShowNew(false);
+    }
+
+    function eliminar(id) {
+        updCfg({ maquinarias: maquinarias.filter(m => m.id !== id) });
+    }
+
+    const TIPOS = ['Excavadora', 'Retroexcavadora', 'Bulldozer', 'Grúa', 'Camión', 'Compactadora', 'Hormigonera', 'Generador', 'Otro'];
+
+    return (
+        <div>
+            <PBtn full onClick={() => setShowNew(true)} style={{ marginBottom: 14 }}>+ Agregar maquinaria</PBtn>
+            {showNew && (
+                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                    <Field label="Nombre / Descripción"><TInput value={form.nombre} onChange={e => setForm(p => ({...p, nombre: e.target.value}))} placeholder="Ej: Excavadora CAT 320" /></Field>
+                    <Field label="Tipo">
+                        <Sel value={form.tipo} onChange={e => setForm(p => ({...p, tipo: e.target.value}))}>
+                            <option value="">— Seleccionar —</option>
+                            {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                        </Sel>
+                    </Field>
+                    <Field label="Patente / Identificador"><TInput value={form.patente} onChange={e => setForm(p => ({...p, patente: e.target.value}))} placeholder="ABC 123" /></Field>
+                    <Field label="Observaciones"><TInput value={form.observaciones} onChange={e => setForm(p => ({...p, observaciones: e.target.value}))} placeholder="Estado, contrato, etc." /></Field>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <PBtn onClick={() => setShowNew(false)} variant="secondary" full>Cancelar</PBtn>
+                        <PBtn onClick={agregar} full>Guardar</PBtn>
+                    </div>
+                </div>
+            )}
+            {maquinarias.length === 0 && <div style={{ textAlign: 'center', padding: '30px 0', color: T.muted, fontSize: 13 }}>Sin maquinarias registradas</div>}
+            {maquinarias.map(m => (
+                <div key={m.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ fontSize: 28 }}>🚜</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{m.nombre}</div>
+                            <div style={{ fontSize: 11, color: T.muted }}>{m.tipo}{m.patente ? ' · ' + m.patente : ''}</div>
+                            {m.observaciones && <div style={{ fontSize: 11, color: T.sub, marginTop: 2 }}>{m.observaciones}</div>}
+                        </div>
+                        <button onClick={() => eliminar(m.id)} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#EF4444', cursor: 'pointer' }}>✕</button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+
+function DiasTrabajaosView({ obras }) {
+    const SP = 'bop_';
+    const [obraId, setObraId] = useState(obras[0]?.id || '');
+    const [fecha, setFecha] = useState(new Date().toLocaleDateString('es-AR'));
+    const [trabajadores, setTrabajadores] = useState(() => {
+        try { return JSON.parse(localStorage.getItem(SP+'trab_'+obraId) || '[]'); } catch { return []; }
+    });
+    const [parteDia, setParteDia] = useState(null); // { fecha, horas: [{nombre, horas}] }
+    const [partes, setPartes] = useState(() => {
+        try { return JSON.parse(localStorage.getItem(SP+'partes_'+obraId) || '[]'); } catch { return []; }
+    });
+    const [guardado, setGuardado] = useState(false);
+    const [nuevaTrab, setNuevaTrab] = useState('');
+
+    useEffect(() => {
+        try {
+            const t = JSON.parse(localStorage.getItem(SP+'trab_'+obraId) || '[]');
+            setTrabajadores(t);
+            const p = JSON.parse(localStorage.getItem(SP+'partes_'+obraId) || '[]');
+            setPartes(p);
+        } catch {}
+        setParteDia(null);
+    }, [obraId]);
+
+    function guardarTrabajadores(nuevos) {
+        setTrabajadores(nuevos);
+        localStorage.setItem(SP+'trab_'+obraId, JSON.stringify(nuevos));
+        storage.set(SP+'trab_'+obraId, JSON.stringify(nuevos)).catch(()=>{});
+    }
+
+    function agregarTrabajador() {
+        if (!nuevaTrab.trim()) return;
+        const nuevos = [...trabajadores, { id: uid(), nombre: nuevaTrab.trim() }];
+        guardarTrabajadores(nuevos);
+        setNuevaTrab('');
+    }
+
+    function iniciarParte() {
+        const horas = trabajadores.map(t => ({ id: t.id, nombre: t.nombre, horas: '' }));
+        setParteDia({ fecha, horas });
+    }
+
+    function setHoras(id, val) {
+        setParteDia(p => ({ ...p, horas: p.horas.map(h => h.id === id ? { ...h, horas: val } : h) }));
+    }
+
+    function guardarParte() {
+        const nuevo = { id: uid(), fecha: parteDia.fecha, horas: parteDia.horas };
+        const nuevos = [...partes.filter(p => p.fecha !== parteDia.fecha), nuevo];
+        setPartes(nuevos);
+        localStorage.setItem(SP+'partes_'+obraId, JSON.stringify(nuevos));
+        storage.set(SP+'partes_'+obraId, JSON.stringify(nuevos)).catch(()=>{});
+        setParteDia(null);
+        setGuardado(true);
+        setTimeout(() => setGuardado(false), 2000);
+    }
+
+    const obra = obras.find(o => o.id === obraId);
+
+    return (
+        <div>
+            {/* Selector de obra */}
+            <Field label="Obra">
+                <Sel value={obraId} onChange={e => setObraId(e.target.value)}>
+                    {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                </Sel>
+            </Field>
+
+            {/* Nómina de trabajadores */}
+            <div style={{ marginBottom: 16 }}>
+                <Lbl>Nómina ({trabajadores.length} trabajadores)</Lbl>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, marginBottom: 8 }}>
+                    <input value={nuevaTrab} onChange={e => setNuevaTrab(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && agregarTrabajador()}
+                        placeholder="Nombre del trabajador"
+                        style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: '9px 12px', fontSize: 13, color: T.text }} />
+                    <PBtn onClick={agregarTrabajador}>+</PBtn>
+                </div>
+                {trabajadores.map(t => (
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, marginBottom: 5 }}>
+                        <span style={{ fontSize: 16 }}>👷</span>
+                        <span style={{ flex: 1, fontSize: 13, color: T.text }}>{t.nombre}</span>
+                        <button onClick={() => guardarTrabajadores(trabajadores.filter(x => x.id !== t.id))} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 14 }}>✕</button>
+                    </div>
+                ))}
+            </div>
+
+            {/* Parte del día */}
+            <Lbl>Registrar horas del día</Lbl>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6, marginBottom: 10, alignItems: 'center' }}>
+                <input value={fecha} onChange={e => setFecha(e.target.value)} placeholder="dd/mm/aaaa"
+                    style={{ flex: 1, background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: T.rsm, padding: '9px 12px', fontSize: 13, color: T.text }} />
+                <PBtn onClick={iniciarParte} disabled={trabajadores.length === 0}>Cargar horas</PBtn>
+            </div>
+
+            {parteDia && (
+                <div style={{ background: T.bg, border: `1.5px solid ${T.accent}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.accent, marginBottom: 10 }}>📋 Horas del {parteDia.fecha}</div>
+                    {parteDia.horas.map(h => (
+                        <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <span style={{ flex: 1, fontSize: 13, color: T.text }}>👷 {h.nombre}</span>
+                            <input type="number" min="0" max="24" value={h.horas} onChange={e => setHoras(h.id, e.target.value)}
+                                placeholder="0"
+                                style={{ width: 70, background: T.card, border: `1.5px solid ${T.border}`, borderRadius: 8, padding: '8px 10px', fontSize: 14, fontWeight: 700, color: T.text, textAlign: 'center' }} />
+                            <span style={{ fontSize: 12, color: T.muted }}>hs</span>
+                        </div>
+                    ))}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <PBtn onClick={() => setParteDia(null)} variant="secondary" full>Cancelar</PBtn>
+                        <PBtn onClick={guardarParte} full style={{ background: guardado ? '#16A34A' : T.accent }}>
+                            {guardado ? '✓ Guardado' : '💾 Guardar'}
+                        </PBtn>
+                    </div>
+                </div>
+            )}
+
+            {/* Historial de partes */}
+            {partes.length > 0 && (<>
+                <Lbl>Historial de partes ({partes.length})</Lbl>
+                {[...partes].reverse().map(p => {
+                    const totalHoras = p.horas.reduce((s, h) => s + (parseFloat(h.horas)||0), 0);
+                    return (
+                        <div key={p.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 14px', marginBottom: 8, marginTop: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>📅 {p.fecha}</div>
+                                <div style={{ fontSize: 12, color: T.accent, fontWeight: 700 }}>Total: {totalHoras}hs</div>
+                            </div>
+                            {p.horas.filter(h => parseFloat(h.horas) > 0).map(h => (
+                                <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.sub, padding: '2px 0' }}>
+                                    <span>👷 {h.nombre}</span>
+                                    <span style={{ fontWeight: 600 }}>{h.horas}hs</span>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                })}
+            </>)}
+        </div>
+    );
+}
+
 function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, setObras, lics, setLics, empresa, onCambiarEmpresa, personal, setPersonal }) {
     const [showCfg, setShowCfg] = useState(false);
     const [cfgSection, setCfgSection] = useState('cuenta');
@@ -5990,7 +6190,8 @@ function Mas({ setView, setUser, user, cfg, setCfg, apiKey, setApiKey, obras, se
         { id: 'info_externa', label: 'Info externa', color: '#2563EB', svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253M3.157 7.582A8.959 8.959 0 003 12c0 .778.099 1.533.284 2.253" /></svg> },
         { id: 'resumen', label: 'Resumen', color: '#059669', svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /></svg> },
         { id: 'cotizacion', label: 'Cotización', color: '#0EA5E9', svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
-        { id: 'materiales_zona', label: 'Materiales', color: '#7C3AED', svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" /></svg> },
+        { id: 'maquinarias', label: 'Maquinarias', color: '#D97706', svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg> },
+        { id: 'dias_trabajados', label: 'Días Trabajados', color: '#0891B2', svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" /></svg> },
         { id: 'alertas_wa', label: 'Alertas WA', color: '#25D366', svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg> },
     ];
 
@@ -7184,6 +7385,8 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                 {view === 'resumen' && <ResumenView lics={lics} obras={obras} personal={personal} alerts={alerts} setView={setView} />}
                 {view === 'cotizacion' && <CotizacionView setView={setView} apiKey={apiKey} cfg={cfg} />}
                 {view === 'materiales_zona' && <MaterialesZonaView setView={setView} apiKey={apiKey} />}
+                {view === 'maquinarias' && <MaquinariasView cfg={cfg} updCfg={p => setCfg(prev => ({...prev, ...p}))} />}
+                {view === 'dias_trabajados' && <DiasTrabajaosView obras={obras} />}
                 {view === 'mensajes' && <MensajesView setView={setView} currentUser={user} personal={personal} obras={obras} />}
                 {view === 'contactos' && <ContactosView setView={setView} />}
                 {view === 'proveedores' && <ProveedoresView setView={setView} />}
