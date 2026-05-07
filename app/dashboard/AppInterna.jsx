@@ -6946,8 +6946,8 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         storage.set(SP+'obras', obrasStr).catch(() => { });
         try { localStorage.setItem(SP+'obras', obrasStr); } catch { }
     }, [obras, loaded]);
-    useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); storage.set(SP+'personal', JSON.stringify(personal)).catch(() => { }); try { localStorage.setItem(SP+'personal', JSON.stringify(personal)); } catch { } } }, [personal, loaded]);
-    useEffect(() => { if (loaded) { markLocalEdit('cfg'); const payload = JSON.stringify({ ...cfg, _ts: Date.now() }); storage.set(SP+'cfg', payload).catch(() => { }); try { localStorage.setItem(SP+'cfg', payload); } catch { } } }, [cfg, loaded]);
+    useEffect(() => { if (loaded && personal.length) { markLocalEdit('personal'); const ps = JSON.stringify(personal); lastSentRef.current.personal = ps; storage.set(SP+'personal', ps).catch(() => { }); try { localStorage.setItem(SP+'personal', ps); } catch { } } }, [personal, loaded]);
+    useEffect(() => { if (loaded) { markLocalEdit('cfg'); const { logoBelfast, logoAA2000, logoAsistente, logoCentral, ...cfgSinLogos } = cfg; const payload = JSON.stringify(cfgSinLogos); lastSentRef.current.cfg = payload; storage.set(SP+'cfg', payload).catch(() => { }); try { localStorage.setItem(SP+'cfg', payload); } catch { } if (logoBelfast !== undefined) { storage.set(SP+'cfg_logo_b', logoBelfast||'').catch(()=>{}); try { localStorage.setItem(SP+'cfg_logo_b', logoBelfast||''); } catch {} } if (logoCentral !== undefined) { storage.set(SP+'cfg_logo_c', logoCentral||'').catch(()=>{}); try { localStorage.setItem(SP+'cfg_logo_c', logoCentral||''); } catch {} } } }, [cfg, loaded]);
     useEffect(() => { if (loaded && planes.length) { const json = JSON.stringify(planes); storage.set(SP+'planes_semanales', json).catch(() => { }); try { localStorage.setItem(SP+'planes_semanales', json); } catch { } } }, [planes, loaded]);
     useEffect(() => {
         if (!loaded) return;
@@ -7309,13 +7309,13 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         window.addEventListener('focus', onFocus);
         window.addEventListener('online', () => { syncAll(); connectRealtime(); });
 
-        // Interceptar el storage.set original para marcar mis propios cambios
+        // Interceptar storage.set para marcar cambios propios en ambos sistemas
         const origSet = storage.set.bind(storage);
         storage.set = async (key, value) => {
-            if (key === SP+'lics') myLastSave.lics = Date.now();
-            else if (key === SP+'obras') myLastSave.obras = Date.now();
-            else if (key === SP+'personal') myLastSave.personal = Date.now();
-            else if (key === SP+'cfg') myLastSave.cfg = Date.now();
+            if (key === SP+'lics') { myLastSave.lics = Date.now(); lastSentRef.current.lics = value; lastLocalEditRef.current.lics = Date.now(); }
+            else if (key === SP+'obras') { myLastSave.obras = Date.now(); lastSentRef.current.obras = value; lastLocalEditRef.current.obras = Date.now(); }
+            else if (key === SP+'personal') { myLastSave.personal = Date.now(); lastSentRef.current.personal = value; lastLocalEditRef.current.personal = Date.now(); }
+            else if (key === SP+'cfg') { myLastSave.cfg = Date.now(); lastSentRef.current.cfg = value; lastLocalEditRef.current.cfg = Date.now(); }
             return origSet(key, value);
         };
 
