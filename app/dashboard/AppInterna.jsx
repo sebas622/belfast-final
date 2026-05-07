@@ -7007,7 +7007,7 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
         const MEDIA_PREFIXES = [SP+'fotos_', SP+'archs_', SP+'lic_vis_'];
         // Timestamp de la última vez que YO guardé algo (para no pisar mi propio cambio)
         const myLastSave = { lics: 0, obras: 0, personal: 0, cfg: 0 };
-        const PROTECT_MS = 15000; // 15s protección post-guardado propio
+        const PROTECT_MS = 8000; // 8s protección post-guardado propio
 
         // Función central: aplicar datos remotos a la UI
         async function applyRemoteKey(key, value) {
@@ -7164,6 +7164,11 @@ function AppInner({ supaSession, empresa, onCambiarEmpresa }) {
                 if (rObras?.value && rObras.value !== lastSentRef.current.obras && now2 - lastLocalEditRef.current.obras > PROTECT_MS) await applyRemoteKey(SP+'obras', rObras.value);
                 if (rPers?.value && rPers.value !== lastSentRef.current.personal && now2 - lastLocalEditRef.current.personal > PROTECT_MS) await applyRemoteKey(SP+'personal', rPers.value);
                 if (rCfg?.value && rCfg.value !== lastSentRef.current.cfg && now2 - lastLocalEditRef.current.cfg > PROTECT_MS) await applyRemoteKey(SP+'cfg', rCfg.value);
+                // Sync herramientas y días trabajados
+                try {
+                    const rHerr = await storage.get(SP+'herramientas');
+                    if (rHerr?.value) { const loc = storage.getLocal(SP+'herramientas'); if (loc?.value !== rHerr.value) { try { localStorage.setItem(SP+'herramientas', rHerr.value); } catch {} } }
+                } catch {}
 
                 // Sync fotos Y archivos de obras — verificar cada obra activa
                 const obrasActuales = JSON.parse(storage.getLocal(SP+'obras')?.value || '[]');
