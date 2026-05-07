@@ -6061,24 +6061,27 @@ function DiasTrabajaosView({ obras }) {
     const [nuevaTrab, setNuevaTrab] = useState('');
 
     useEffect(() => {
-        async function cargar() {
-            // Cargar desde Supabase primero para tener lo más actualizado
+        let cancelado = false;
+        // Cargar desde localStorage inmediatamente
+        try { setTrabajadores(JSON.parse(localStorage.getItem(SP+'trab_'+obraId) || '[]')); } catch {}
+        try { setPartes(JSON.parse(localStorage.getItem(SP+'partes_'+obraId) || '[]')); } catch {}
+        setParteDia(null);
+        // Luego actualizar desde Supabase en background
+        async function cargarSupabase() {
+            if (cancelado) return;
             try {
                 const rT = await storage.get(SP+'trab_'+obraId);
-                if (rT?.value) { try { localStorage.setItem(SP+'trab_'+obraId, rT.value); } catch {} setTrabajadores(JSON.parse(rT.value)); }
-                else { try { setTrabajadores(JSON.parse(localStorage.getItem(SP+'trab_'+obraId) || '[]')); } catch {} }
-            } catch { try { setTrabajadores(JSON.parse(localStorage.getItem(SP+'trab_'+obraId) || '[]')); } catch {} }
+                if (!cancelado && rT?.value) { try { localStorage.setItem(SP+'trab_'+obraId, rT.value); } catch {} setTrabajadores(JSON.parse(rT.value)); }
+            } catch {}
+            if (cancelado) return;
             try {
                 const rP = await storage.get(SP+'partes_'+obraId);
-                if (rP?.value) { try { localStorage.setItem(SP+'partes_'+obraId, rP.value); } catch {} setPartes(JSON.parse(rP.value)); }
-                else { try { setPartes(JSON.parse(localStorage.getItem(SP+'partes_'+obraId) || '[]')); } catch {} }
-            } catch { try { setPartes(JSON.parse(localStorage.getItem(SP+'partes_'+obraId) || '[]')); } catch {} }
-            setParteDia(null);
+                if (!cancelado && rP?.value) { try { localStorage.setItem(SP+'partes_'+obraId, rP.value); } catch {} setPartes(JSON.parse(rP.value)); }
+            } catch {}
         }
-        cargar();
-        // Refrescar cada 5s mientras está abierto
-        const iv = setInterval(cargar, 5000);
-        return () => clearInterval(iv);
+        cargarSupabase();
+        const iv = setInterval(cargarSupabase, 8000);
+        return () => { cancelado = true; clearInterval(iv); };
     }, [obraId]);
 
     function guardarTrabajadores(nuevos) {
