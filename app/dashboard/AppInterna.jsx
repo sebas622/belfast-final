@@ -2484,11 +2484,11 @@ function Obras({ obras, setObras, lics, detailId, setDetailId, requireAuth, cfg,
         const files = Array.from(e.target.files);
         if (!files.length) return;
         const nuevas = await Promise.all(files.map(async f => {
-            const dataUrl = await toDataUrl(f);
+            // Comprimir a máx 1200px antes de subir
+            const dataUrl = await toDataUrl(f, 1200);
             const fotoId = uid();
-            // Subir al bucket — devuelve URL pública o base64 como fallback
             const url = await uploadFoto(dataUrl, `obras/${detail.id}`, fotoId);
-            return { id: fotoId, url, nombre: f.name, fecha: new Date().toLocaleDateString("es-AR") };
+            return { id: fotoId, url, nombre: f.name, fecha: new Date().toLocaleDateString("es-AR"), de: user?.nombre || 'Usuario' };
         }));
         upd(detail.id, { fotos: [...(detail.fotos || []), ...nuevas] });
         e.target.value = "";
